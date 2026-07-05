@@ -51,8 +51,8 @@ class FaceDatabase:
 
         # Thêm các cột nếu chưa có (trong trường hợp DB cũ đã tồn tại)
         columns_to_add = [
-            ("university_id", "TEXT UNIQUE"),
-            ("email", "TEXT UNIQUE"),
+            ("university_id", "TEXT"),
+            ("email", "TEXT"),
             ("password", "TEXT"),
             ("role", "TEXT DEFAULT 'student'"),
             ("status", "TEXT DEFAULT 'active'"),
