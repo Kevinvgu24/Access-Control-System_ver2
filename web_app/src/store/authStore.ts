@@ -1,15 +1,9 @@
 import { create } from 'zustand'
-import { auth, db } from '@/lib/firebase'
-import {
-  onAuthStateChanged, signInWithEmailAndPassword,
-  signOut as firebaseSignOut, type User,
-} from 'firebase/auth'
-import { doc, getDocFromServer, getDocs, collection } from 'firebase/firestore'
 import type { AdminDoc } from '@/types/admin'
 import { useLabStore } from '@/store/labStore'
 
 interface AuthState {
-  user: User | null
+  user: any | null
   admin: AdminDoc | null
   labAccessIds: string[]
   initialized: boolean
@@ -31,7 +25,48 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email, password) => {
     set({ loading: true, error: null })
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Login failed' }))
+        throw new Error(err.error || `HTTP ${res.status}: ${res.statusText}`)
+      }
+
+      const adminProfile = await res.json()
+      
+      const mockUser = {
+        uid: adminProfile.userId,
+        email: adminProfile.email,
+        displayName: adminProfile.displayName,
+      }
+
+      const labAccessIds = ['default-lab']
+
+      const adminDoc: AdminDoc = {
+        id: adminProfile.userId,
+        firebaseUid: adminProfile.userId,
+        email: adminProfile.email,
+        displayName: adminProfile.displayName,
+        type: adminProfile.type,
+        status: adminProfile.status,
+        labAccessIds
+      }
+
+      // Persist locally for session reload
+      localStorage.setItem('auth_admin', JSON.stringify(adminDoc))
+      localStorage.setItem('auth_user', JSON.stringify(mockUser))
+
+      set({
+        user: mockUser,
+        admin: adminDoc,
+        labAccessIds,
+        loading: false,
+        error: null
+      })
     } catch (err: unknown) {
       set({
         error: err instanceof Error ? err.message : 'Login failed',
@@ -41,69 +76,36 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    await firebaseSignOut(auth)
+    localStorage.removeItem('auth_admin')
+    localStorage.removeItem('auth_user')
     useLabStore.getState().clearLab()
     set({ user: null, admin: null, labAccessIds: [] })
   },
 
-  init: () =>
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        set({ user: null, admin: null, labAccessIds: [], initialized: true, loading: false })
-        return
-      }
+  init: () => {
+    const storedAdmin = localStorage.getItem('auth_admin')
+    const storedUser = localStorage.getItem('auth_user')
+    if (storedAdmin && storedUser) {
       try {
-        console.log('[auth] uid:', user.uid)
-        const adminSnap = await getDocFromServer(doc(db, 'admins', user.uid))
-        console.log('[auth] exists:', adminSnap.exists(), 'data:', adminSnap.data())
-        const admin = adminSnap.exists()
-          ? ({ id: adminSnap.id, ...adminSnap.data() } as AdminDoc)
-          : null
-
-        if (!admin) {
-          set({
-            user,
-            admin: null,
-            labAccessIds: [],
-            initialized: true,
-            loading: false,
-            error: 'This account is authenticated but has no admin profile.',
-          })
-          return
-        }
-
-        if (admin.status !== 'active') {
-          set({
-            user,
-            admin: null,
-            labAccessIds: [],
-            initialized: true,
-            loading: false,
-            error: 'This admin account is suspended.',
-          })
-          return
-        }
-
-        let labAccessIds: string[] = []
-        if (admin?.type === 'lab_admin') {
-          const labAccessSnap = await getDocs(
-            collection(db, 'admins', user.uid, 'labAccess')
-          )
-          labAccessIds = labAccessSnap.docs
-            .filter(d => d.data().status === 'active')
-            .map(d => d.id)
-        }
-
-        set({ user, admin, labAccessIds, initialized: true, loading: false, error: null })
-      } catch (err: unknown) {
+        const admin = JSON.parse(storedAdmin)
+        const user = JSON.parse(storedUser)
         set({
           user,
-          admin: null,
-          labAccessIds: [],
+          admin,
+          labAccessIds: admin.labAccessIds || ['default-lab'],
           initialized: true,
           loading: false,
-          error: err instanceof Error ? err.message : 'Failed to load admin profile',
+          error: null
         })
+      } catch {
+        localStorage.removeItem('auth_admin')
+        localStorage.removeItem('auth_user')
+        set({ initialized: true })
       }
-    }),
+    } else {
+      set({ initialized: true })
+    }
+    // Return unsubscribe no-op
+    return () => {}
+  },
 }))

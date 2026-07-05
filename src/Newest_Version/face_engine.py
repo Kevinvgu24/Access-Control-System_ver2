@@ -3,6 +3,9 @@ import numpy as np
 import math
 import os
 import sys
+from logger import get_logger
+
+logger = get_logger("face_engine")
 
 # Tọa độ tỷ lệ vàng của ArcFace
 ARCFACE_REFERENCE_5PTS = np.array([
@@ -49,7 +52,7 @@ def check_liveness(engine, image):
         out = raw_output
         
     out = out.flatten()
-    print(f"-> [Liveness] Raw output: {out}")
+    logger.info(f"Liveness raw output: {out}")
     
     if len(out) == 2:
         exp_out = np.exp(out - np.max(out))
@@ -66,7 +69,7 @@ def check_liveness(engine, image):
         is_real = prob > 0.5
         conf = prob
     else:
-        print(f"-> [Liveness Warning] Output shape is {len(out)}, which looks like an ImageNet classifier (1001 classes) rather than a 2-class anti-spoofing model. Bypassing check and assuming REAL.")
+        logger.warning(f"Liveness warning: Output shape is {len(out)}, which looks like an ImageNet classifier (1001 classes) rather than a 2-class anti-spoofing model. Bypassing check and assuming REAL.")
         is_real = True
         conf = 1.0
         
@@ -75,13 +78,13 @@ def check_liveness(engine, image):
 class FaceAligner:
     def __init__(self, lbf_model_path):
         if not os.path.exists(lbf_model_path):
-            print(f"[LỖI PYTHON]: Đường dẫn '{lbf_model_path}' KHÔNG TỒN TẠI!")
+            logger.error(f"LBF model path '{lbf_model_path}' does not exist!")
             sys.exit(1)
         try:
             self.facemark = cv2.face.createFacemarkLBF()
             self.facemark.loadModel(lbf_model_path)
         except Exception as e:
-            print(f"[LỖI OPENCV]: Không thể đọc lbfmodel.yaml. Chi tiết: {e}")
+            logger.error(f"Failed to read lbfmodel.yaml. Details: {e}")
             sys.exit(1)
 
     def align(self, raw_face_crop):
@@ -111,7 +114,7 @@ class FaceAligner:
                 return None
             return cv2.warpAffine(frame, matrix, (112, 112), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
         except Exception as e:
-            print(f"-> [Warning] align_with_landmarks failed: {e}")
+            logger.warning(f"align_with_landmarks failed: {e}")
             return None
 
 class FaceTracker:

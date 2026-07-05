@@ -13,7 +13,7 @@ import { ControlPage }     from '@/pages/ControlPage'
 import { useAuthStore }    from '@/store/authStore'
 import { useLabStore }     from '@/store/labStore'
 import { useAdminStore }   from '@/store/adminStore'
-import { MockPanel }       from '@/components/dev/MockPanel'
+// import { MockPanel }       from '@/components/dev/MockPanel'
 
 function LoadingScreen() {
   return (
@@ -100,7 +100,7 @@ export default function App() {
   return (
     <BrowserRouter>
       {user ? <AuthenticatedApp /> : <LoginPage />}
-      <MockPanel />
+      {/* <MockPanel /> */}
     </BrowserRouter>
   )
 }

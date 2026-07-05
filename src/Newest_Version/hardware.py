@@ -1,6 +1,9 @@
 import time
 import threading
 from hailo_platform import Device
+from logger import get_logger
+
+logger = get_logger("hardware")
 
 
 class HardwareMonitor:
@@ -27,7 +30,7 @@ class HardwareMonitor:
                 hailo_device = Device(device_infos[0])
                 hailo_device.__enter__()
         except Exception as e:
-            print(f"[HWMonitor] Could not open Hailo device: {e}")
+            logger.error(f"Could not open Hailo device: {e}")
 
         try:
             while self.running:

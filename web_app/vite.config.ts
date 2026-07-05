@@ -56,7 +56,15 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { '@': path.resolve(__dirname, './src') },
     },
-    server: { port: 5175 },
+    server: { 
+      port: 5175,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true,
+        }
+      }
+    },
     build: {
       target: 'es2020',
       sourcemap: false,

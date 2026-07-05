@@ -6,3 +6,4 @@ dist/
 *.br
 __pycache__/
 *.pyc
+logs/

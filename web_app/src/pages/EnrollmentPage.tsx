@@ -7,7 +7,6 @@ import { useLabStore }  from '@/store/labStore'
 import { useAuthStore } from '@/store/authStore'
 import { useAdminStore } from '@/store/adminStore'
 import { enrollUser } from '@/lib/db'
-import { useUploadThing } from '@/lib/uploadthingClient'
 
 type Step = 'identity' | 'photos' | 'pin' | 'review'
 const STEPS: { id: Step; num: string; label: string }[] = [
@@ -50,25 +49,17 @@ export function EnrollmentPage() {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const idx = STEPS.findIndex(s => s.id === step)
 
-  const { startUpload, isUploading } = useUploadThing('faceImages', {
-    onClientUploadComplete: () => {
-      // handled per-slot in handleFileSelect
-    },
-    onUploadError: (err) => {
-      console.error('Upload error:', err)
-    },
-  })
+  const isUploading = false
 
   const handleFileSelect = async (slotId: string, file: File) => {
-    setPhotos(p => p.map(s => s.id === slotId ? { ...s, status: 'uploading', file } : s))
     try {
-      const res = await startUpload([file])
-      const url = res?.[0]?.ufsUrl ?? res?.[0]?.url ?? null
+      const url = URL.createObjectURL(file)
       setPhotos(p => p.map(s => s.id === slotId
-        ? { ...s, status: url ? 'accepted' : 'rejected', url }
+        ? { ...s, status: 'accepted', url, file }
         : s
       ))
-    } catch {
+    } catch (err) {
+      console.error('File load error:', err)
       setPhotos(p => p.map(s => s.id === slotId ? { ...s, status: 'rejected' } : s))
     }
   }
@@ -84,7 +75,7 @@ export function EnrollmentPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const faceImageUrls = photos.filter(p => p.url).map(p => p.url!)
+      const files = photos.filter(p => p.file).map(p => p.file!)
       await enrollUser({
         universityId: draft.universityId,
         fullName: `${draft.firstName} ${draft.lastName}`.trim(),
@@ -92,8 +83,9 @@ export function EnrollmentPage() {
         roles: [draft.role as import('@/types/admin').UserRole],
         labId: selectedLabId,
         pin,
-        faceImageUrls,
+        faceImageUrls: [],
         capturedBy: admin?.firebaseUid ?? 'admin',
+        photos: files
       })
       await refreshUsers(selectedLabId)
       setDone(true)

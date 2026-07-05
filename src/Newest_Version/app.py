@@ -6,6 +6,10 @@ import numpy as np
 import gc
 import cv2
 import ctypes
+import sqlite3
+from logger import get_logger
+
+logger = get_logger("app")
 
 # GStreamer and GLib Imports
 import gi
@@ -16,6 +20,7 @@ import hailo
 from utils import cosine_to_percentage
 from hardware import HardwareMonitor
 from database import FaceDatabase
+from anti_spoofing import IRLivenessDetector
 
 # [CĂN CHỈNH] Tọa độ 5 điểm tham chiếu chuẩn của ArcFace MobileFaceNet (112×112)
 # Thứ tự: mắt trái, mắt phải, mũi, miệng trái, miệng phải
@@ -60,7 +65,7 @@ class ProfessionalSmartDoor:
         self.db_path = os.path.join(database_dir, "smart_door.db")
         self.db = FaceDatabase(self.db_path)
         self.known_users = self.db.load_all_users()
-        print(f"-> Loaded {len(self.known_users)} users from SQLite.")
+        logger.info(f"Loaded {len(self.known_users)} users from SQLite.")
 
         # Rebuild matrix
         self._known_names = []
@@ -68,8 +73,9 @@ class ProfessionalSmartDoor:
         self._rebuild_db_matrix()
         self._sync_db_to_binary()
 
-        # Monitor DB file modification time for cross-process hot-reloads
-        self._last_db_mtime = self._get_db_mtime()
+        # Monitor DB users table state for cross-process hot-reloads
+        self._last_db_check_time = time.time()
+        self._last_db_state = self._get_db_state()
 
         # Hardware Monitor
         self.hw_monitor = HardwareMonitor(check_interval=2.0).start()
@@ -86,11 +92,21 @@ class ProfessionalSmartDoor:
         # [OPT] Cache appsink frame dimensions — caps.get_structure() mỗi frame là lãng phí
         self._cached_appsink_size = None
 
-    def _get_db_mtime(self):
+        # IR Camera liveness variables
+        self.latest_ir_frame = None
+        self.ir_pipeline = None
+        self.ir_liveness_detector = IRLivenessDetector()
+
+    def _get_db_state(self):
         try:
-            return os.stat(self.db_path).st_mtime
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT count(*), max(updatedAt) FROM users")
+            state = cursor.fetchone()
+            conn.close()
+            return state if state else (0, "")
         except Exception:
-            return 0.0
+            return (0, "")
 
     def _rebuild_db_matrix(self):
         """Build L2-normalised (N×512) matrix for one-shot vectorised search."""
@@ -126,9 +142,9 @@ class ProfessionalSmartDoor:
                     f.write(name_bytes)
                     # Ghi vector embedding 512 chiều (float32)
                     f.write(emb.astype(np.float32).tobytes())
-            print(f"-> Synced {n} users to {bin_path} for C++ DB Matcher.")
+            logger.info(f"Synced {n} users to {bin_path} for C++ DB Matcher.")
         except Exception as e:
-            print(f"[ERROR] Failed to sync DB to binary: {e}")
+            logger.error(f"Failed to sync DB to binary: {e}")
 
     def _search_db(self, embedding: np.ndarray) -> tuple[str, float]:
         """
@@ -156,13 +172,17 @@ class ProfessionalSmartDoor:
 
         # [CHỨC NĂNG] Tự động tải lại cơ sở dữ liệu khi có cập nhật từ tiến trình đăng ký khuôn mặt khác (như register.py)
         # [LIÊN KẾT] Kiểm tra mtime của file SQLite -> cập nhật RAM matrix -> đồng bộ lại file db.bin để bộ so khớp C++ nạp lại.
-        current_mtime = self._get_db_mtime()
-        if current_mtime != self._last_db_mtime:
-            self.known_users = self.db.load_all_users()
-            self._rebuild_db_matrix()
-            self._sync_db_to_binary()
-            self._last_db_mtime = current_mtime
-            print("-> [GStreamer] Database update detected! Reloaded search matrix and synced to binary.")
+        # Check database updates only once every 3 seconds to avoid NPU pipeline lag
+        now = time.time()
+        if now - self._last_db_check_time >= 3.0:
+            self._last_db_check_time = now
+            current_state = self._get_db_state()
+            if current_state != self._last_db_state:
+                self.known_users = self.db.load_all_users()
+                self._rebuild_db_matrix()
+                self._sync_db_to_binary()
+                self._last_db_state = current_state
+                logger.info("[GStreamer] Users table update detected! Reloaded search matrix and synced to binary.")
 
         # Calculate FPS
         self._frame_count += 1
@@ -270,6 +290,7 @@ class ProfessionalSmartDoor:
                         cv2.putText(arr, display_text, (x1, y1 - 8), font, font_scale, color, text_thickness, cv2.LINE_AA)
                         
                         # [LIÊN KẾT] Vẽ các điểm landmarks (5 điểm mốc) được sinh ra từ mô hình YOLOv8-Face
+                        landmarks_pts = []
                         for sub in det.get_objects():
                             if isinstance(sub, hailo.HailoLandmarks):
                                 for pt in sub.get_points():
@@ -278,10 +299,13 @@ class ProfessionalSmartDoor:
                                     px = max(0, min(px, w - 1))
                                     py = max(0, min(py, h - 1))
                                     cv2.circle(arr, (px, py), 3, (255, 0, 255), -1)
+                                    landmarks_pts.append((pt.x(), pt.y()))
                         
                         detections_info.append({
                             "class_id": class_id,
-                            "label": display_text
+                            "label": display_text,
+                            "bbox": (xmin, ymin, w_box, h_box),
+                            "landmarks": landmarks_pts
                         })
                         
                     if len(detections_info) > 0 and self.recognition_callback is not None:
@@ -385,10 +409,163 @@ class ProfessionalSmartDoor:
                     arr = np.ctypeslib.as_array(data_ptr, shape=(h, w, 3))
                     callback(arr.copy())
                 except Exception as e:
-                    print(f"[ERROR] Appsink frame mapping failed: {e}")
+                    logger.error(f"Appsink frame mapping failed: {e}")
                 finally:
                     libgst.gst_buffer_unmap(buf_ptr, ctypes.byref(map_info))
         return Gst.FlowReturn.OK
+
+    def start_ir_camera(self, ir_source="libcamerasrc"):
+        """Khởi động luồng đọc IR camera sử dụng GStreamer"""
+        if str(ir_source).isdigit() or str(ir_source).startswith("/dev/video"):
+            dev = f"/dev/video{ir_source}" if str(ir_source).isdigit() else ir_source
+            csi_pipeline_str = (
+                f"v4l2src device={dev} ! videoconvert ! videoscale ! "
+                f"video/x-raw, width=640, height=480, format=GRAY8 ! "
+                f"appsink name=ir_sink sync=false max-buffers=1 drop=true emit-signals=true"
+            )
+        else:
+            # Default to libcamerasrc for CSI slot (matching the verified working scratch script)
+            csi_pipeline_str = (
+                "libcamerasrc ! video/x-raw, format=NV12, width=640, height=480 ! "
+                "videoconvert ! video/x-raw, format=GRAY8 ! "
+                "appsink name=ir_sink sync=false max-buffers=1 drop=true emit-signals=true"
+            )
+        logger.info(f"Initializing IR Camera pipeline with: {csi_pipeline_str}")
+        try:
+            self.ir_pipeline = Gst.parse_launch(csi_pipeline_str)
+            ir_sink = self.ir_pipeline.get_by_name("ir_sink")
+            if ir_sink:
+                ir_sink.connect("new-sample", self._on_ir_sample)
+                logger.info("Connected appsink callback for IR Camera.")
+            
+            ret = self.ir_pipeline.set_state(Gst.State.PLAYING)
+            if ret == Gst.StateChangeReturn.FAILURE:
+                logger.error("Failed to transition IR Camera pipeline to PLAYING state.")
+                bus = self.ir_pipeline.get_bus()
+                msg = bus.pop_filtered(Gst.MessageType.ERROR, 0)
+                if msg:
+                    err, debug = msg.parse_error()
+                    logger.error(f"IR Camera GStreamer Error: {err.message}")
+                    logger.error(f"IR Camera GStreamer Debug: {debug}")
+                self.stop_ir_camera()
+            else:
+                logger.info("IR Camera GStreamer pipeline is now PLAYING.")
+        except Exception as e:
+            logger.error(f"Failed to start IR Camera pipeline: {e}")
+            self.ir_pipeline = None
+
+    def _on_ir_sample(self, appsink):
+        sample = appsink.emit("pull-sample")
+        if sample:
+            buffer = sample.get_buffer()
+            if buffer:
+                caps = sample.get_caps()
+                if caps:
+                    structure = caps.get_structure(0)
+                    w = structure.get_int("width")[1]
+                    h = structure.get_int("height")[1]
+                else:
+                    w, h = 640, 480
+
+                # Sử dụng ctypes gst_buffer_map giống như luồng chính để tránh lỗi phân mảnh/binding PyGObject
+                if libgst:
+                    buf_ptr = hash(buffer)
+                    map_info = GstMapInfo()
+                    if libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1):
+                        try:
+                            data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
+                            # GRAY8 chỉ có 1 kênh màu
+                            arr = np.ctypeslib.as_array(data_ptr, shape=(h, w))
+                            self.latest_ir_frame = arr.copy()
+                        except Exception as e:
+                            logger.error(f"Error mapping IR buffer via ctypes: {e}")
+                        finally:
+                            libgst.gst_buffer_unmap(buf_ptr, ctypes.byref(map_info))
+                else:
+                    success, map_info = buffer.map(Gst.MapFlags.READ)
+                    if success:
+                        try:
+                            arr = np.frombuffer(map_info.data, dtype=np.uint8)
+                            self.latest_ir_frame = arr.reshape((h, w)).copy()
+                        except Exception as e:
+                            logger.error(f"Error mapping IR buffer fallback: {e}")
+                        finally:
+                            buffer.unmap(map_info)
+        return Gst.FlowReturn.OK
+
+    def stop_ir_camera(self):
+        if self.ir_pipeline:
+            logger.info("Stopping IR Camera pipeline...")
+            try:
+                self.ir_pipeline.set_state(Gst.State.NULL)
+            except Exception:
+                pass
+            self.ir_pipeline = None
+            self.latest_ir_frame = None
+
+    def verify_liveness_on_ir(self, bbox_coords=None, landmarks=None):
+        """
+        Kiểm tra tính sống động trên ảnh crop khuôn mặt hồng ngoại.
+        bbox_coords: tuple (xmin, ymin, w_box, h_box)
+        landmarks: list [(x, y), ...]
+        """
+        if self.latest_ir_frame is None:
+            return False, 0.0, "No IR frame data"
+
+        ir_frame = self.latest_ir_frame.copy()
+        h_ir, w_ir = ir_frame.shape
+
+        ir_face_crop = None
+        used_method = "Haar Cascade"
+
+        # Sử dụng Haar Cascade để tìm khuôn mặt trực tiếp trên ảnh IR
+        # Giải quyết triệt để vấn đề khác biệt góc nhìn (FOV 70 độ) và độ lệch vật lý (parallax)
+        try:
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            face_cascade = cv2.CascadeClassifier(cascade_path)
+            # Phát hiện khuôn mặt trên ảnh xám hồng ngoại
+            faces = face_cascade.detectMultiScale(ir_frame, scaleFactor=1.1, minNeighbors=3, minSize=(100, 100))
+            if len(faces) > 0:
+                # Lấy khuôn mặt lớn nhất (gần nhất)
+                faces = sorted(faces, key=lambda x: x[2] * x[3], reverse=True)
+                fx, fy, fw, fh = faces[0]
+                # Mở rộng nhẹ vùng crop (10%) để đảm bảo không mất trán/má
+                pad_x = int(fw * 0.1)
+                pad_y = int(fh * 0.1)
+                x1 = max(0, fx - pad_x)
+                y1 = max(0, fy - pad_y)
+                x2 = min(w_ir, fx + fw + pad_x)
+                y2 = min(h_ir, fy + fh + pad_y)
+                ir_face_crop = ir_frame[y1:y2, x1:x2]
+                logger.info(f"IR Liveness: Face detected via Haar Cascade at [{x1}, {y1}, {x2}, {y2}]")
+                landmarks = None  # Chuyển sang dùng zone-based division cố định của liveness check (rất ổn định)
+            else:
+                logger.warning("IR Liveness: Haar Cascade did not detect any face in IR frame.")
+        except Exception as e:
+            logger.error(f"IR Liveness: Haar Cascade execution error: {e}")
+
+        # Fallback 1: Cắt vùng trung tâm (nơi khuôn mặt người dùng đứng đối diện camera)
+        if ir_face_crop is None:
+            used_method = "Center Crop Fallback"
+            crop_sz = min(w_ir, h_ir, 320)
+            cx, cy = w_ir // 2, h_ir // 2
+            x1 = cx - crop_sz // 2
+            y1 = cy - crop_sz // 2
+            ir_face_crop = ir_frame[y1:y1+crop_sz, x1:x1+crop_sz]
+            logger.info(f"IR Liveness: Fallback to Center Crop [{x1}, {y1}, {x1+crop_sz}, {y1+crop_sz}]")
+            landmarks = None
+
+        # Lưu ảnh chẩn đoán phục vụ cân chỉnh/giám sát
+        try:
+            os.makedirs("/home/kevinvgu/Access-Control-System_ver2/logs", exist_ok=True)
+            cv2.imwrite("/home/kevinvgu/Access-Control-System_ver2/logs/latest_ir_frame.png", ir_frame)
+            if ir_face_crop is not None and ir_face_crop.size > 0:
+                cv2.imwrite("/home/kevinvgu/Access-Control-System_ver2/logs/latest_ir_crop.png", ir_face_crop)
+                logger.info(f"Saved diagnostic IR crop ({ir_face_crop.shape}) using {used_method}")
+        except Exception as e:
+            logger.error(f"Failed to save diagnostic IR images: {e}")
+
+        return self.ir_liveness_detector.check_liveness(ir_face_crop, landmarks)
 
     def run(self, width=640, height=480, source="0", headless=False, appsink_callback=None):
         Gst.init(None)
@@ -500,11 +677,11 @@ class ProfessionalSmartDoor:
             f"agg.sink_1"
         )
 
-        print(f"\n=== INITIALIZING GSTREAMER TAPPAS PIPELINE ({selected_name}) ===")
+        logger.info(f"=== INITIALIZING GSTREAMER TAPPAS PIPELINE ({selected_name}) ===")
         try:
             self.pipeline = Gst.parse_launch(pipeline_str)
         except GLib.Error as e:
-            print(f"[ERROR] Failed to parse pipeline string: {e}")
+            logger.error(f"Failed to parse pipeline string: {e}")
             sys.exit(1)
 
         self.stats_overlay = self.pipeline.get_by_name("stats_overlay")
@@ -512,13 +689,13 @@ class ProfessionalSmartDoor:
         # Register signal handlers
         import signal
         def sigint_handler(sig, frame):
-            print("\n-> Force stopping pipeline and exiting...")
+            logger.info("Force stopping pipeline and exiting...")
             self.stop()
         signal.signal(signal.SIGINT, sigint_handler)
 
         overlay = self.pipeline.get_by_name("overlay")
         if not overlay:
-            print("[ERROR] Could not find overlay element by name!")
+            logger.error("Could not find overlay element by name!")
             self.stop()
 
         pad = overlay.get_static_pad("sink")
@@ -531,39 +708,39 @@ class ProfessionalSmartDoor:
             align_pad = align_queue.get_static_pad("src")
             if align_pad:
                 align_pad.add_probe(Gst.PadProbeType.BUFFER, self.on_face_crop_probe, None)
-                print("-> [Face Aligner] Python probe registered on queue_align.src")
+                logger.info("[Face Aligner] Python probe registered on queue_align.src")
             else:
-                print("[WARN] Could not get queue_align src pad")
+                logger.warning("Could not get queue_align src pad")
         else:
-            print("[WARN] queue_align element not found")
+            logger.warning("queue_align element not found")
 
         if appsink_callback is not None:
             appsink = self.pipeline.get_by_name("appsink")
             if appsink:
                 appsink.connect("new-sample", self.on_new_appsink_sample, appsink_callback)
-                print("-> [GStreamer] Connected appsink new-sample callback.")
+                logger.info("[GStreamer] Connected appsink new-sample callback.")
             else:
-                print("[WARN] Could not find appsink element in pipeline.")
+                logger.warning("Could not find appsink element in pipeline.")
 
         ret = self.pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
-            print("[ERROR] Failed to transition pipeline to PLAYING state.")
+            logger.error("Failed to transition pipeline to PLAYING state.")
             bus = self.pipeline.get_bus()
             msg = bus.pop_filtered(Gst.MessageType.ERROR, Gst.CLOCK_TIME_NONE)
             if msg:
                 err, debug = msg.parse_error()
-                print(f"\n================ GSTREAMER ERROR ================")
-                print(f"Error: {err.message}")
-                print(f"Debug Info: {debug}")
-                print(f"=================================================\n")
+                logger.error("================ GSTREAMER ERROR ================")
+                logger.error(f"Error: {err.message}")
+                logger.error(f"Debug Info: {debug}")
+                logger.error("=================================================")
             self.stop()
 
         if appsink_callback is not None:
-            print("=== SYSTEM RUNNING IN GUI MODE (no GLib loop in this thread) ===")
+            logger.info("=== SYSTEM RUNNING IN GUI MODE (no GLib loop in this thread) ===")
             return
 
         self.loop = GLib.MainLoop()
-        print("=== SYSTEM RUNNING — press Ctrl+C to quit ===")
+        logger.info("=== SYSTEM RUNNING — press Ctrl+C to quit ===")
         try:
             self.loop.run()
         except KeyboardInterrupt:
@@ -572,7 +749,11 @@ class ProfessionalSmartDoor:
             self.stop()
 
     def stop(self):
-        print("-> Stopping ProfessionalSmartDoor...")
+        logger.info("Stopping ProfessionalSmartDoor...")
+        try:
+            self.stop_ir_camera()
+        except Exception as e:
+            logger.error(f"Failed to stop IR camera: {e}")
         if self.loop:
             try:
                 self.loop.quit()

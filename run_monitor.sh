@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Navigate to the workspace directory
-cd /home/kevinvgu/Access-Control-System
+cd /home/kevinvgu/Access-Control-System_ver2
 
 # Check if hailo_env is active, if not activate it
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -19,8 +19,11 @@ echo "   STARTING TOUCHSCREEN ACCESS CONTROL MONITOR APP       "
 echo "========================================================="
 
 python3 src/monitor_display/interface_monitor.py \
-  --yolo_hef /home/kevinvgu/Access-Control-System/models/yolo26_landmark.hef \
-  --arcface_hef /home/kevinvgu/Access-Control-System/models/arcface_mobilefacenet.hef \
-  --db_dir /home/kevinvgu/Access-Control-System/database \
-  --lbf_model /home/kevinvgu/Access-Control-System/src/Newest_Version/lbfmodel.yaml \
-  --cam_source 0
+  --yolo_hef /home/kevinvgu/Access-Control-System_ver2/models/yolo26_landmark.hef \
+  --arcface_hef /home/kevinvgu/Access-Control-System_ver2/models/arcface_mobilefacenet.hef \
+  --db_dir /home/kevinvgu/Access-Control-System_ver2/database \
+  --lbf_model /home/kevinvgu/Access-Control-System_ver2/src/Newest_Version/lbfmodel.yaml \
+  --cam_source 0 \
+  --use_ir \
+  --ir_source libcamerasrc
+

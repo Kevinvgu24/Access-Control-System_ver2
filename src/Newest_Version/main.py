@@ -8,6 +8,9 @@ os.environ["HAILORT_LOGGER_PATH"] = "NONE"
 
 # Import não bộ hệ thống
 from app import ProfessionalSmartDoor
+from logger import get_logger
+
+logger = get_logger("main")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Smart Lab Door System")

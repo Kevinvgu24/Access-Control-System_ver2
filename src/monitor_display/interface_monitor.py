@@ -1,16 +1,25 @@
 import sys
 import os
+
+# Resolve imports path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+newest_version_dir = os.path.join(parent_dir, "Newest_Version")
+
+for d in [current_dir, newest_version_dir]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
+
 import argparse
 import time
 import cv2
 import numpy as np
 import gc
 from datetime import datetime
+from logger import get_logger
 
-# Resolve imports path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.append(current_dir)
+logger = get_logger("monitor")
+
 
 from qt_imports import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton,
@@ -34,7 +43,6 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 Gst.init(None)
 
-
 class InterfaceMonitorApp(QMainWindow):
     def __init__(self, args):
         super().__init__()
@@ -51,6 +59,7 @@ class InterfaceMonitorApp(QMainWindow):
         self.detected_user_name = None
         self.last_detection_time = 0
         self.user_unlocked_this_session = False
+        self.liveness_checked_this_session = False
         
         # Signal Emitter for thread-safe UI updates
         self.emitter = FrameEmitter()
@@ -73,8 +82,6 @@ class InterfaceMonitorApp(QMainWindow):
         self.walkaway_timer.timeout.connect(self._check_walkaway_timeout)
         self.walkaway_timer.start()
 
-        # [OPT] Pre-allocate CLAHE object một lần — tránh tạo lại mỗi frame
-        self._clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
 
         # Multi-angle face enrollment variables
         self.enroll_state = None
@@ -236,7 +243,7 @@ class InterfaceMonitorApp(QMainWindow):
     # =====================================================================
     def start_pipeline(self):
         """Initializes and runs the GStreamer Hailo pipeline."""
-        print("-> Starting GStreamer Hailo Pipeline from GUI...")
+        logger.info("Starting GStreamer Hailo Pipeline from GUI...")
         try:
             self.door_app = ProfessionalSmartDoor(
                 yolo_hef=self.args.yolo_hef,
@@ -263,45 +270,17 @@ class InterfaceMonitorApp(QMainWindow):
                 source=self.args.cam_source,
                 appsink_callback=on_frame_callback
             )
+            
+            # Start the IR camera pipeline if enabled
+            if getattr(self.args, "use_ir", False):
+                self.door_app.start_ir_camera(ir_source=getattr(self.args, "ir_source", "libcamerasrc"))
+                self.add_log("System", "IR GStreamer pipeline is playing.")
+                
             self.update_recognition_state()
             self.add_log("System", "GStreamer pipeline is playing.")
         except Exception as e:
             self.add_log("System", f"Pipeline Init Error: {e}")
             QMessageBox.critical(self, "Pipeline Error", f"Failed to initialize GStreamer: {e}")
-
-    def adjust_frame_brightness_if_dark(self, rgb_frame):
-        """
-        [CHỨC NĂNG] Tự động tối ưu hóa và tăng cường độ sáng/độ tương phản cho hình ảnh.
-        [OPT] Dùng self._clahe được pre-allocated trong __init__ — tránh tạo CLAHE mỗi frame.
-        """
-        if rgb_frame is None:
-            return rgb_frame
-
-        try:
-            # [OPT] Đo luminance trên ảnh gốc — tránh copy không cần thiết
-            avg_brightness = np.mean(rgb_frame[:, :, 1])  # kênh G ≈ luminance, nhanh hơn cvtColor
-
-            if avg_brightness < 100:
-                # Chuyển đổi RGB -> LAB in-place
-                lab = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2LAB)
-                l, a, b_ch = cv2.split(lab)
-
-                # [OPT] Dùng self._clahe đã pre-allocated — không tạo object mới
-                cl = self._clahe.apply(l)
-
-                # Merge và chuyển về RGB
-                cv2.merge((cl, a, b_ch), lab)  # merge in-place vào buffer lab
-                rgb_enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
-
-                # Bổ sung tuyến tính nếu cực kỳ tối
-                if avg_brightness < 50:
-                    cv2.convertScaleAbs(rgb_enhanced, rgb_enhanced, alpha=1.2, beta=15)
-
-                return rgb_enhanced
-        except Exception as e:
-            print(f"[WARN] Brightness adjustment failed: {e}")
-
-        return rgb_frame
 
     def _check_walkaway_timeout(self):
         """[OPT] Walk-away check chạy 5x/giây qua QTimer — thay vì 30x/giây trong frame callback."""
@@ -312,6 +291,7 @@ class InterfaceMonitorApp(QMainWindow):
             self.detection_start_time = None
             self.detected_user_name = None
             self.user_unlocked_this_session = False
+            self.liveness_checked_this_session = False
             if not self.door_unlocked:
                 self.tabAccess.lblScanStatus.setText("SCANNING...")
                 self.tabAccess.lblScanStatus.setStyleSheet("""
@@ -328,10 +308,6 @@ class InterfaceMonitorApp(QMainWindow):
     @pyqtSlot(np.ndarray)
     def update_video_frame(self, rgb_frame):
         """[OPT] Frame callback — walk-away check removed (moved to _check_walkaway_timeout QTimer)."""
-        # Bù sáng nếu đang ở tab Register
-        if self.tabs.currentIndex() == 2:
-            rgb_frame = self.adjust_frame_brightness_if_dark(rgb_frame)
-
         self.videoWidget.update_frame(rgb_frame)
 
     @pyqtSlot(list)
@@ -359,6 +335,7 @@ class InterfaceMonitorApp(QMainWindow):
             self.detection_start_time = None
             self.detected_user_name = None
             self.user_unlocked_this_session = False
+            self.liveness_checked_this_session = False
             
             # Show appropriate warning on Access tab
             if num_faces > 2:
@@ -380,6 +357,15 @@ class InterfaceMonitorApp(QMainWindow):
                     self.add_log("Security", f"Warning: {num_faces} faces detected. Access blocked.")
                     self.last_logged_name = "Multi-face warning"
                     self.last_logged_time = now
+                    try:
+                        self.door_app.db.log_access_event(
+                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                            userId="", universityId="", displayName="Multi-face", method="face",
+                            result="denied", reason=f"Warning: {num_faces} faces detected. Access blocked.",
+                            confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                        )
+                    except Exception as e:
+                        logger.error(f"[DB LOG ERROR] {e}")
             else:
                 warning_msg = "Cảnh báo: Phát hiện khuôn mặt không hợp lệ! Cửa đã khóa."
                 self.tabAccess.lblScanStatus.setText("🚫 TRUY CẬP BỊ TỪ CHỐI")
@@ -399,6 +385,15 @@ class InterfaceMonitorApp(QMainWindow):
                     self.add_log("Security", "Access Denied: Unknown face detected. Door locked.")
                     self.last_logged_name = "Unknown"
                     self.last_logged_time = now
+                    try:
+                        self.door_app.db.log_access_event(
+                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                            userId="", universityId="", displayName="Unknown", method="face",
+                            result="denied", reason="Access Denied: Unknown face detected. Door locked.",
+                            confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                        )
+                    except Exception as e:
+                        logger.error(f"[DB LOG ERROR] {e}")
             
             self.last_detection_time = now
             return
@@ -414,6 +409,7 @@ class InterfaceMonitorApp(QMainWindow):
             self.detection_start_time = now
             self.detected_user_name = name
             self.user_unlocked_this_session = False
+            self.liveness_checked_this_session = False
             
             self.tabAccess.lblScanStatus.setText("VERIFYING...")
             self.tabAccess.lblScanStatus.setStyleSheet("""
@@ -425,38 +421,89 @@ class InterfaceMonitorApp(QMainWindow):
                 border-radius: 8px;
                 border: 1px solid rgba(234, 88, 12, 0.25);
             """)
-            self.tabAccess.lblScanDetails.setText(f"Hold face steady for 1s: {name}")
+            self.tabAccess.lblScanDetails.setText(f"Hãy đứng yên 2.0s để xác thực: {name}")
         else:
             # Same person holding their face
             if not self.user_unlocked_this_session:
                 duration = now - self.detection_start_time
-                if duration >= 1.0:
-                    self.tabAccess.lblScanStatus.setText("🔓 ACCESS GRANTED")
-                    self.tabAccess.lblScanStatus.setStyleSheet("""
-                        color: #10b981;
-                        font-size: 24px;
-                        font-weight: bold;
-                        padding: 20px;
-                        background-color: rgba(16, 185, 129, 0.08);
-                        border-radius: 8px;
-                        border: 1px solid rgba(16, 185, 129, 0.25);
-                    """)
-                    self.tabAccess.lblScanDetails.setText(f"Welcome back, {label}!")
-                    
-                    # Automatically unlock the door (only once per session)
-                    self.unlock_door()
-                    self.user_unlocked_this_session = True
-                    
-                    # Log the event exactly once
-                    self.add_log("Scan", f"Granted: {label}")
-                    self.last_logged_name = name
-                    self.last_logged_time = now
+                if duration >= 2.0:
+                    if not self.liveness_checked_this_session:
+                        self.liveness_checked_this_session = True
+                        
+                        # Run physical IR liveness verification if configured
+                        liveness_score = 1.0
+                        if getattr(self.args, "use_ir", False):
+                            bbox = valid_user.get("bbox", None)
+                            landmarks = valid_user.get("landmarks", None)
+                            is_real, liveness_score, liveness_msg = self.door_app.verify_liveness_on_ir(bbox, landmarks)
+                            if not is_real:
+                                # Access denied - Spoof detected
+                                self.tabAccess.lblScanStatus.setText("⚠️ PHÁT HIỆN GIẢ MẠO")
+                                self.tabAccess.lblScanStatus.setStyleSheet("""
+                                    color: #ef4444;
+                                    font-size: 20px;
+                                    font-weight: bold;
+                                    padding: 20px;
+                                    background-color: rgba(239, 68, 68, 0.1);
+                                    border-radius: 8px;
+                                    border: 2px solid #ef4444;
+                                """)
+                                self.tabAccess.lblScanDetails.setText(f"Cảnh báo giả mạo: {liveness_msg}")
+                                
+                                if f"Spoof warning: {name}" != self.last_logged_name or (now - self.last_logged_time > 10):
+                                    self.add_log("Security", f"⚠️ SPOOF DETECTED for {name}: {liveness_msg}")
+                                    self.last_logged_name = f"Spoof warning: {name}"
+                                    self.last_logged_time = now
+                                    try:
+                                        self.door_app.db.log_access_event(
+                                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                            userId="", universityId="", displayName=name, method="face",
+                                            result="denied", reason=f"Spoof detected: {liveness_msg}",
+                                            confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                                        )
+                                    except Exception as e:
+                                        logger.error(f"[DB LOG ERROR] {e}")
+                                self.last_detection_time = now
+                                return
+                        
+                        # Liveness passed! Unlock
+                        self.tabAccess.lblScanStatus.setText("🔓 ACCESS GRANTED")
+                        self.tabAccess.lblScanStatus.setStyleSheet("""
+                            color: #10b981;
+                            font-size: 24px;
+                            font-weight: bold;
+                            padding: 20px;
+                            background-color: rgba(16, 185, 129, 0.08);
+                            border-radius: 8px;
+                            border: 1px solid rgba(16, 185, 129, 0.25);
+                        """)
+                        self.tabAccess.lblScanDetails.setText(f"Welcome back, {name} (Recognized)!")
+                        
+                        # Automatically unlock the door (only once per session)
+                        self.unlock_door()
+                        self.user_unlocked_this_session = True
+                        
+                        # Log the event exactly once
+                        self.add_log("Scan", f"Granted: {name} (Recognized)")
+                        self.last_logged_name = name
+                        self.last_logged_time = now
+                        
+                        try:
+                            self.door_app.db.log_access_event(
+                                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                userId="", universityId="", displayName=name, method="face",
+                                result="granted", reason="Face match + Liveness verified",
+                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                            )
+                        except Exception as e:
+                            logger.error(f"[DB LOG ERROR] {e}")
                 else:
                     # Show remaining progress countdown
-                    remaining = max(0.0, 1.0 - duration)
-                    self.tabAccess.lblScanDetails.setText(f"Keep holding: {name} ({remaining:.1f}s)")
+                    remaining = max(0.0, 2.0 - duration)
+                    self.tabAccess.lblScanDetails.setText(f"Hãy đứng yên: {name} ({remaining:.1f}s)")
         
         self.last_detection_time = now
+
 
     # =====================================================================
     # DOOR LOCK CONTROL & HARDWARE VITAL MONITORING
@@ -525,6 +572,20 @@ class InterfaceMonitorApp(QMainWindow):
             )
             self.videoWidget.update_vitals(stats_text)
 
+            # Update telemetry in local SQLite database
+            try:
+                self.door_app.db.update_node_telemetry(
+                    nodeId="default-node",
+                    status="online",
+                    onlineState="online",
+                    cameraFps=fps,
+                    cpuPercent=45.0,  # mock CPU load
+                    ramPercent=ram / 40.0, # scale to percentage based on Pi RAM
+                    temperatureC=cpu_t
+                )
+            except Exception as e:
+                logger.error(f"[DB TELEMETRY ERROR] {e}")
+
     def handle_tab_changed(self, index):
         self.update_recognition_state()
         # If we exited the Register tab (index 2), make sure guides are cleared and any active enrollment is cancelled
@@ -578,13 +639,47 @@ class InterfaceMonitorApp(QMainWindow):
         gc.collect()
 
     def handle_pin_submitted(self, pin):
-        """Validates touch-pad PIN entries and grants access upon verification."""
-        if pin == "1234":  # Default demo master PIN code
-            self.add_log("Keypad", "Correct PIN entered.")
+        """Validates touch-pad PIN entries against local SQLite and grants access upon verification."""
+        import sqlite3
+        user_name = None
+        if pin == "1234":
+            user_name = "Master Admin"
+        else:
+            try:
+                conn = sqlite3.connect(self.door_app.db.db_path)
+                c = conn.cursor()
+                c.execute("SELECT name FROM users WHERE pin = ? AND status = 'active'", (pin,))
+                row = c.fetchone()
+                if row:
+                    user_name = row[0]
+                conn.close()
+            except Exception as e:
+                logger.error(f"[PIN DB ERROR] {e}")
+
+        if user_name:
+            self.add_log("Keypad", f"Correct PIN entered by {user_name}.")
+            try:
+                self.door_app.db.log_access_event(
+                    labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                    userId="", universityId="", displayName=user_name, method="pin",
+                    result="granted", reason="PIN validation success",
+                    confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
+                )
+            except Exception as e:
+                logger.error(f"[DB LOG ERROR] {e}")
             self.unlock_door()
             self.tabs.setCurrentIndex(0)  # Navigate back to Access Home
         else:
             self.add_log("Keypad", "Warning: Incorrect PIN attempt.")
+            try:
+                self.door_app.db.log_access_event(
+                    labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                    userId="", universityId="", displayName="Keypad Attempt", method="pin",
+                    result="denied", reason="Invalid PIN entered",
+                    confidence=0.0, livenessScore=0.0, pinFallbackUsed=1
+                )
+            except Exception as e:
+                logger.error(f"[DB LOG ERROR] {e}")
             QMessageBox.warning(self, "Invalid PIN", "The PIN code entered is incorrect.")
 
     def handle_register_requested(self, name, email, password, role):
@@ -641,15 +736,15 @@ class InterfaceMonitorApp(QMainWindow):
         self.tabRegister.btnEnroll.setEnabled(False)
         self.tabRegister.btnEnroll.setText("CAPTURING...")
         
-        # Capture 5 frames at 150ms intervals
-        self.enroll_capture_timer.start(150)
+        # Capture 5 frames at 1000ms (1 second) intervals
+        self.enroll_capture_timer.start(1000)
 
     def on_enroll_capture_tick(self):
         """Tick of fast capture timer. Grabs frames from live feed."""
         # [GUARD] Phòng thủ tràn bộ nhớ: không cho phép tích lũy quá 30 frame
         # (5 góc × 5 frame = 25 tối đa, buffer 5 frame dự phòng)
         if len(self.enroll_captured_frames) >= 30:
-            print(f"[WARN] enroll_captured_frames overflow guard triggered: {len(self.enroll_captured_frames)} frames")
+            logger.warning(f"enroll_captured_frames overflow guard triggered: {len(self.enroll_captured_frames)} frames")
             self.enroll_capture_timer.stop()
             return
 
@@ -821,74 +916,31 @@ class InterfaceMonitorApp(QMainWindow):
                     cv2.cvtColor(self.enroll_captured_frames[0], cv2.COLOR_RGB2BGR), (112, 112)
                 )
 
-            self.tabRegister.lblRegStatus.setText("Connecting to Firebase Cloud...")
+            self.tabRegister.lblRegStatus.setText("Saving user biometric profile locally...")
             QApplication.processEvents()
 
-            # Initialize Firebase Admin SDK
-            import firebase_admin
-            from firebase_admin import credentials, firestore, storage
-            import json
-
-            SERVICE_ACCOUNT_PATH = "/home/kevinvgu/Access-Control-System/serviceAccountKey.json"
-            if not os.path.exists(SERVICE_ACCOUNT_PATH):
-                raise FileNotFoundError(f"Firebase Service Account Key not found at {SERVICE_ACCOUNT_PATH}")
-
-            if not firebase_admin._apps:
-                with open(SERVICE_ACCOUNT_PATH) as f:
-                    cred_data = json.load(f)
-                project_id = cred_data.get("project_id")
-                bucket_name = f"{project_id}.appspot.com"
-                cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
-                firebase_admin.initialize_app(cred, {
-                    'storageBucket': bucket_name
-                })
-
-            db_client = firestore.client()
-            bucket = storage.bucket()
-
-            self.tabRegister.lblRegStatus.setText("Uploading representative face image...")
-            QApplication.processEvents()
-
-            # Save representative face image to scratch path
-            scratch_dir = "/home/kevinvgu/Access-Control-System/scratch"
-            os.makedirs(scratch_dir, exist_ok=True)
-            temp_img_path = os.path.join(scratch_dir, "temp_aligned.jpg")
+            # Save representative face image directly in local database/name folder
+            user_dir = os.path.join(self.args.db_dir, self.enroll_pending_name)
+            os.makedirs(user_dir, exist_ok=True)
+            img_path = os.path.join(user_dir, "face_0.jpg")
             
             # Save aligned representative face (which is RGB, convert to BGR)
-            cv2.imwrite(temp_img_path, cv2.cvtColor(self._enroll_representative_face, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(img_path, cv2.cvtColor(self._enroll_representative_face, cv2.COLOR_RGB2BGR))
 
-            # Upload to Firebase Storage
-            blob = bucket.blob(f"users/{self.enroll_pending_email}/face_0.jpg")
-            blob.upload_from_filename(temp_img_path, content_type="image/jpeg")
-            blob.make_public()
-            public_url = blob.public_url
+            # Save directly into SQLite
+            self.door_app.db.save_full_user(
+                name=self.enroll_pending_name,
+                university_id=self.enroll_pending_email,  # email/mssv
+                email=self.enroll_pending_email,
+                password=self.enroll_pending_password,
+                role=self.enroll_pending_role,
+                status="active",
+                pin="",  # no PIN provided on touchscreen enrollment
+                embedding=final_embedding
+            )
 
-            self.tabRegister.lblRegStatus.setText("Registering user on Firestore...")
-            QApplication.processEvents()
-
-            # Write Firestore user document with averaged multi-angle embedding
-            doc_ref = db_client.collection("users").document(self.enroll_pending_email)
-            doc_ref.set({
-                "fullName": self.enroll_pending_name,
-                "emailOrMssv": self.enroll_pending_email,
-                "password": self.enroll_pending_password,
-                "role": self.enroll_pending_role,
-                "status": "pending",
-                "embedding": final_embedding.tolist(),
-                "createdAt": firestore.SERVER_TIMESTAMP
-            })
-
-            # Create faceImages subcollection document
-            doc_ref.collection("faceImages").document("face_0").set({
-                "storagePath": public_url
-            })
-
-            # Cleanup temp file
-            if os.path.exists(temp_img_path):
-                os.remove(temp_img_path)
-
-            self.add_log("Register", f"Pending registration uploaded: {self.enroll_pending_email} (Robust multi-angle template)")
-            self.tabRegister.lblRegStatus.setText("Upload successful! Pending admin approval.")
+            self.add_log("Register", f"Registration completed locally: {self.enroll_pending_email}")
+            self.tabRegister.lblRegStatus.setText("Registration successful!")
             self.tabRegister.lblRegStatus.setStyleSheet("color: #10b981; font-weight: bold;")
 
             QMessageBox.information(
@@ -1010,11 +1062,11 @@ class InterfaceMonitorApp(QMainWindow):
 
             # Ngưỡng cảnh báo: 350MB
             if usage_mb > 350:
-                print(f"[WARN] RAM Watchdog: RSS = {usage_mb:.1f}MB — forcing gc.collect()")
+                logger.warning(f"RAM Watchdog: RSS = {usage_mb:.1f}MB — forcing gc.collect()")
                 gc.collect()
                 # Hủy enrollment nếu đang chạy để giải phóng frame buffers
                 if self.enroll_state is not None:
-                    print("[WARN] RAM Watchdog: cancelling active enrollment to free frame buffers")
+                    logger.warning("RAM Watchdog: cancelling active enrollment to free frame buffers")
                     self.cancel_enrollment()
                     self.add_log("System", f"⚠️ RAM watchdog cancelled enrollment: {usage_mb:.0f}MB used")
         except Exception:
@@ -1077,9 +1129,12 @@ if __name__ == "__main__":
     parser.add_argument("--cam_width", type=int, default=640, help="Camera resolution width")
     parser.add_argument("--cam_height", type=int, default=480, help="Camera resolution height")
     parser.add_argument("--cam_source", type=str, default="0", help="Camera source dev number or path")
+    parser.add_argument("--use_ir", action="store_true", help="Enable IR camera physical liveness verification")
+    parser.add_argument("--ir_source", type=str, default="libcamerasrc", help="IR camera GStreamer source (index, path, or libcamerasrc)")
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
     monitor = InterfaceMonitorApp(args)
     monitor.show()
     sys.exit(app.exec())
+

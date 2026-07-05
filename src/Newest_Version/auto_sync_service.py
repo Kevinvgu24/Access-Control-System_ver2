@@ -9,6 +9,9 @@ import threading
 from common import letterbox_image, scale_detections_to_original
 from face_engine import get_face_embedding
 from database import FaceDatabase
+from logger import get_logger
+
+logger = get_logger("sync")
 
 # Yield duration (seconds) between inferences
 _SYNC_YIELD_S = 0.04
@@ -28,7 +31,7 @@ class AutoSyncManager:
     def start(self):
         self.running = True
         threading.Thread(target=self._sync_loop, daemon=True).start()
-        print("-> [SYNC SERVICE] Hot-reload watcher started.")
+        logger.info("Hot-reload watcher started.")
 
     def _get_folder_mtimes(self) -> dict[str, float]:
         """Snapshot of {folder_name: mtime} — cheap OS stat, no disk reads."""
@@ -65,7 +68,7 @@ class AutoSyncManager:
             # ── Detect deleted folders ────────────────────────────────────────
             deleted_folders = known_set - current_folders
             for user_name in deleted_folders:
-                print(f"\n[-] HOT-RELOAD: '{user_name}' folder removed — revoking access.")
+                logger.info(f"HOT-RELOAD: '{user_name}' folder removed — revoking access.")
                 self.db.delete_user(user_name)
                 known_users.pop(user_name, None)
                 db_changed = True
@@ -73,7 +76,7 @@ class AutoSyncManager:
             # ── Detect new folders ────────────────────────────────────────────
             new_folders = current_folders - known_set
             if new_folders:
-                print(f"\n[*] HOT-RELOAD: New folders {list(new_folders)} detected. Attempting to allocate NPU context for enrollment...")
+                logger.info(f"HOT-RELOAD: New folders {list(new_folders)} detected. Attempting to allocate NPU context for enrollment...")
                 
                 try:
                     from hailo_platform import VDevice
@@ -85,7 +88,7 @@ class AutoSyncManager:
                     temp_arcface = HailoPythonInferenceEngine(self.arcface_hef, target=temp_vdevice)
 
                     for user_name in new_folders:
-                        print(f"[*] Scanning biometric patterns for user: '{user_name}'...")
+                        logger.info(f"Scanning biometric patterns for user: '{user_name}'...")
                         user_path   = os.path.join(self.db_dir, user_name)
                         image_paths = (
                             glob.glob(os.path.join(user_path, '*.[jp][pn]g')) +
@@ -144,21 +147,21 @@ class AutoSyncManager:
                             norm_emb = avg_emb / np.linalg.norm(avg_emb)
                             self.db.save_user(user_name, norm_emb)
                             known_users[user_name] = norm_emb
-                            print(f"[+] '{user_name}' enrolled successfully.\n")
+                            logger.info(f"'{user_name}' enrolled successfully.")
                             db_changed = True
                         else:
-                            print(f"[-] Skipped '{user_name}': no face detected.\n")
+                            logger.warning(f"Skipped '{user_name}': no face detected.")
 
                     # Gracefully clean up/release NPU context
                     del temp_yolo
                     del temp_arcface
                     del temp_vdevice
-                    print("-> [SYNC SERVICE] Temporary NPU context released.")
+                    logger.info("Temporary NPU context released.")
 
                 except Exception as e:
-                    print(f"\n[-] HOT-RELOAD WARNING: Cannot run enrollment for new folders. The NPU device is currently occupied by the live stream.")
-                    print(f"    Error details: {e}")
-                    print(f"    Please enroll new users using 'register.py' when the live stream is not running.\n")
+                    logger.warning("HOT-RELOAD WARNING: Cannot run enrollment for new folders. The NPU device is currently occupied by the live stream.")
+                    logger.warning(f"Error details: {e}")
+                    logger.warning("Please enroll new users using 'register.py' when the live stream is not running.")
 
             # Update mtime snapshot
             last_mtimes = current_mtimes
