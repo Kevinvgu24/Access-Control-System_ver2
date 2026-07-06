@@ -9,9 +9,17 @@ import { useLabStore } from '@/store/labStore'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function isToday(ts: import('firebase/firestore').Timestamp | null | undefined): boolean {
+function isToday(ts: any): boolean {
   if (!ts) return false
-  const d = ts.toDate()
+  let d: Date
+  if (typeof ts.toDate === 'function') {
+    d = ts.toDate()
+  } else if (ts instanceof Date) {
+    d = ts
+  } else {
+    d = new Date(ts)
+  }
+  if (isNaN(d.getTime())) return false
   const now = new Date()
   return d.getFullYear() === now.getFullYear() &&
          d.getMonth() === now.getMonth() &&

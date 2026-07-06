@@ -39,7 +39,21 @@ export function fmtConf(v: number | null | undefined): string {
   return v == null ? 'N/A' : `${v.toFixed(1)}%`
 }
 
-export function fmtTs(ts: Timestamp | null | undefined): string {
+export function fmtTs(ts: any): string {
   if (!ts) return '—'
-  return ts.toDate().toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+  if (typeof ts.toDate === 'function') {
+    return ts.toDate().toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+  }
+  if (ts instanceof Date) {
+    return ts.toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+  }
+  try {
+    const d = new Date(ts)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+    }
+  } catch (e) {
+    // fallback
+  }
+  return String(ts).slice(0, 16)
 }
