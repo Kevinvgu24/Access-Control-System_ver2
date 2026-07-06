@@ -17,10 +17,10 @@ import { useAdminStore }   from '@/store/adminStore'
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-darker flex items-center justify-center">
+    <div className="min-h-screen bg-dark flex items-center justify-center">
       <div className="flex items-center gap-3">
         <span className="blink w-2 h-2 rounded-full bg-green" />
-        <span className="font-mono text-xs text-[#3d4a46] uppercase tracking-widest">Initializing…</span>
+        <span className="font-mono text-xs text-[#94a3b8] uppercase tracking-widest">Initializing…</span>
       </div>
     </div>
   )
@@ -39,12 +39,12 @@ function AuthenticatedApp() {
 
   if (!admin) {
     return (
-      <div className="min-h-screen bg-darker flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-surface border border-red/20 rounded-lg p-7 flex flex-col gap-4">
+      <div className="min-h-screen bg-dark flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-surface border border-red/20 rounded-lg p-7 flex flex-col gap-4 shadow-sm">
           <div>
             <p className="font-mono text-[11px] tracking-widest uppercase text-red mb-2">Access</p>
-            <h1 className="text-2xl font-bold tracking-tight text-[#e8ecea]">Admin Profile Required</h1>
-            <p className="text-sm text-[#5a6b64] mt-2">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">Admin Profile Required</h1>
+            <p className="text-sm text-[#475569] mt-2">
               {error ?? 'This authenticated account is not mapped to an active admin profile.'}
             </p>
           </div>

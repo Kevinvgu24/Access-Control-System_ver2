@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import {
   subscribeAccessEvents, subscribeIncidents, subscribeNodeState,
-  getFirstLabNode, getLabUsers, getNodeConfig,
+  getFirstLabNode, getLabUsers, getNodeConfig, deleteUser,
 } from '@/lib/db'
 import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig } from '@/types/admin'
 import { fmtTs } from '@/lib/format'
@@ -68,6 +68,7 @@ interface AdminStore {
   subscribe: (labId: string, labName: string) => () => void
   refreshUsers: (labId: string) => Promise<void>
   refreshNodeConfig: (labId: string, clusterId: string, nodeId: string) => Promise<void>
+  deleteUser: (labId: string, userId: string) => Promise<void>
 }
 
 const defaultStatus: SystemStatus = {
@@ -143,5 +144,11 @@ export const useAdminStore = create<AdminStore>((set) => ({
   refreshNodeConfig: async (labId, clusterId, nodeId) => {
     const cfg = await getNodeConfig(labId, clusterId, nodeId)
     set({ nodeConfig: cfg })
+  },
+
+  deleteUser: async (labId, userId) => {
+    await deleteUser(labId, userId)
+    const users = await getLabUsers(labId)
+    set({ users })
   },
 }))

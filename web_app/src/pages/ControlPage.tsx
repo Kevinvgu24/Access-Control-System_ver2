@@ -18,10 +18,10 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-[#111514] border border-white/10 rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+      <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-[#e8ecea]">{title}</h3>
-          <button onClick={onClose} className="text-[#3d4a46] hover:text-[#e8ecea] transition-colors text-xl cursor-pointer">✕</button>
+          <h3 className="text-lg font-bold text-[#0f172a]">{title}</h3>
+          <button onClick={onClose} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
         </div>
         {children}
       </div>
@@ -32,13 +32,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="font-mono text-[11px] uppercase tracking-widest text-[#5a6b64]">{label}</label>
+      <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputCls = "bg-raised border border-white/10 rounded px-4 py-2.5 text-sm text-[#e8ecea] placeholder:text-[#2d3834] outline-none focus:border-green/30 transition-colors"
+const inputCls = "bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
 
 // ── Labs tab ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex justify-between items-center">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-[#3d4a46]">{labs.length} lab{labs.length !== 1 ? 's' : ''}</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8]">{labs.length} lab{labs.length !== 1 ? 's' : ''}</p>
         <Button variant="primary" size="sm" onClick={openCreate}>+ New Lab</Button>
       </div>
 
@@ -120,18 +120,18 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           <thead>
             <tr className="bg-raised">
               {['Lab Name', 'Code / Timezone', 'Status', ''].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#3d4a46] border-b border-white/[0.05]">{h}</th>
+                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {labs.map(lab => (
-              <tr key={lab.id} className="border-b border-white/[0.04] hover:bg-raised transition-colors last:border-0">
+              <tr key={lab.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-4">
-                  <p className="text-sm font-semibold text-[#e8ecea]">{lab.name}</p>
-                  <p className="font-mono text-[11px] text-[#3d4a46] mt-0.5">{lab.location || '—'}</p>
+                  <p className="text-sm font-semibold text-[#0f172a]">{lab.name}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{lab.location || '—'}</p>
                 </td>
-                <td className="px-5 py-4 text-sm text-[#5a6b64]">
+                <td className="px-5 py-4 text-sm text-[#475569]">
                   {[lab.code, lab.timezone].filter(Boolean).join(' · ') || '—'}
                 </td>
                 <td className="px-5 py-4">
@@ -140,10 +140,10 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
                 <td className="px-5 py-4">
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => openEdit(lab)}
-                      className="font-mono text-[11px] text-[#5a6b64] hover:text-[#e8ecea] transition-colors cursor-pointer">Edit</button>
+                      className="font-mono text-[11px] text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer">Edit</button>
                     {lab.status === 'active' && (
                       <button onClick={() => handleArchive(lab)}
-                        className="font-mono text-[11px] text-[#5a6b64] hover:text-amber transition-colors cursor-pointer">Archive</button>
+                        className="font-mono text-[11px] text-[#475569] hover:text-amber transition-colors cursor-pointer">Archive</button>
                     )}
                   </div>
                 </td>
@@ -152,7 +152,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           </tbody>
         </table>
         {labs.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#3d4a46]">No labs yet — create the first one.</p>
+          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No labs yet — create the first one.</p>
         )}
       </Panel>
 
@@ -268,9 +268,9 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
     <div className="flex flex-col gap-5">
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-[#5a6b64]">Lab</span>
+          <span className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab</span>
           <select value={selectedLabId} onChange={e => setSelectedLabId(e.target.value)}
-            className="bg-raised border border-white/10 rounded px-3 py-2 text-sm text-[#e8ecea] outline-none focus:border-green/30 cursor-pointer">
+            className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-green/30 cursor-pointer">
             {activeLabs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             {activeLabs.length === 0 && <option value="">No labs — create one first</option>}
           </select>
@@ -279,46 +279,46 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
       </div>
 
       {loadingDevices ? (
-        <p className="font-mono text-[11px] text-[#3d4a46]">Loading devices…</p>
+        <p className="font-mono text-[11px] text-[#94a3b8]">Loading devices…</p>
       ) : clusters.length === 0 ? (
-        <Panel><p className="font-mono text-xs text-[#3d4a46]">No clusters yet — add a device to create the first cluster.</p></Panel>
+        <Panel><p className="font-mono text-xs text-[#94a3b8]">No clusters yet — add a device to create the first cluster.</p></Panel>
       ) : (
         clusters.map(cluster => (
           <Panel key={cluster.id}>
             <div className="flex items-center gap-3 mb-4">
-              <span className="font-mono text-[11px] uppercase tracking-widest text-[#3d4a46]">Cluster</span>
-              <span className="text-sm font-bold text-[#e8ecea]">{cluster.name}</span>
-              <span className="font-mono text-[10px] text-[#2d3834]">{cluster.id}</span>
+              <span className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8]">Cluster</span>
+              <span className="text-sm font-bold text-[#0f172a]">{cluster.name}</span>
+              <span className="font-mono text-[10px] text-[#94a3b8]">{cluster.id}</span>
             </div>
             {(nodeMap[cluster.id] ?? []).length === 0 ? (
-              <p className="font-mono text-[11px] text-[#3d4a46]">No nodes in this cluster.</p>
+              <p className="font-mono text-[11px] text-[#94a3b8]">No nodes in this cluster.</p>
             ) : (
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
                     {['Node Name', 'Device ID', 'Location', 'Status', ''].map(h => (
-                      <th key={h} className="text-left pb-3 pr-5 font-mono text-[10px] uppercase tracking-widest text-[#3d4a46] border-b border-white/[0.05]">{h}</th>
+                      <th key={h} className="text-left pb-3 pr-5 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(nodeMap[cluster.id] ?? []).map(node => (
-                    <tr key={node.id} className="border-b border-white/[0.04] last:border-0">
+                    <tr key={node.id} className="border-b border-line last:border-0">
                       <td className="py-3 pr-5">
-                        <p className="text-sm font-semibold text-[#e8ecea]">{node.name}</p>
-                        <p className="font-mono text-[11px] text-[#3d4a46]">{node.id.slice(0, 8)}</p>
+                        <p className="text-sm font-semibold text-[#0f172a]">{node.name}</p>
+                        <p className="font-mono text-[11px] text-[#94a3b8]">{node.id.slice(0, 8)}</p>
                       </td>
-                      <td className="py-3 pr-5 font-mono text-xs text-[#5a6b64]">{node.deviceId || '—'}</td>
-                      <td className="py-3 pr-5 text-sm text-[#5a6b64]">{node.location || '—'}</td>
+                      <td className="py-3 pr-5 font-mono text-xs text-[#475569]">{node.deviceId || '—'}</td>
+                      <td className="py-3 pr-5 text-sm text-[#475569]">{node.location || '—'}</td>
                       <td className="py-3 pr-5">
                         <Badge tone={node.status === 'online' ? 'green' : 'neutral'}>{node.status ?? 'offline'}</Badge>
                       </td>
                       <td className="py-3">
                         <div className="flex gap-3 justify-end">
                           <button onClick={() => openEdit(node, cluster.id, cluster.name)}
-                            className="font-mono text-[11px] text-[#5a6b64] hover:text-[#e8ecea] transition-colors cursor-pointer">Edit</button>
+                            className="font-mono text-[11px] text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer">Edit</button>
                           <button onClick={() => handleDelete(cluster.id, node.id, node.name)}
-                            className="font-mono text-[11px] text-[#5a6b64] hover:text-red transition-colors cursor-pointer">Delete</button>
+                            className="font-mono text-[11px] text-[#475569] hover:text-red transition-colors cursor-pointer">Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -437,7 +437,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex justify-between items-center">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-[#3d4a46]">{admins.length} admin{admins.length !== 1 ? 's' : ''}</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8]">{admins.length} admin{admins.length !== 1 ? 's' : ''}</p>
         <Button variant="primary" size="sm" onClick={openCreate}>+ Add Lab Admin</Button>
       </div>
 
@@ -446,25 +446,25 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           <thead>
             <tr className="bg-raised">
               {['Admin', 'Role', 'Lab Access', ''].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#3d4a46] border-b border-white/[0.05]">{h}</th>
+                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-5 py-8 font-mono text-xs text-[#3d4a46]">Loading…</td></tr>
+              <tr><td colSpan={4} className="px-5 py-8 font-mono text-xs text-[#94a3b8]">Loading…</td></tr>
             ) : admins.map(a => (
-              <tr key={a.id} className="border-b border-white/[0.04] hover:bg-raised transition-colors last:border-0">
+              <tr key={a.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-4">
-                  <p className="text-sm font-semibold text-[#e8ecea]">{a.displayName}</p>
-                  <p className="font-mono text-[11px] text-[#3d4a46] mt-0.5">{a.email}</p>
+                  <p className="text-sm font-semibold text-[#0f172a]">{a.displayName}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{a.email}</p>
                 </td>
                 <td className="px-5 py-4">
                   <Badge tone={a.role === 'super_admin' ? 'blue' : 'neutral'}>
                     {a.role === 'super_admin' ? 'Super Admin' : 'Lab Admin'}
                   </Badge>
                 </td>
-                <td className="px-5 py-4 font-mono text-xs text-[#5a6b64]">
+                <td className="px-5 py-4 font-mono text-xs text-[#475569]">
                   {a.role === 'super_admin'
                     ? 'All labs'
                     : (a.labAccessIds?.length ?? 0) > 0
@@ -476,9 +476,9 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
                     {a.role !== 'super_admin' && (
                       <>
                         <button onClick={() => openEdit(a)}
-                          className="font-mono text-[11px] text-[#5a6b64] hover:text-[#e8ecea] transition-colors cursor-pointer">Edit Access</button>
+                          className="font-mono text-[11px] text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer">Edit Access</button>
                         <button onClick={() => handleDelete(a)}
-                          className="font-mono text-[11px] text-[#5a6b64] hover:text-red transition-colors cursor-pointer">Remove</button>
+                          className="font-mono text-[11px] text-[#475569] hover:text-red transition-colors cursor-pointer">Remove</button>
                       </>
                     )}
                   </div>
@@ -488,7 +488,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           </tbody>
         </table>
         {!loading && admins.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#3d4a46]">No admins found.</p>
+          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No admins found.</p>
         )}
       </Panel>
 
@@ -503,13 +503,13 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           )}
           <Field label="Lab Access">
             <div className="flex flex-col gap-2">
-              {activeLabs.length === 0 && <p className="text-sm text-[#5a6b64]">No active labs — create labs first.</p>}
+              {activeLabs.length === 0 && <p className="text-sm text-[#475569]">No active labs — create labs first.</p>}
               {activeLabs.map(lab => (
                 <label key={lab.id} className="flex items-center gap-3 cursor-pointer group">
                   <input type="checkbox" checked={fLabIds.includes(lab.id)} onChange={() => toggleLab(lab.id)}
                     className="w-4 h-4 accent-green rounded" />
-                  <span className="text-sm text-[#a8bbb2] group-hover:text-[#e8ecea] transition-colors">{lab.name}</span>
-                  {lab.location && <span className="font-mono text-[10px] text-[#3d4a46]">{lab.location}</span>}
+                  <span className="text-sm text-[#475569] group-hover:text-[#0f172a] transition-colors">{lab.name}</span>
+                  {lab.location && <span className="font-mono text-[10px] text-[#94a3b8]">{lab.location}</span>}
                 </label>
               ))}
             </div>
@@ -542,25 +542,25 @@ export function ControlPage() {
 
   const tabCls = (t: Tab) =>
     `px-4 py-2 font-mono text-[11px] uppercase tracking-widest rounded transition-colors cursor-pointer ${
-      tab === t ? 'bg-green/10 text-green border border-green/25' : 'text-[#5a6b64] hover:text-[#a8bbb2] border border-transparent'
+      tab === t ? 'bg-green/10 text-green border border-green/25' : 'text-[#475569] hover:text-[#334155] border border-transparent'
     }`
 
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#3d4a46] mb-3">Super Admin</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#e8ecea]">Control Panel</h1>
-        <p className="text-sm text-[#5a6b64] mt-2">Manage labs, hardware nodes, and admin accounts.</p>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Super Admin</p>
+        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Control Panel</h1>
+        <p className="text-sm text-[#475569] mt-2">Manage labs, hardware nodes, and admin accounts.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Labs',    value: labs.length,                                          color: 'text-[#e8ecea]' },
+          { label: 'Total Labs',    value: labs.length,                                          color: 'text-[#0f172a]' },
           { label: 'Active Labs',   value: labs.filter(l => l.status === 'active').length,       color: 'text-green'     },
-          { label: 'Archived Labs', value: labs.filter(l => l.status === 'inactive').length,     color: 'text-[#5a6b64]' },
+          { label: 'Archived Labs', value: labs.filter(l => l.status === 'inactive').length,     color: 'text-[#475569]' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-surface border border-white/[0.06] rounded-lg p-6">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#3d4a46] mb-3">{label}</p>
+          <div key={label} className="bg-surface border border-line rounded-lg p-6 shadow-sm">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] mb-3">{label}</p>
             <p className={`text-5xl font-bold ${color}`}>{loadingLabs ? '—' : value}</p>
           </div>
         ))}
@@ -574,7 +574,7 @@ export function ControlPage() {
         </div>
 
         {loadingLabs ? (
-          <p className="font-mono text-[11px] text-[#3d4a46]">Loading…</p>
+          <p className="font-mono text-[11px] text-[#94a3b8]">Loading…</p>
         ) : tab === 'labs' ? (
           <LabsTab labs={labs} onRefresh={fetchLabs} />
         ) : tab === 'devices' ? (

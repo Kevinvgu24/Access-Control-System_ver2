@@ -51,16 +51,16 @@ export function LogsPage() {
 
   const chipClass = (active: boolean) =>
     `px-3 py-1.5 rounded font-mono text-[11px] border cursor-pointer transition-colors ${
-      active ? 'bg-green/10 border-green/25 text-green' : 'bg-raised border-white/10 text-[#5a6b64] hover:text-[#a8bbb2]'
+      active ? 'bg-green/10 border-green/25 text-green' : 'bg-raised border-line text-[#475569] hover:text-[#334155]'
     }`
 
   return (
     <div className="flex flex-col gap-7">
       <div className="flex justify-between items-end">
         <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-[#3d4a46] mb-3">The Ledger</p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#e8ecea]">Access Log</h1>
-          <p className="text-sm text-[#5a6b64] mt-2">{filtered.length} of {events.length} events shown.</p>
+          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">The Ledger</p>
+          <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Access Log</h1>
+          <p className="text-sm text-[#475569] mt-2">{filtered.length} of {events.length} events shown.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="primary" onClick={exportCSV}>Export CSV</Button>
@@ -74,14 +74,14 @@ export function LogsPage() {
           <div className="flex gap-3 items-center">
             <input type="text" placeholder="Search by name or university ID…" value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-raised border border-white/10 rounded px-3 py-2 text-sm text-[#e8ecea] placeholder:text-[#2d3834] outline-none focus:border-green/30 transition-colors"
+              className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
             />
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="bg-raised border border-white/10 rounded px-3 py-2 text-sm text-[#5a6b64] outline-none focus:border-green/30 [color-scheme:dark]"
+              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-green/30 [color-scheme:light]"
             />
-            <span className="font-mono text-xs text-[#3d4a46]">to</span>
+            <span className="font-mono text-xs text-[#94a3b8]">to</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="bg-raised border border-white/10 rounded px-3 py-2 text-sm text-[#5a6b64] outline-none focus:border-green/30 [color-scheme:dark]"
+              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-green/30 [color-scheme:light]"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -97,28 +97,28 @@ export function LogsPage() {
           <thead>
             <tr className="bg-raised">
               {['Timestamp', 'User', 'Method', 'Confidence', 'Result', 'Reason'].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#3d4a46] border-b border-white/[0.05]">{h}</th>
+                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map(ev => (
-              <tr key={ev.id} className="border-b border-white/[0.04] hover:bg-raised transition-colors last:border-0">
-                <td className="px-5 py-3.5 font-mono text-xs text-[#5a6b64]">{fmtTs(ev.occurredAt)}</td>
+              <tr key={ev.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
+                <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtTs(ev.occurredAt)}</td>
                 <td className="px-5 py-3.5">
-                  <p className="text-sm font-semibold text-[#e8ecea]">{ev.displayName ?? 'Unknown User'}</p>
-                  <p className="font-mono text-[11px] text-[#3d4a46] mt-0.5">{ev.universityId ?? '—'}</p>
+                  <p className="text-sm font-semibold text-[#0f172a]">{ev.displayName ?? 'Unknown User'}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{ev.universityId ?? '—'}</p>
                 </td>
-                <td className="px-5 py-3.5 font-mono text-xs text-[#5a6b64]">{fmtMethod(ev.method)}</td>
-                <td className="px-5 py-3.5 font-mono text-sm font-semibold text-[#e8ecea]">{fmtConf(ev.confidence)}</td>
+                <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtMethod(ev.method)}</td>
+                <td className="px-5 py-3.5 font-mono text-sm font-semibold text-[#0f172a]">{fmtConf(ev.confidence)}</td>
                 <td className="px-5 py-3.5"><Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge></td>
-                <td className="px-5 py-3.5 font-mono text-xs text-[#5a6b64] max-w-[200px] truncate">{ev.reason}</td>
+                <td className="px-5 py-3.5 font-mono text-xs text-[#475569] max-w-[200px] truncate">{ev.reason}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#3d4a46]">No events match current filters.</p>
+          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No events match current filters.</p>
         )}
       </Panel>
     </div>

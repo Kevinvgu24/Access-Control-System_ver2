@@ -4,15 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        green:   '#00e676',
+        green:   '#ff6d00', // vivid orange highlight
         red:     '#ff5252',
         amber:   '#ffab00',
-        blue:    '#40c4ff',
-        surface: '#111514',
-        raised:  '#0e1211',
-        dark:    '#0c0e0f',
-        darker:  '#0a0c0d',
-        line:    '#1c2420',
+        blue:    '#0284c7', // slate-blue
+        surface: '#ffffff', // panel background
+        raised:  '#f8fafc', // inner-panel background / inputs
+        dark:    '#f1f5f9', // main app body background
+        darker:  '#ffffff', // sidebar background
+        line:    '#e2e8f0', // borders / separators
       },
       fontFamily: {
         sans: ['Syne', 'sans-serif'],

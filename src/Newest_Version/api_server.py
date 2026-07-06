@@ -317,6 +317,34 @@ def enroll_user(lab_id):
         "photosCount": len(saved_paths)
     })
 
+# 9b. Delete User Profile
+@app.route("/api/labs/<lab_id>/users/<user_id>", methods=["DELETE"])
+def delete_lab_user(lab_id, user_id):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+        
+    full_name = row[0]
+    
+    # Delete from database
+    db.delete_user(full_name)
+    
+    # Delete local folder for user photos
+    user_photos_dir = os.path.join(db_dir, full_name)
+    if os.path.exists(user_photos_dir):
+        import shutil
+        try:
+            shutil.rmtree(user_photos_dir)
+        except Exception as e:
+            logger.error(f"Failed to delete photos folder for {full_name}: {e}")
+            
+    return jsonify({"success": True, "message": f"Successfully deleted {full_name}"})
+
 # ── EDGE SYNC API ENDPOINTS ───────────────────────────────────────────────────
 
 # 10. List user photos filenames

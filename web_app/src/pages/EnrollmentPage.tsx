@@ -70,6 +70,21 @@ export function EnrollmentPage() {
     setTimeout(() => setPinCopied(false), 2000)
   }
 
+  const canContinue = () => {
+    if (step === 'identity') {
+      return (
+        draft.firstName.trim() !== '' &&
+        draft.lastName.trim() !== '' &&
+        draft.universityId.trim() !== '' &&
+        draft.email.trim() !== ''
+      )
+    }
+    if (step === 'photos') {
+      return photos.every(p => p.status === 'accepted')
+    }
+    return true
+  }
+
   const handleConfirm = async () => {
     if (!selectedLabId) return setError('No lab selected.')
     setSubmitting(true)
@@ -99,9 +114,9 @@ export function EnrollmentPage() {
   if (done) return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#3d4a46] mb-3">Done</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#e8ecea]">User Enrolled</h1>
-        <p className="text-sm text-[#5a6b64] mt-2">{draft.firstName} {draft.lastName} has been added to the lab.</p>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Done</p>
+        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">User Enrolled</h1>
+        <p className="text-sm text-[#475569] mt-2">{draft.firstName} {draft.lastName} has been added to the lab.</p>
       </div>
       <div className="flex gap-3">
         <Button variant="primary" onClick={() => { setDone(false); setStep('identity'); setDraft(initDraft()); setPhotos(initPhotos()) }}>Enroll Another</Button>
@@ -113,9 +128,9 @@ export function EnrollmentPage() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#3d4a46] mb-3">Add New User</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#e8ecea]">Enrollment Wizard</h1>
-        <p className="text-sm text-[#5a6b64] mt-2">Step-by-step to prevent biometric data errors at the door.</p>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Add New User</p>
+        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Enrollment Wizard</h1>
+        <p className="text-sm text-[#475569] mt-2">Step-by-step to prevent biometric data errors at the door.</p>
       </div>
 
       {/* Stepper */}
@@ -126,11 +141,11 @@ export function EnrollmentPage() {
             <button key={s.id} onClick={() => i <= idx && setStep(s.id)}
               className={`flex flex-col gap-2 p-4 rounded-lg border text-left transition-all ${
                 isActive ? 'border-green/25 bg-green/5'
-                : isDone  ? 'border-white/10 bg-raised cursor-pointer'
-                : 'border-white/[0.04] bg-darker cursor-not-allowed opacity-40'
+                : isDone  ? 'border-slate-200 bg-raised cursor-pointer'
+                : 'border-slate-100 bg-raised cursor-not-allowed opacity-40'
               }`}>
-              <span className={`font-mono text-[11px] ${isActive ? 'text-green' : 'text-[#3d4a46]'}`}>{isDone ? '✓ done' : s.num}</span>
-              <span className={`text-sm font-semibold ${isActive ? 'text-[#e8ecea]' : 'text-[#5a6b64]'}`}>{s.label}</span>
+              <span className={`font-mono text-[11px] ${isActive ? 'text-green' : 'text-[#94a3b8]'}`}>{isDone ? '✓ done' : s.num}</span>
+              <span className={`text-sm font-semibold ${isActive ? 'text-[#0f172a]' : 'text-[#475569]'}`}>{s.label}</span>
             </button>
           )
         })}
@@ -148,17 +163,17 @@ export function EnrollmentPage() {
               { key: 'email',       label: 'Email',         ph: 'student@university.edu', full: true },
             ] as { key: keyof Draft; label: string; ph: string; full?: boolean }[]).map(({ key, label, ph, full }) => (
               <div key={key} className={`flex flex-col gap-2 ${full ? 'col-span-2' : ''}`}>
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#5a6b64]">{label}</label>
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">{label}</label>
                 <input value={draft[key] as string}
                   onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} placeholder={ph}
-                  className="bg-raised border border-white/10 rounded px-4 py-2.5 text-sm text-[#e8ecea] placeholder:text-[#2d3834] outline-none focus:border-green/30 transition-colors"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
                 />
               </div>
             ))}
             <div className="flex flex-col gap-2">
-              <label className="font-mono text-[11px] uppercase tracking-widest text-[#5a6b64]">Role</label>
+              <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Role</label>
               <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))}
-                className="bg-raised border border-white/10 rounded px-4 py-2.5 text-sm text-[#e8ecea] outline-none focus:border-green/30">
+                className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30">
                 <option value="student">Student</option>
                 <option value="faculty">Faculty</option>
                 <option value="lab_assistant">Lab Assistant</option>
@@ -176,10 +191,10 @@ export function EnrollmentPage() {
           <PanelHeader eyebrow="Step 02" title="Biometric Capture" />
           <div className="grid gap-8" style={{ gridTemplateColumns: '240px 1fr' }}>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-[#5a6b64] leading-relaxed">Upload <strong className="text-[#e8ecea]">3 clear photos</strong>. Good lighting, face fully visible.</p>
+              <p className="text-sm text-[#475569] leading-relaxed">Upload <strong className="text-[#0f172a]">3 clear photos</strong>. Good lighting, face fully visible.</p>
               <ul className="flex flex-col gap-2">
                 {['No glasses or hat', 'Even lighting', 'Neutral expression', 'Face centered'].map(tip => (
-                  <li key={tip} className="flex items-center gap-2.5 text-sm text-[#5a6b64]">
+                  <li key={tip} className="flex items-center gap-2.5 text-sm text-[#475569]">
                     <span className="w-1 h-1 rounded-full bg-green shrink-0" />{tip}
                   </li>
                 ))}
@@ -194,26 +209,26 @@ export function EnrollmentPage() {
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(photo.id, f) }}
                   />
                   <div
-                    onClick={() => photo.status === 'pending' && fileRefs.current[photo.id]?.click()}
+                    onClick={() => fileRefs.current[photo.id]?.click()}
                     className={`flex items-center gap-4 px-5 py-4 rounded-lg border cursor-pointer transition-all ${
-                      photo.status === 'accepted'  ? 'border-green/20 bg-green/5'
+                      photo.status === 'accepted'  ? 'border-green/25 bg-green/5'
                       : photo.status === 'uploading' ? 'border-green/10 bg-green/3'
                       : photo.status === 'rejected'  ? 'border-red/20 bg-red/5'
-                      : 'border-dashed border-white/10 bg-raised hover:border-white/20'
+                      : 'border-dashed border-slate-300 bg-raised hover:border-slate-400'
                     }`}>
                     <div className={`w-11 h-11 rounded flex items-center justify-center text-lg shrink-0 ${
                       photo.status === 'accepted'  ? 'bg-green/10 text-green'
                       : photo.status === 'uploading' ? 'bg-green/5 text-green'
                       : photo.status === 'rejected'  ? 'bg-red/10 text-red'
-                      : 'bg-line text-[#3d4a46]'
+                      : 'bg-slate-200 text-[#94a3b8]'
                     }`}>
                       {photo.status === 'accepted' ? '✓' : photo.status === 'uploading' ? '…' : photo.status === 'rejected' ? '✕' : '↑'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#e8ecea]">{photo.label}</p>
-                      <p className="font-mono text-[11px] text-[#3d4a46] mt-1">
-                        {photo.status === 'accepted'  ? 'Uploaded — quality OK'
-                         : photo.status === 'uploading' ? 'Uploading to UploadThing…'
+                      <p className="text-sm font-semibold text-[#0f172a]">{photo.label}</p>
+                      <p className="font-mono text-[11px] text-[#94a3b8] mt-1">
+                        {photo.status === 'accepted'  ? 'Uploaded — Click to choose different file'
+                         : photo.status === 'uploading' ? 'Uploading…'
                          : photo.status === 'rejected'  ? 'Upload failed — try again'
                          : 'Click to choose file'}
                       </p>
@@ -237,9 +252,9 @@ export function EnrollmentPage() {
         <Panel>
           <PanelHeader eyebrow="Step 03" title="PIN Provisioning" />
           <div className="flex flex-col gap-5 max-w-md">
-            <p className="text-sm text-[#5a6b64] leading-relaxed">Auto-generated 6-digit PIN. <strong className="text-[#e8ecea]">Only shown once</strong> — deliver before saving.</p>
+            <p className="text-sm text-[#475569] leading-relaxed">Auto-generated 6-digit PIN. <strong className="text-[#0f172a]">Only shown once</strong> — deliver before saving.</p>
             <div className="border border-green/20 rounded-lg bg-green/5 px-7 py-6 flex flex-col gap-5">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-[#3d4a46]">Generated PIN</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">Generated PIN</span>
               <strong className="font-mono text-6xl tracking-[0.3em] text-green leading-none">{pin}</strong>
               <div className="flex gap-2">
                 <Button variant="primary" onClick={copyPin}>{pinCopied ? '✓ Copied!' : 'Copy PIN'}</Button>
@@ -265,9 +280,9 @@ export function EnrollmentPage() {
               { label: 'Photos',        value: `${photos.filter(p => p.status === 'accepted').length} / 3 uploaded` },
               { label: 'PIN',           value: '••••••' },
             ].map(({ label, value }) => (
-              <div key={label} className="flex justify-between items-center gap-4 px-5 py-3.5 bg-raised border border-white/[0.06] rounded">
-                <span className="font-mono text-[11px] uppercase tracking-widest text-[#5a6b64]">{label}</span>
-                <span className="text-sm font-semibold text-[#e8ecea]">{value}</span>
+              <div key={label} className="flex justify-between items-center gap-4 px-5 py-3.5 bg-raised border border-line rounded">
+                <span className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">{label}</span>
+                <span className="text-sm font-semibold text-[#0f172a]">{value}</span>
               </div>
             ))}
             {error && (
@@ -285,7 +300,7 @@ export function EnrollmentPage() {
       <div className="flex justify-between">
         <Button variant="ghost" onClick={() => idx > 0 && setStep(STEPS[idx - 1].id)} disabled={idx === 0}>← Back</Button>
         {idx < STEPS.length - 1 && (
-          <Button variant="primary" onClick={() => setStep(STEPS[idx + 1].id)} disabled={isUploading}>
+          <Button variant="primary" onClick={() => setStep(STEPS[idx + 1].id)} disabled={isUploading || !canContinue()}>
             {isUploading ? 'Uploading…' : 'Continue →'}
           </Button>
         )}

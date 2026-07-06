@@ -7,7 +7,7 @@ const s: Record<Tone, string> = {
   red:     'bg-red/10 text-red border-red/20',
   amber:   'bg-amber/10 text-amber border-amber/20',
   blue:    'bg-blue/10 text-blue border-blue/20',
-  neutral: 'bg-white/5 text-[#5a6b64] border-white/10',
+  neutral: 'bg-slate-100 text-[#475569] border-line',
 }
 
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {

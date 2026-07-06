@@ -311,3 +311,13 @@ export async function enrollUser(payload: EnrollmentPayload): Promise<string> {
   const data = await res.json()
   return data.success ? 'local-user-id' : ''
 }
+
+export async function deleteUser(labId: string, userId: string): Promise<void> {
+  const res = await fetch(`/api/labs/${labId}/users/${userId}`, {
+    method: 'DELETE'
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Deletion failed' }))
+    throw new Error(err.error || 'Failed to delete user')
+  }
+}

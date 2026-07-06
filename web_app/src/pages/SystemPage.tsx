@@ -16,8 +16,8 @@ function Slider({ label, value, hint, onChange, warn }: {
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-start gap-4">
         <div>
-          <p className="text-[15px] font-semibold text-[#e8ecea]">{label}</p>
-          <p className="text-sm text-[#5a6b64] mt-1">{hint}</p>
+          <p className="text-[15px] font-semibold text-[#0f172a]">{label}</p>
+          <p className="text-sm text-[#475569] mt-1">{hint}</p>
         </div>
         <strong className={`font-mono text-3xl font-semibold leading-none shrink-0 ${color}`}>
           {value}<span className="text-base opacity-50">%</span>
@@ -28,7 +28,7 @@ function Slider({ label, value, hint, onChange, warn }: {
         <input type="range" min={0} max={100} value={value} onChange={e => onChange(Number(e.target.value))}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
       </div>
-      <div className="flex justify-between font-mono text-[10px] text-[#3d4a46]"><span>0%</span><span>100%</span></div>
+      <div className="flex justify-between font-mono text-[10px] text-[#94a3b8]"><span>0%</span><span>100%</span></div>
     </div>
   )
 }
@@ -37,8 +37,8 @@ type MT = 'green' | 'amber' | 'red'
 function Stat({ label, value, unit, tone }: { label: string; value: string | number; unit: string; tone: MT }) {
   const c: Record<MT, string> = { green: 'text-green', amber: 'text-amber', red: 'text-red' }
   return (
-    <div className="bg-raised border border-white/[0.06] rounded-lg px-5 py-4 flex flex-col gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-[#3d4a46]">{label}</span>
+    <div className="bg-raised border border-line rounded-lg px-5 py-4 flex flex-col gap-2 shadow-sm">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">{label}</span>
       <strong className={`font-mono text-3xl font-semibold leading-none ${c[tone]}`}>
         {value}<span className="text-sm opacity-50 ml-0.5">{unit}</span>
       </strong>
@@ -85,9 +85,9 @@ export function SystemPage() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#3d4a46] mb-3">The Engine Room</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#e8ecea]">System Config</h1>
-        <p className="text-sm text-[#5a6b64] mt-2">Tune model thresholds and monitor hardware in real time.</p>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">The Engine Room</p>
+        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">System Config</h1>
+        <p className="text-sm text-[#475569] mt-2">Tune model thresholds and monitor hardware in real time.</p>
       </div>
 
       <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>
@@ -111,12 +111,12 @@ export function SystemPage() {
             </div>
           )}
           {nodeConfig && (
-            <p className="font-mono text-[11px] text-[#3d4a46] mt-7 pt-5 border-t border-white/[0.05]">
+            <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
               Updated {fmtTs(nodeConfig.updatedAt)} · {nodeConfig.updatedBy}
             </p>
           )}
           {!nodeConfig && (
-            <p className="font-mono text-[11px] text-[#3d4a46] mt-7 pt-5 border-t border-white/[0.05]">
+            <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
               No config found — defaults shown. Apply to create initial config.
             </p>
           )}
@@ -133,7 +133,7 @@ export function SystemPage() {
                 <Stat label="Temp" value={temp}           unit="°C"  tone={temp > 70 ? 'red' : temp > 55 ? 'amber' : 'green'} />
               </div>
             ) : (
-              <p className="font-mono text-[11px] text-[#3d4a46]">No telemetry — node offline or no node found.</p>
+              <p className="font-mono text-[11px] text-[#94a3b8]">No telemetry — node offline or no node found.</p>
             )}
           </Panel>
           <Panel>
@@ -145,8 +145,8 @@ export function SystemPage() {
                 'CPU above 80% consistently? Check model thread count.',
                 'FPS below 15? Camera buffer overflow suspected.',
               ].map(note => (
-                <li key={note} className="flex items-start gap-3 text-sm text-[#5a6b64] leading-snug">
-                  <span className="w-1 h-1 rounded-full bg-[#3d4a46] shrink-0 mt-1.5" />{note}
+                <li key={note} className="flex items-start gap-3 text-sm text-[#475569] leading-snug">
+                  <span className="w-1 h-1 rounded-full bg-[#cbd5e1] shrink-0 mt-1.5" />{note}
                 </li>
               ))}
             </ul>

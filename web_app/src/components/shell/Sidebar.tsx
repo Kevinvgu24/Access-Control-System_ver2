@@ -27,16 +27,16 @@ export function Sidebar() {
     ? 'bg-amber' : 'bg-red'
 
   return (
-    <aside className="w-[200px] shrink-0 flex flex-col h-screen sticky top-0 bg-darker border-r border-white/[0.05]">
-      <div className="px-6 py-7 border-b border-white/[0.05]">
+    <aside className="w-[200px] shrink-0 flex flex-col h-screen sticky top-0 bg-darker border-r border-line">
+      <div className="px-6 py-7 border-b border-line">
         <div className="flex items-center gap-2 mb-1">
           <span className={`blink w-2 h-2 rounded-full shrink-0 ${statusDot}`} />
           <span className={`font-mono text-[10px] tracking-widest uppercase ${systemStatus.overall === 'online' ? 'text-green' : 'text-amber'}`}>
             {systemStatus.overall === 'online' ? 'Live' : systemStatus.overall}
           </span>
         </div>
-        <p className="text-[17px] font-bold tracking-tight text-[#e8ecea] leading-tight mt-2">Smart Lab</p>
-        <p className="font-mono text-[11px] text-[#3d4a46] mt-1 truncate">
+        <p className="text-[17px] font-bold tracking-tight text-[#0f172a] leading-tight mt-2">Smart Lab</p>
+        <p className="font-mono text-[11px] text-[#94a3b8] mt-1 truncate">
           {selectedLabName ?? 'No lab selected'}
         </p>
       </div>
@@ -46,7 +46,7 @@ export function Sidebar() {
           <NavLink key={href} to={href}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all
-               ${isActive ? 'bg-green/10 text-green' : 'text-[#5a6b64] hover:text-[#a8bbb2] hover:bg-white/5'}`
+               ${isActive ? 'bg-green/10 text-green' : 'text-[#475569] hover:text-[#334155] hover:bg-slate-100'}`
             }
           >
             <span className="text-base leading-none">{icon}</span>
@@ -59,7 +59,7 @@ export function Sidebar() {
           <NavLink to="/control"
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all mt-3
-               ${isActive ? 'bg-green/10 text-green' : 'text-[#5a6b64] hover:text-[#a8bbb2] hover:bg-white/5'}`
+               ${isActive ? 'bg-green/10 text-green' : 'text-[#475569] hover:text-[#334155] hover:bg-slate-100'}`
             }
           >
             <span className="text-base leading-none">⚙</span>
@@ -70,20 +70,20 @@ export function Sidebar() {
         {/* Switch lab */}
         <button
           onClick={() => { clearLab(); navigate('/labs') }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all text-[#5a6b64] hover:text-[#a8bbb2] hover:bg-white/5 mt-1 cursor-pointer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all text-[#475569] hover:text-[#334155] hover:bg-slate-100 mt-1 cursor-pointer"
         >
           <span className="text-base leading-none">⊞</span>
           Switch Lab
         </button>
       </nav>
 
-      <div className="px-5 py-4 border-t border-white/[0.05] flex flex-col gap-2">
-        <p className="font-mono text-[10px] text-[#3d4a46] uppercase tracking-wider truncate">
+      <div className="px-5 py-4 border-t border-line flex flex-col gap-2">
+        <p className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider truncate">
           {admin?.type === 'super_admin' ? 'Super Admin' : 'Lab Admin'}
         </p>
         <button
           onClick={handleSignOut}
-          className="font-mono text-[11px] text-[#5a6b64] hover:text-red transition-colors cursor-pointer text-left"
+          className="font-mono text-[11px] text-[#475569] hover:text-red transition-colors cursor-pointer text-left"
         >
           Sign out
         </button>
