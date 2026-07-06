@@ -102,6 +102,11 @@ class ProfessionalSmartDoor:
         self.latest_ir_frame = None
         self.ir_pipeline = None
         self.ir_liveness_detector = IRLivenessDetector()
+        self._last_ir_save_time = 0.0
+
+        # Start background thread for high-speed IR livestreaming
+        self.stream_thread = threading.Thread(target=self._stream_sender_loop, daemon=True)
+        self.stream_thread.start()
 
     def _get_db_state(self):
         try:
@@ -556,6 +561,46 @@ class ProfessionalSmartDoor:
                 pass
             self.ir_pipeline = None
             self.latest_ir_frame = None
+
+    def _stream_sender_loop(self):
+        import urllib.request
+        import time
+        import os
+        
+        server_url = os.environ.get("SERVER_URL", "http://localhost:5000").rstrip('/')
+        lab_id = os.environ.get("LAB_ID", "default-lab")
+        node_id = os.environ.get("NODE_ID", "default-node")
+        
+        url = f"{server_url}/api/labs/{lab_id}/nodes/{node_id}/ir-frame"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        flag_path = os.path.abspath(os.path.join(current_dir, "..", "..", "logs", "ir_stream_active.txt"))
+        
+        logger.info(f"IR stream sender thread active. Uploading to: {url}")
+        
+        while True:
+            try:
+                active = False
+                if os.path.exists(flag_path):
+                    with open(flag_path, "r") as f:
+                        active = f.read().strip() == "1"
+                
+                if active and self.latest_ir_frame is not None:
+                    # Compress in-memory grayscale frame to JPEG (60% quality is perfect balance of bandwidth & detail)
+                    success, jpeg = cv2.imencode('.jpg', self.latest_ir_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+                    if success:
+                        jpeg_bytes = jpeg.tobytes()
+                        req = urllib.request.Request(url, method="POST", data=jpeg_bytes)
+                        req.add_header('Content-Type', 'image/jpeg')
+                        req.add_header('User-Agent', 'Mozilla/5.0')
+                        
+                        with urllib.request.urlopen(req, timeout=1.0) as response:
+                            response.read()
+                
+                # Sleep ~0.06s for ~16 FPS
+                time.sleep(0.06)
+            except Exception as e:
+                # Sleep slightly longer on error to prevent CPU spinning
+                time.sleep(0.5)
 
     def verify_liveness_on_ir(self, bbox_coords=None, landmarks=None):
         """

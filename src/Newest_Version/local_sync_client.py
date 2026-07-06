@@ -241,8 +241,17 @@ def sync_telemetry():
             "temperatureC": telemetry.get("temperatureC", 0.0)
         }
         
-        make_request(f"{SERVER_URL}/api/labs/{LAB_ID}/nodes/{NODE_ID}/telemetry", method="POST", data=payload)
-        print(f"[*] [TELEMETRY] Telemetry pushed successfully to server (IP: {SERVER_URL})")
+        res = make_request(f"{SERVER_URL}/api/labs/{LAB_ID}/nodes/{NODE_ID}/telemetry", method="POST", data=payload)
+        request_ir = res.get("requestIrFrame", False) if isinstance(res, dict) else False
+        
+        # Write streaming flag file for app.py
+        log_dir = os.path.join(os.path.dirname(DB_PATH), "..", "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        flag_path = os.path.join(log_dir, "ir_stream_active.txt")
+        with open(flag_path, "w") as f:
+            f.write("1" if request_ir else "0")
+
+        print(f"[*] [TELEMETRY] Telemetry pushed successfully to server (IP: {SERVER_URL}), IR streaming flag = {request_ir}")
     except Exception as e:
         print(f"[-] [TELEMETRY] Failed to push telemetry: {e}")
 
@@ -310,6 +319,7 @@ def main():
             
         # Yield/Wait 4 seconds before next sync iteration
         time.sleep(4)
+
 
 if __name__ == "__main__":
     main()

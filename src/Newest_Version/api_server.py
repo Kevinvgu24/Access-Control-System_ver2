@@ -5,7 +5,7 @@ import json
 import hashlib
 import numpy as np
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 
 # Add parent directory to path to allow importing database module
@@ -29,6 +29,11 @@ db_path = os.path.join(db_dir, "smart_door.db")
 
 # Initialize database
 db = FaceDatabase(db_path)
+
+# Global dictionary to track on-demand IR livestream sessions: { node_id: timestamp_last_requested }
+active_ir_streams = {}
+# Global dictionary to store the latest raw JPEG bytes for each node: { node_id: bytes }
+latest_frames = {}
 
 # Serve built static React Web App
 static_dir = os.path.join(project_root, "web_app", "dist")
@@ -456,9 +461,54 @@ def submit_telemetry(lab_id, node_id):
             temperatureC=temp_c,
             labId=lab_id
         )
-        return jsonify({"success": True})
+        
+        # Check if IR frame is actively requested (within last 10 seconds)
+        last_req = active_ir_streams.get(node_id, 0.0)
+        request_ir = (datetime.now().timestamp() - last_req) < 10.0
+        
+        return jsonify({"success": True, "requestIrFrame": request_ir})
     except Exception as e:
         return jsonify({"error": f"Failed to update telemetry: {str(e)}"}), 500
+
+# 15b. IR Livestreaming endpoints
+@app.route("/api/labs/<lab_id>/nodes/<node_id>/ir-stream/start", methods=["POST"])
+def start_ir_stream(lab_id, node_id):
+    active_ir_streams[node_id] = datetime.now().timestamp()
+    logger.info(f"IR livestream requested for node {node_id}")
+    return jsonify({"success": True})
+
+@app.route("/api/labs/<lab_id>/nodes/<node_id>/ir-stream/stop", methods=["POST"])
+def stop_ir_stream(lab_id, node_id):
+    active_ir_streams.pop(node_id, None)
+    logger.info(f"IR livestream stopped for node {node_id}")
+    return jsonify({"success": True})
+
+@app.route("/api/labs/<lab_id>/nodes/<node_id>/ir-frame", methods=["POST"])
+def upload_ir_frame(lab_id, node_id):
+    jpeg_bytes = request.data
+    if not jpeg_bytes:
+        return jsonify({"error": "No frame bytes received"}), 400
+    latest_frames[node_id] = jpeg_bytes
+    return jsonify({"success": True})
+
+@app.route("/api/labs/<lab_id>/nodes/<node_id>/ir-stream", methods=["GET"])
+def get_ir_stream(lab_id, node_id):
+    import time
+    def gen():
+        active_ir_streams[node_id] = datetime.now().timestamp()
+        try:
+            while True:
+                active_ir_streams[node_id] = datetime.now().timestamp()
+                frame = latest_frames.get(node_id)
+                if frame:
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                time.sleep(0.05)
+        finally:
+            active_ir_streams.pop(node_id, None)
+            logger.info(f"Client disconnected from IR stream of node {node_id}")
+    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 # 16. Get node config directly
 @app.route("/api/labs/<lab_id>/nodes/<node_id>/config", methods=["GET"])

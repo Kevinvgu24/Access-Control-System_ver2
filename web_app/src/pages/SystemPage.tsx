@@ -4,6 +4,7 @@ import { useLabStore }   from '@/store/labStore'
 import { useAuthStore }  from '@/store/authStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
+import { LiveCamera } from '@/components/ui/LiveCamera'
 import { updateNodeConfig, getFirstLabNode } from '@/lib/db'
 import { fmtTs } from '@/lib/format'
 
@@ -48,7 +49,7 @@ function Stat({ label, value, unit, tone }: { label: string; value: string | num
 
 export function SystemPage() {
   const { nodeConfig, nodeState, refreshNodeConfig } = useAdminStore()
-  const { selectedLabId } = useLabStore()
+  const { selectedLabId, selectedNodeId } = useLabStore()
   const { admin }         = useAuthStore()
 
   const [localConf, setLocalConf] = useState<number>(nodeConfig?.confidenceThreshold ?? 90)
@@ -123,6 +124,13 @@ export function SystemPage() {
         </Panel>
 
         <div className="flex flex-col gap-5">
+          {selectedLabId && selectedNodeId && (
+            <Panel>
+              <PanelHeader eyebrow="Camera Monitoring" title="IR Live View" />
+              <LiveCamera labId={selectedLabId} nodeId={selectedNodeId} />
+            </Panel>
+          )}
+
           <Panel>
             <PanelHeader eyebrow="Hardware" title="Live Metrics" />
             {nodeState ? (
