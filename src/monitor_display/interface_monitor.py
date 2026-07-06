@@ -12,6 +12,7 @@ for d in [current_dir, newest_version_dir]:
 
 import argparse
 import time
+import threading
 import cv2
 import numpy as np
 import gc
@@ -238,6 +239,16 @@ class InterfaceMonitorApp(QMainWindow):
         # Add initial log entry
         self.add_log("System", "Monitor UI initialized.")
 
+    def log_event_async(self, **kwargs):
+        """Asynchronously log access events to prevent blocking the Qt main thread."""
+        def run_log():
+            try:
+                if self.door_app:
+                    self.door_app.db.log_access_event(**kwargs)
+            except Exception as e:
+                logger.error(f"[DB LOG ERROR] {e}")
+        threading.Thread(target=run_log, daemon=True).start()
+
     # =====================================================================
     # GSTREAMER INTERFACE AND SIGNAL EVENT HANDLERS
     # =====================================================================
@@ -357,15 +368,12 @@ class InterfaceMonitorApp(QMainWindow):
                     self.add_log("Security", f"Warning: {num_faces} faces detected. Access blocked.")
                     self.last_logged_name = "Multi-face warning"
                     self.last_logged_time = now
-                    try:
-                        self.door_app.db.log_access_event(
-                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                            userId="", universityId="", displayName="Multi-face", method="face",
-                            result="denied", reason=f"Warning: {num_faces} faces detected. Access blocked.",
-                            confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
-                        )
-                    except Exception as e:
-                        logger.error(f"[DB LOG ERROR] {e}")
+                    self.log_event_async(
+                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                        userId="", universityId="", displayName="Multi-face", method="face",
+                        result="denied", reason=f"Warning: {num_faces} faces detected. Access blocked.",
+                        confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                    )
             else:
                 warning_msg = "Cảnh báo: Phát hiện khuôn mặt không hợp lệ! Cửa đã khóa."
                 self.tabAccess.lblScanStatus.setText("🚫 TRUY CẬP BỊ TỪ CHỐI")
@@ -385,15 +393,12 @@ class InterfaceMonitorApp(QMainWindow):
                     self.add_log("Security", "Access Denied: Unknown face detected. Door locked.")
                     self.last_logged_name = "Unknown"
                     self.last_logged_time = now
-                    try:
-                        self.door_app.db.log_access_event(
-                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                            userId="", universityId="", displayName="Unknown", method="face",
-                            result="denied", reason="Access Denied: Unknown face detected. Door locked.",
-                            confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
-                        )
-                    except Exception as e:
-                        logger.error(f"[DB LOG ERROR] {e}")
+                    self.log_event_async(
+                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                        userId="", universityId="", displayName="Unknown", method="face",
+                        result="denied", reason="Access Denied: Unknown face detected. Door locked.",
+                        confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                    )
             
             self.last_detection_time = now
             return
@@ -488,15 +493,12 @@ class InterfaceMonitorApp(QMainWindow):
                         self.last_logged_name = name
                         self.last_logged_time = now
                         
-                        try:
-                            self.door_app.db.log_access_event(
-                                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                                userId="", universityId="", displayName=name, method="face",
-                                result="granted", reason="Face match + Liveness verified",
-                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
-                            )
-                        except Exception as e:
-                            logger.error(f"[DB LOG ERROR] {e}")
+                        self.log_event_async(
+                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                            userId="", universityId="", displayName=name, method="face",
+                            result="granted", reason="Face match + Liveness verified",
+                            confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                        )
                 else:
                     # Show remaining progress countdown
                     remaining = max(0.0, 2.0 - duration)
@@ -572,19 +574,21 @@ class InterfaceMonitorApp(QMainWindow):
             )
             self.videoWidget.update_vitals(stats_text)
 
-            # Update telemetry in local SQLite database
-            try:
-                self.door_app.db.update_node_telemetry(
-                    nodeId="default-node",
-                    status="online",
-                    onlineState="online",
-                    cameraFps=fps,
-                    cpuPercent=45.0,  # mock CPU load
-                    ramPercent=ram / 40.0, # scale to percentage based on Pi RAM
-                    temperatureC=cpu_t
-                )
-            except Exception as e:
-                logger.error(f"[DB TELEMETRY ERROR] {e}")
+            # Update telemetry in local SQLite database via a background thread to prevent GUI freezing
+            def async_telemetry():
+                try:
+                    self.door_app.db.update_node_telemetry(
+                        nodeId="default-node",
+                        status="online",
+                        onlineState="online",
+                        cameraFps=fps,
+                        cpuPercent=45.0,  # mock CPU load
+                        ramPercent=ram / 40.0, # scale to percentage based on Pi RAM
+                        temperatureC=cpu_t
+                    )
+                except Exception as e:
+                    logger.error(f"[DB TELEMETRY ERROR] {e}")
+            threading.Thread(target=async_telemetry, daemon=True).start()
 
     def handle_tab_changed(self, index):
         self.update_recognition_state()
@@ -658,28 +662,22 @@ class InterfaceMonitorApp(QMainWindow):
 
         if user_name:
             self.add_log("Keypad", f"Correct PIN entered by {user_name}.")
-            try:
-                self.door_app.db.log_access_event(
-                    labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                    userId="", universityId="", displayName=user_name, method="pin",
-                    result="granted", reason="PIN validation success",
-                    confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
-                )
-            except Exception as e:
-                logger.error(f"[DB LOG ERROR] {e}")
+            self.log_event_async(
+                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                userId="", universityId="", displayName=user_name, method="pin",
+                result="granted", reason="PIN validation success",
+                confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
+            )
             self.unlock_door()
             self.tabs.setCurrentIndex(0)  # Navigate back to Access Home
         else:
             self.add_log("Keypad", "Warning: Incorrect PIN attempt.")
-            try:
-                self.door_app.db.log_access_event(
-                    labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                    userId="", universityId="", displayName="Keypad Attempt", method="pin",
-                    result="denied", reason="Invalid PIN entered",
-                    confidence=0.0, livenessScore=0.0, pinFallbackUsed=1
-                )
-            except Exception as e:
-                logger.error(f"[DB LOG ERROR] {e}")
+            self.log_event_async(
+                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                userId="", universityId="", displayName="Keypad Attempt", method="pin",
+                result="denied", reason="Invalid PIN entered",
+                confidence=0.0, livenessScore=0.0, pinFallbackUsed=1
+            )
             QMessageBox.warning(self, "Invalid PIN", "The PIN code entered is incorrect.")
 
     def handle_register_requested(self, name, email, password, role):

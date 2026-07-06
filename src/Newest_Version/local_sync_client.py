@@ -79,8 +79,17 @@ def sync_users():
     # Load users currently stored in local SQLite
     conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
-    c.execute("SELECT name, status FROM users")
-    local_users = {row[0]: row[1] for row in c.fetchall()}
+    c.execute("SELECT name, status, university_id, email, role, pin, embedding FROM users")
+    local_users = {}
+    for row in c.fetchall():
+        local_users[row[0]] = {
+            "status": row[1],
+            "university_id": row[2],
+            "email": row[3],
+            "role": row[4],
+            "pin": row[5],
+            "embedding": row[6]
+        }
     conn.close()
 
     for user in server_users:

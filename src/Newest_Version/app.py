@@ -1,4 +1,5 @@
 import time
+import threading
 import os
 import sys
 os.environ["HAILORT_LOGGER_PATH"] = "NONE"
@@ -80,6 +81,11 @@ class ProfessionalSmartDoor:
         # Hardware Monitor
         self.hw_monitor = HardwareMonitor(check_interval=2.0).start()
 
+        # Start background database monitoring thread to avoid blocking the NPU pipeline
+        self._db_monitor_active = True
+        self._db_monitor_thread = threading.Thread(target=self._monitor_db_loop, daemon=True)
+        self._db_monitor_thread.start()
+
         # Pipeline variables
         self.pipeline = None
         self.loop = None
@@ -107,6 +113,48 @@ class ProfessionalSmartDoor:
             return state if state else (0, "")
         except Exception:
             return (0, "")
+
+    def _monitor_db_loop(self):
+        """Periodically check SQLite users table for updates and rebuild the C++ database binary in background."""
+        while self._db_monitor_active:
+            try:
+                time.sleep(3.0)
+                current_state = self._get_db_state()
+                if current_state != self._last_db_state:
+                    logger.info("[DB Monitor] Users table update detected! Reloading in background...")
+                    known_users = self.db.load_all_users()
+                    
+                    if known_users:
+                        names = list(known_users.keys())
+                        vecs = np.stack(list(known_users.values())).astype(np.float32)
+                        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+                        known_matrix = vecs / np.where(norms > 0, norms, 1.0)
+                    else:
+                        names = []
+                        known_matrix = None
+                    
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    workspace_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
+                    bin_path = os.path.join(workspace_dir, "scratch", "db.bin")
+                    
+                    os.makedirs(os.path.dirname(bin_path), exist_ok=True)
+                    with open(bin_path, "wb") as f:
+                        n = len(known_users)
+                        f.write(np.int32(n).tobytes())
+                        for name, emb in known_users.items():
+                            name_bytes = name.encode('utf-8')[:63]
+                            name_bytes = name_bytes + b'\x00' * (64 - len(name_bytes))
+                            f.write(name_bytes)
+                            f.write(emb.astype(np.float32).tobytes())
+                            
+                    # Thread-safe updates (atomic pointers swap)
+                    self.known_users = known_users
+                    self._known_names = names
+                    self._known_matrix = known_matrix
+                    self._last_db_state = current_state
+                    logger.info(f"[DB Monitor] Successfully reloaded and synced {len(known_users)} users in background.")
+            except Exception as e:
+                logger.error(f"[DB Monitor] Error in database monitoring thread: {e}")
 
     def _rebuild_db_matrix(self):
         """Build L2-normalised (N×512) matrix for one-shot vectorised search."""
@@ -170,19 +218,7 @@ class ProfessionalSmartDoor:
         if buffer is None:
             return Gst.PadProbeReturn.OK
 
-        # [CHỨC NĂNG] Tự động tải lại cơ sở dữ liệu khi có cập nhật từ tiến trình đăng ký khuôn mặt khác (như register.py)
-        # [LIÊN KẾT] Kiểm tra mtime của file SQLite -> cập nhật RAM matrix -> đồng bộ lại file db.bin để bộ so khớp C++ nạp lại.
-        # Check database updates only once every 3 seconds to avoid NPU pipeline lag
-        now = time.time()
-        if now - self._last_db_check_time >= 3.0:
-            self._last_db_check_time = now
-            current_state = self._get_db_state()
-            if current_state != self._last_db_state:
-                self.known_users = self.db.load_all_users()
-                self._rebuild_db_matrix()
-                self._sync_db_to_binary()
-                self._last_db_state = current_state
-                logger.info("[GStreamer] Users table update detected! Reloaded search matrix and synced to binary.")
+        # (DB checks moved to background _monitor_db_loop thread to prevent NPU pipeline lag)
 
         # Calculate FPS
         self._frame_count += 1
@@ -750,6 +786,7 @@ class ProfessionalSmartDoor:
 
     def stop(self):
         logger.info("Stopping ProfessionalSmartDoor...")
+        self._db_monitor_active = False
         try:
             self.stop_ir_camera()
         except Exception as e:
