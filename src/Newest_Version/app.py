@@ -229,13 +229,31 @@ class ProfessionalSmartDoor:
             self._frame_count = 0
             self._fps_start_time = now
 
+            cpu_t = self.hw_monitor.cpu_temp
+            hailo_t = self.hw_monitor.hailo_temp
+            ram_mb = self.hw_monitor.ram_mb
+
             # Update stats overlay text (every 1 second)
             if self.stats_overlay:
-                cpu_t = self.hw_monitor.cpu_temp
-                hailo_t = self.hw_monitor.hailo_temp
-                ram_mb = self.hw_monitor.ram_mb
                 stats_text = f"FPS: {self._fps:.1f} | CPU: {cpu_t:.1f}C | Hailo: {hailo_t:.1f}C | RAM: {ram_mb:.1f}MB"
                 self.stats_overlay.set_property("text", stats_text)
+
+            # Update telemetry in local SQLite database via a background thread to prevent GStreamer thread lag
+            node_id = os.environ.get("NODE_ID", "default-node")
+            def async_telemetry():
+                try:
+                    self.db.update_node_telemetry(
+                        nodeId=node_id,
+                        status="online",
+                        onlineState="online",
+                        cameraFps=self._fps,
+                        cpuPercent=45.0,  # mock CPU load
+                        ramPercent=ram_mb / 40.0, # scale to percentage based on Pi RAM
+                        temperatureC=cpu_t
+                    )
+                except Exception as e:
+                    logger.error(f"[DB TELEMETRY ERROR] {e}")
+            threading.Thread(target=async_telemetry, daemon=True).start()
             
             # Force immediate garbage collection of PyGObject wrappers
             gc.collect()

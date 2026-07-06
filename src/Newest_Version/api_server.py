@@ -425,7 +425,8 @@ def submit_telemetry(lab_id, node_id):
             cameraFps=camera_fps,
             cpuPercent=cpu_percent,
             ramPercent=ram_percent,
-            temperatureC=temp_c
+            temperatureC=temp_c,
+            labId=lab_id
         )
         return jsonify({"success": True})
     except Exception as e:

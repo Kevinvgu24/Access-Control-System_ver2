@@ -38,7 +38,7 @@ function computeStats(events: AccessEvent[]) {
 }
 
 function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemStatus {
-  if (!state) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: '—', nodeLabel }
+  if (!state || !state.onlineState) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: '—', nodeLabel }
   const syncState = state.onlineState === 'online' ? 'live'
     : state.onlineState === 'grace_period' ? 'delayed'
     : 'offline'

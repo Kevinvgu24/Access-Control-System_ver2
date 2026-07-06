@@ -338,7 +338,7 @@ class FaceDatabase:
         finally:
             conn.close()
 
-    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC):
+    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC, labId=None):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         try:
@@ -349,6 +349,7 @@ class FaceDatabase:
             telemetry_data = {
                 "heartbeatAt": now_str,
                 "onlineState": onlineState,
+                "modelStatus": "running" if status == "online" else "stopped",
                 "cpuPercent": cpuPercent,
                 "ramPercent": ramPercent,
                 "cameraFps": cameraFps,
@@ -357,12 +358,38 @@ class FaceDatabase:
             }
             telemetry_json = json.dumps(telemetry_data)
 
-            # Update nodes table with latest state
-            c.execute("""
-                UPDATE nodes SET 
-                    status = ?, onlineState = ?, lastHeartbeatAt = ?, latestTelemetry = ?, updatedAt = ?
-                WHERE id = ?
-            """, (status, onlineState, now_str, telemetry_json, now_str, nodeId))
+            # Check if node exists
+            c.execute("SELECT id FROM nodes WHERE id = ?", (nodeId,))
+            row = c.fetchone()
+            if not row:
+                # If node does not exist, insert it under the cluster of the given lab
+                c.execute("SELECT id FROM clusters WHERE labId = ?", (labId or "default-lab",))
+                cluster_row = c.fetchone()
+                cluster_id = cluster_row[0] if cluster_row else "default-cluster"
+                
+                c.execute("""
+                    INSERT INTO nodes (id, clusterId, labId, name, code, status, onlineState, lastHeartbeatAt, latestTelemetry, createdAt, updatedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    nodeId,
+                    cluster_id,
+                    labId or "default-lab",
+                    f"Node {nodeId}",
+                    nodeId.upper(),
+                    status,
+                    onlineState,
+                    now_str,
+                    telemetry_json,
+                    now_str,
+                    now_str
+                ))
+            else:
+                # Update nodes table with latest state
+                c.execute("""
+                    UPDATE nodes SET 
+                        status = ?, onlineState = ?, lastHeartbeatAt = ?, latestTelemetry = ?, updatedAt = ?
+                    WHERE id = ?
+                """, (status, onlineState, now_str, telemetry_json, now_str, nodeId))
             conn.commit()
         except Exception as e:
             logger.error(f"Error updating node telemetry: {e}")
