@@ -126,29 +126,45 @@ def sync_users():
                     
         # Scenario B: User exists locally but fields (PIN, status, role) might be updated
         else:
-            # For simplicity, we just save/update the local user record with fields
-            # without modifying their existing embedding.
-            # If the user has a calculated local embedding, check if the server has it.
-            # If server does not have it, upload it!
+            # Check if fields have actually changed before calling database update
             conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
             c = conn.cursor()
-            c.execute("SELECT embedding, faceStatus FROM users WHERE name = ?", (name,))
-            row = c.fetchone()
+            c.execute("SELECT university_id, email, role, status, pin, embedding FROM users WHERE name = ?", (name,))
+            local_row = c.fetchone()
             conn.close()
             
-            if row and row[0] is not None:
+            local_emb = None
+            needs_db_write = True
+            
+            if local_row:
+                local_uni_id = local_row[0]
+                local_email = local_row[1]
+                local_role = local_row[2]
+                local_status = local_row[3]
+                local_pin = local_row[4]
+                local_emb = local_row[5]
+                
+                if (local_uni_id == university_id and 
+                    local_email == email and 
+                    local_role == role and 
+                    local_status == status and 
+                    local_pin == pin):
+                    needs_db_write = False
+            
+            if local_emb is not None:
                 # Local embedding exists. Let's upload it to the server if the server's faceStatus is incomplete
                 if user.get("faceStatus") != "complete":
                     print(f"[*] [EMBEDDING SYNC] Server is missing embedding for '{name}'. Uploading...")
                     try:
-                        emb_list = row[0].tolist()
+                        emb_list = local_emb.tolist()
                         make_request(f"{SERVER_URL}/api/users/{name}/embedding", method="POST", data={"embedding": emb_list})
                         print(f"  [+] Uploaded embedding for '{name}' successfully.")
                     except Exception as e:
                         print(f"  [-] Failed to upload embedding for '{name}': {e}")
                         
-            # Sync user fields to SQLite
-            db.save_full_user(name, university_id, email, "", role, status, pin, row[0] if row else None)
+            if needs_db_write:
+                # Sync user fields to SQLite
+                db.save_full_user(name, university_id, email, "", role, status, pin, local_emb)
 
     # Clean up local users that are no longer active on the central server
     for local_name in list(local_users.keys()):
@@ -197,10 +213,12 @@ def sync_telemetry():
     conn.close()
 
     if not row:
+        print(f"[*] [TELEMETRY] Node '{NODE_ID}' not found in local database!")
         return
 
     telemetry_str = row["latestTelemetry"]
     if not telemetry_str:
+        print(f"[*] [TELEMETRY] No telemetry data in local database yet.")
         return
 
     try:
@@ -215,9 +233,9 @@ def sync_telemetry():
         }
         
         make_request(f"{SERVER_URL}/api/labs/{LAB_ID}/nodes/{NODE_ID}/telemetry", method="POST", data=payload)
+        print(f"[*] [TELEMETRY] Telemetry pushed successfully to server (IP: {SERVER_URL})")
     except Exception as e:
-        # Suppress noise - telemetry fails silently if server is offline
-        pass
+        print(f"[-] [TELEMETRY] Failed to push telemetry: {e}")
 
 def sync_config():
     """Pull central configuration and apply to local SQLite."""
