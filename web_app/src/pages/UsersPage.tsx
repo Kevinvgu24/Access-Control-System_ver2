@@ -60,7 +60,10 @@ export function UsersPage() {
   }
 
   const filtered = users.filter(u =>
-    (!search || u.fullName.toLowerCase().includes(search.toLowerCase()) || u.universityId.includes(search)) &&
+    (!search ||
+      u.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      (u.universityId && u.universityId.toLowerCase().includes(search.toLowerCase())) ||
+      (u.university_id && u.university_id.toLowerCase().includes(search.toLowerCase()))) &&
     (roleFilter === 'all' || u.roles.includes(roleFilter as UserRole)) &&
     (statusFilter === 'all' || u.status === statusFilter)
   )
@@ -154,7 +157,7 @@ export function UsersPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#0f172a]">{u.fullName}</p>
-                      <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{u.universityId}</p>
+                      <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{u.universityId || u.university_id}</p>
                     </div>
                   </div>
                 </td>

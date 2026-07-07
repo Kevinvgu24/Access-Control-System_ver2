@@ -433,6 +433,7 @@ def get_users(lab_id):
         u["id"] = str(u["id"])
         u["fullName"] = u["name"] or "Unnamed"
         u["roles"] = [u["role"]] if u["role"] else ["student"]
+        u["universityId"] = u["university_id"] or ""
         users_list.append(u)
         
     return jsonify(users_list)
