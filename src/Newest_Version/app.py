@@ -825,13 +825,15 @@ class ProfessionalSmartDoor:
         if ret == Gst.StateChangeReturn.FAILURE:
             logger.error("Failed to transition pipeline to PLAYING state.")
             bus = self.pipeline.get_bus()
-            msg = bus.pop_filtered(Gst.MessageType.ERROR, Gst.CLOCK_TIME_NONE)
+            msg = bus.timed_pop_filtered(2 * Gst.SECOND, Gst.MessageType.ERROR | Gst.MessageType.WARNING)
             if msg:
                 err, debug = msg.parse_error()
                 logger.error("================ GSTREAMER ERROR ================")
                 logger.error(f"Error: {err.message}")
                 logger.error(f"Debug Info: {debug}")
                 logger.error("=================================================")
+            else:
+                logger.error("No error/warning message was received on the GStreamer bus.")
             self.stop()
 
         if appsink_callback is not None:

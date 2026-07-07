@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface LiveCameraProps {
   labId: string
@@ -8,6 +8,7 @@ interface LiveCameraProps {
 export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
   const [error, setError] = useState<string | null>(null)
   const [hasLoadedAtLeastOnce, setHasLoadedAtLeastOnce] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
     // Start IR stream request
@@ -32,6 +33,33 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
     }
   }, [labId, nodeId])
 
+  const captureFrame = () => {
+    const imgElement = imgRef.current
+    if (!imgElement) return
+
+    try {
+      const canvas = document.createElement('canvas')
+      // Use natural resolution of the source frame, fallback to display size
+      canvas.width = imgElement.naturalWidth || imgElement.width || 640
+      canvas.height = imgElement.naturalHeight || imgElement.height || 480
+      
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
+        
+        // Trigger file download
+        const link = document.createElement('a')
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        link.download = `ir_capture_${timestamp}.jpg`
+        link.href = dataUrl
+        link.click()
+      }
+    } catch (err) {
+      console.error("Failed to capture frame from stream:", err)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-950 border border-line flex items-center justify-center">
@@ -43,6 +71,7 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
         ) : (
           <>
             <img
+              ref={imgRef}
               src={`/api/labs/${labId}/nodes/${nodeId}/ir-stream`}
               alt="IR Live Feed"
               className={`w-full h-full object-cover grayscale transition-opacity duration-300 ${
@@ -80,9 +109,19 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-green animate-ping" />
           15-20 FPS Auto Stream
         </span>
-        <span className="text-xs text-green font-semibold">
-          Active
-        </span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={captureFrame}
+            disabled={!hasLoadedAtLeastOnce}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white font-mono text-[11px] px-3.5 py-1.5 rounded-md border border-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm font-semibold active:scale-[0.98]"
+            title="Chụp ảnh khung hình hiện tại"
+          >
+            📸 Capture Photo
+          </button>
+          <span className="text-xs text-green font-semibold">
+            Active
+          </span>
+        </div>
       </div>
     </div>
   )
