@@ -76,7 +76,6 @@ export default defineConfig(({ mode }) => {
               return 'vendor'
             }
             if (id.includes('node_modules/zustand'))  return 'state'
-            if (id.includes('node_modules/firebase')) return 'firebase'
           },
         },
       },

@@ -1,4 +1,4 @@
-import type { Timestamp } from 'firebase/firestore'
+export type Timestamp = any;
 
 export type AdminRole       = 'super_admin' | 'lab_admin'
 export type AdminStatus     = 'active' | 'suspended'

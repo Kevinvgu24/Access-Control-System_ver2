@@ -1,5 +1,4 @@
 import type { AccessResult, NodeOnlineState, AccessMethod } from '@/types/admin'
-import type { Timestamp } from 'firebase/firestore'
 
 type Tone = 'green' | 'red' | 'amber' | 'blue' | 'neutral'
 
