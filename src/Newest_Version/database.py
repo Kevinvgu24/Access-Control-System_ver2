@@ -191,7 +191,8 @@ class FaceDatabase:
                 ma TEXT,
                 session_num TEXT,
                 experiment TEXT,
-                createdAt TEXT
+                createdAt TEXT,
+                filename TEXT
             )
         ''')
 
@@ -205,6 +206,12 @@ class FaceDatabase:
         # Add manager column to labs if it doesn't exist in existing database
         try:
             c.execute("ALTER TABLE labs ADD COLUMN manager TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        # Add filename column to lab_schedules if it doesn't exist in existing database
+        try:
+            c.execute("ALTER TABLE lab_schedules ADD COLUMN filename TEXT")
         except sqlite3.OperationalError:
             pass
 

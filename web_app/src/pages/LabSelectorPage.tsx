@@ -144,18 +144,16 @@ export function LabSelectorPage() {
                   }`}>{lab.status}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] text-[#94a3b8]">{lab.code}</span>
-                    {admin?.type === 'super_admin' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteLab(lab.id, lab.name)
-                        }}
-                        className="text-red/40 hover:text-red transition-colors text-xs p-1 rounded hover:bg-red/5"
-                        title="Delete Lab"
-                      >
-                        🗑️
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteLab(lab.id, lab.name)
+                      }}
+                      className="text-red/60 hover:text-red transition-colors text-[11px] font-mono px-1.5 py-0.5 rounded hover:bg-red/5 flex items-center gap-1 border border-transparent hover:border-red/10 cursor-pointer"
+                      title="Delete Lab"
+                    >
+                      🗑️ Delete
+                    </button>
                   </div>
                 </div>
                 <p className="text-lg font-bold text-[#0f172a] leading-tight">{lab.name}</p>

@@ -1074,11 +1074,13 @@ def import_lab_schedules(lab_id):
         if not records:
             return jsonify({"error": "No schedule records found in the uploaded file"}), 400
             
+        filename = file.filename or "Uploaded Schedule"
+        
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         
-        # Clear existing schedules for this lab
-        c.execute("DELETE FROM lab_schedules WHERE labId = ?", (lab_id,))
+        # Clear existing schedules with the same filename in this lab
+        c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
         
         # Insert new records
         now_str = datetime.now().isoformat()
@@ -1095,13 +1097,14 @@ def import_lab_schedules(lab_id):
                 r.get("ma", ""),
                 r.get("session_num", ""),
                 r.get("experiment", ""),
-                now_str
+                now_str,
+                filename
             ))
             
         c.executemany("""
             INSERT INTO lab_schedules 
-                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, insert_data)
         
         conn.commit()
@@ -1109,7 +1112,8 @@ def import_lab_schedules(lab_id):
         
         return jsonify({
             "success": True,
-            "count": len(records)
+            "count": len(records),
+            "filename": filename
         })
         
     except Exception as e:
@@ -1327,6 +1331,106 @@ def clear_all_schedules():
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Failed to clear all schedules: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 30. Get all unique schedule files/lists
+@app.route("/api/schedules/files", methods=["GET"])
+def get_schedule_files():
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("""
+            SELECT DISTINCT filename, labId 
+            FROM lab_schedules 
+            WHERE filename IS NOT NULL AND filename != ''
+        """)
+        rows = c.fetchall()
+        
+        c.execute("SELECT id, name FROM labs")
+        lab_map = {r[0]: r[1] for r in c.fetchall()}
+        conn.close()
+        
+        files = []
+        for row in rows:
+            fn, lid = row
+            files.append({
+                "filename": fn,
+                "labId": lid,
+                "labName": lab_map.get(lid, lid)
+            })
+            
+        # Check if there are legacy schedules without a filename
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("SELECT DISTINCT labId FROM lab_schedules WHERE filename IS NULL OR filename = ''")
+        legacy_lids = [r[0] for r in c.fetchall()]
+        conn.close()
+        
+        for lid in legacy_lids:
+            files.append({
+                "filename": "Legacy Schedule",
+                "labId": lid,
+                "labName": lab_map.get(lid, lid)
+            })
+            
+        return jsonify(files)
+    except Exception as e:
+        logger.error(f"Failed to get schedule files: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 31. Get schedules by filename & labId
+@app.route("/api/schedules/by-file", methods=["GET"])
+def get_schedules_by_file():
+    filename = request.args.get("filename", "")
+    lab_id = request.args.get("labId", "")
+    if not filename or not lab_id:
+        return jsonify({"error": "Missing filename or labId"}), 400
+        
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        if filename == "Legacy Schedule":
+            c.execute("""
+                SELECT id, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename, labId
+                FROM lab_schedules 
+                WHERE (filename IS NULL OR filename = '') AND labId = ?
+                ORDER BY date ASC, session_num ASC
+            """, (lab_id,))
+        else:
+            c.execute("""
+                SELECT id, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename, labId
+                FROM lab_schedules 
+                WHERE filename = ? AND labId = ?
+                ORDER BY date ASC, session_num ASC
+            """, (filename, lab_id))
+        rows = c.fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        logger.error(f"Failed to get schedules by file: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 32. Delete schedules by filename & labId
+@app.route("/api/schedules/by-file", methods=["DELETE"])
+def delete_schedules_by_file():
+    filename = request.args.get("filename", "")
+    lab_id = request.args.get("labId", "")
+    if not filename or not lab_id:
+        return jsonify({"error": "Missing filename or labId"}), 400
+        
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        if filename == "Legacy Schedule":
+            c.execute("DELETE FROM lab_schedules WHERE (filename IS NULL OR filename = '') AND labId = ?", (lab_id,))
+        else:
+            c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to delete schedules by file: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":

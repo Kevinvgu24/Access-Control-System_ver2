@@ -56,7 +56,7 @@ export function Sidebar() {
         ))}
 
         {/* Control Panel — super_admin only */}
-        {admin?.role === 'super_admin' && (
+        {admin?.type === 'super_admin' && (
           <NavLink to="/control"
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all mt-3
