@@ -50,7 +50,7 @@ export async function getAllLabs(): Promise<Lab[]> {
 }
 
 export async function createLab(
-  data: { name: string; code?: string; location?: string; timezone: string },
+  data: { name: string; code?: string; location?: string; timezone: string; manager?: string },
   createdBy: string
 ): Promise<string> {
   void createdBy

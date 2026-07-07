@@ -25,6 +25,7 @@ export interface Lab {
   code:        string
   location?:   string
   timezone:    string
+  manager?:    string
   status:      LabStatus
   createdAt:   Timestamp | null
   updatedAt:   Timestamp | null

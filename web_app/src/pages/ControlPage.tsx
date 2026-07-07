@@ -49,7 +49,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
   const [name, setName]         = useState('')
   const [code, setCode]         = useState('')
   const [location, setLocation] = useState('')
-  const [timezone, setTimezone] = useState('Asia/Ho_Chi_Minh')
+  const [manager, setManager]   = useState('')
   const [saving, setSaving]     = useState(false)
   const [err, setErr]           = useState<string | null>(null)
 
@@ -57,7 +57,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
     setName('')
     setCode('')
     setLocation('')
-    setTimezone('Asia/Ho_Chi_Minh')
+    setManager('')
     setEditLab(null)
     setErr(null)
     setShowForm(true)
@@ -67,7 +67,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
     setName(lab.name)
     setCode(lab.code)
     setLocation(lab.location ?? '')
-    setTimezone(lab.timezone)
+    setManager(lab.manager ?? '')
     setEditLab(lab)
     setErr(null)
     setShowForm(true)
@@ -75,7 +75,6 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
 
   const handleSave = async () => {
     if (!name.trim()) return setErr('Name is required.')
-    if (!timezone.trim()) return setErr('Timezone is required.')
     setSaving(true); setErr(null)
     try {
       if (editLab) {
@@ -83,14 +82,16 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           name: name.trim(),
           code: code.trim() || undefined,
           location: location.trim() || '',
-          timezone: timezone.trim(),
+          timezone: 'Asia/Ho_Chi_Minh',
+          manager: manager.trim(),
         })
       } else {
         await createLab({
           name: name.trim(),
           code: code.trim() || undefined,
           location: location.trim() || '',
-          timezone: timezone.trim(),
+          timezone: 'Asia/Ho_Chi_Minh',
+          manager: manager.trim(),
         }, admin?.firebaseUid ?? 'admin')
       }
       setShowForm(false)
@@ -132,7 +133,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
                   <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{lab.location || '—'}</p>
                 </td>
                 <td className="px-5 py-4 text-sm text-[#475569]">
-                  {[lab.code, lab.timezone].filter(Boolean).join(' · ') || '—'}
+                  {[lab.code, lab.manager].filter(Boolean).join(' · ') || '—'}
                 </td>
                 <td className="px-5 py-4">
                   <Badge tone={lab.status === 'active' ? 'green' : lab.status === 'maintenance' ? 'amber' : 'neutral'}>{lab.status}</Badge>
@@ -161,7 +162,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           <Field label="Lab Name"><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. IoT Lab C205" className={inputCls} /></Field>
           <Field label="Lab Code"><input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="e.g. ECE-A" className={inputCls} /></Field>
           <Field label="Location"><input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Building C, Floor 2" className={inputCls} /></Field>
-          <Field label="Timezone"><input value={timezone} onChange={e => setTimezone(e.target.value)} placeholder="e.g. Asia/Ho_Chi_Minh" className={inputCls} /></Field>
+          <Field label="Manager / Supervisor"><input value={manager} onChange={e => setManager(e.target.value)} placeholder="e.g. TS. Nguyen Van A" className={inputCls} /></Field>
           {err && <p className="text-sm text-red">{err}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>

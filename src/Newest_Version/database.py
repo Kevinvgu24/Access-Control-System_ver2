@@ -77,6 +77,7 @@ class FaceDatabase:
                 code TEXT,
                 location TEXT,
                 timezone TEXT,
+                manager TEXT,
                 status TEXT DEFAULT 'active',
                 createdAt TEXT,
                 updatedAt TEXT
@@ -200,6 +201,12 @@ class FaceDatabase:
                 c.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} INTEGER DEFAULT 0")
             except sqlite3.OperationalError:
                 pass
+
+        # Add manager column to labs if it doesn't exist in existing database
+        try:
+            c.execute("ALTER TABLE labs ADD COLUMN manager TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         conn.commit()
 

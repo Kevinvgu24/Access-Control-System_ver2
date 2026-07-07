@@ -1044,6 +1044,7 @@ def create_lab():
     code = data.get("code", "").strip() or name.upper().replace(" ", "-")[:10]
     location = data.get("location", "").strip()
     timezone = data.get("timezone", "").strip() or "Asia/Ho_Chi_Minh"
+    manager = data.get("manager", "").strip()
     
     import uuid
     lab_id = "lab-" + uuid.uuid4().hex[:8]
@@ -1053,9 +1054,9 @@ def create_lab():
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute("""
-            INSERT INTO labs (id, name, code, location, timezone, status, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
-        """, (lab_id, name, code, location, timezone, now_str, now_str))
+            INSERT INTO labs (id, name, code, location, timezone, manager, status, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+        """, (lab_id, name, code, location, timezone, manager, now_str, now_str))
         conn.commit()
         conn.close()
         return jsonify({"success": True, "id": lab_id})
@@ -1070,7 +1071,8 @@ def update_lab(lab_id):
     name = data.get("name", "").strip()
     code = data.get("code", "").strip()
     location = data.get("location", "").strip()
-    timezone = data.get("timezone", "").strip()
+    timezone = data.get("timezone", "").strip() or "Asia/Ho_Chi_Minh"
+    manager = data.get("manager", "").strip()
     
     if not name:
         return jsonify({"error": "Lab name is required"}), 400
@@ -1081,9 +1083,9 @@ def update_lab(lab_id):
         c = conn.cursor()
         c.execute("""
             UPDATE labs
-            SET name = ?, code = ?, location = ?, timezone = ?, updatedAt = ?
+            SET name = ?, code = ?, location = ?, timezone = ?, manager = ?, updatedAt = ?
             WHERE id = ?
-        """, (name, code, location, timezone, now_str, lab_id))
+        """, (name, code, location, timezone, manager, now_str, lab_id))
         conn.commit()
         conn.close()
         return jsonify({"success": True})
@@ -1209,6 +1211,34 @@ def delete_node(lab_id, cluster_id, node_id):
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Failed to delete node: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 28. Clear schedules for a specific lab
+@app.route("/api/labs/<lab_id>/schedules/clear", methods=["DELETE"])
+def clear_lab_schedules(lab_id):
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("DELETE FROM lab_schedules WHERE labId = ?", (lab_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to clear schedules for lab {lab_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 29. Clear schedules for ALL labs
+@app.route("/api/labs/schedules/clear-all", methods=["DELETE"])
+def clear_all_schedules():
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("DELETE FROM lab_schedules")
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to clear all schedules: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
