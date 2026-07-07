@@ -30,6 +30,7 @@ function AuthenticatedApp() {
   const { selectedLabId, selectedLabName } = useLabStore()
   const { admin, error, signOut } = useAuthStore()
   const subscribe = useAdminStore(s => s.subscribe)
+  const systemStatus = useAdminStore(s => s.systemStatus)
 
   useEffect(() => {
     if (selectedLabId && selectedLabName) {
@@ -65,6 +66,31 @@ function AuthenticatedApp() {
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar />
+        
+        {systemStatus.overall === 'offline' ? (
+          <div className="bg-red/10 border-b border-red/20 px-8 py-3 flex items-center justify-between text-red shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span className="text-xs font-semibold uppercase tracking-wider font-mono">Cảnh báo hệ thống:</span>
+              <span className="text-xs font-medium">Thiết bị ghi nhận ngoại tuyến (Offline). Vui lòng kiểm tra nguồn điện hoặc kết nối mạng.</span>
+            </div>
+            <div className="text-[10px] uppercase font-mono px-2 py-0.5 bg-red/20 text-red rounded font-bold">
+              SYSTEM OFFLINE
+            </div>
+          </div>
+        ) : systemStatus.cameraState === 'disconnected' ? (
+          <div className="bg-green/10 border-b border-green/20 px-8 py-3 flex items-center justify-between text-green shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span className="text-xs font-semibold uppercase tracking-wider font-mono">Cảnh báo dịch vụ:</span>
+              <span className="text-xs font-medium">Tiến trình nhận diện khuôn mặt đang TẮT. Vui lòng kiểm tra hoặc khởi động lại ứng dụng.</span>
+            </div>
+            <div className="text-[10px] uppercase font-mono px-2 py-0.5 bg-green/20 text-green rounded font-bold">
+              CAMERA STOPPED
+            </div>
+          </div>
+        ) : null}
+
         <main className="flex-1 overflow-y-auto p-8 pb-16">
           <Routes>
             <Route path="/control" element={admin.role === 'super_admin' ? <ControlPage /> : <Navigate to="/labs" replace />} />
