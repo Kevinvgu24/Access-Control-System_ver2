@@ -5,8 +5,8 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /build
 
 # Copy npm configuration files first to cache dependencies layer
-COPY web_app/package.json web_app/package-lock.json ./
-RUN npm ci
+COPY web_app/package.json ./
+RUN npm install
 
 # Copy the rest of the web app files and build it
 COPY web_app/ ./
