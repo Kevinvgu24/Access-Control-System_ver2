@@ -678,6 +678,94 @@ def delete_lab_user(lab_id, user_id):
             
     return jsonify({"success": True, "message": f"Successfully deleted {full_name}"})
 
+# 9c. Update User Profile
+@app.route("/api/labs/<lab_id>/users/<user_id>", methods=["PUT"])
+def update_user_profile(lab_id, user_id):
+    data = request.json or {}
+    full_name = data.get("fullName", "").strip()
+    university_id = data.get("universityId", "").strip()
+    email = data.get("email", "").strip()
+    role = data.get("role", "student").strip()
+
+    if not full_name:
+        return jsonify({"error": "Full Name is required"}), 400
+
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Check if username changed and handle directory rename if needed
+        c.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+        row = c.fetchone()
+        if row and row[0] != full_name:
+            old_name = row[0]
+            old_dir = os.path.join(db_dir, old_name)
+            new_dir = os.path.join(db_dir, full_name)
+            if os.path.exists(old_dir):
+                try:
+                    os.rename(old_dir, new_dir)
+                except Exception as rename_err:
+                    logger.warning(f"Failed to rename photo directory from {old_name} to {full_name}: {rename_err}")
+        
+        c.execute("""
+            UPDATE users 
+            SET name = ?, university_id = ?, email = ?, role = ?, updatedAt = ?
+            WHERE id = ?
+        """, (full_name, university_id, email, role, datetime.now().isoformat(), user_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to update user: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 9d. Reset User PIN
+@app.route("/api/labs/<lab_id>/users/<user_id>/reset-pin", methods=["POST"])
+def reset_user_pin(lab_id, user_id):
+    data = request.json or {}
+    pin = data.get("pin", "").strip()
+
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        pin_status = "set" if pin else "missing"
+        db_pin = pin if pin else None
+        c.execute("""
+            UPDATE users 
+            SET pin = ?, pinStatus = ?, updatedAt = ?
+            WHERE id = ?
+        """, (db_pin, pin_status, datetime.now().isoformat(), user_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to reset PIN: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 9e. Update User Status / Revoke Access
+@app.route("/api/labs/<lab_id>/users/<user_id>/status", methods=["POST"])
+def update_user_status(lab_id, user_id):
+    data = request.json or {}
+    status = data.get("status", "suspended").strip()
+
+    if status not in ("active", "suspended"):
+        return jsonify({"error": "Invalid status value"}), 400
+
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("""
+            UPDATE users 
+            SET status = ?, updatedAt = ?
+            WHERE id = ?
+        """, (status, datetime.now().isoformat(), user_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to update status: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # ── EDGE SYNC API ENDPOINTS ───────────────────────────────────────────────────
 
 # 10. List user photos filenames

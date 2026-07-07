@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   subscribeAccessEvents, subscribeIncidents, subscribeNodeState,
   getFirstLabNode, getLabUsers, getNodeConfig, deleteUser,
+  updateUser, resetUserPin, updateUserStatus
 } from '@/lib/db'
 import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig } from '@/types/admin'
 import { fmtTs } from '@/lib/format'
@@ -69,6 +70,9 @@ interface AdminStore {
   refreshUsers: (labId: string) => Promise<void>
   refreshNodeConfig: (labId: string, clusterId: string, nodeId: string) => Promise<void>
   deleteUser: (labId: string, userId: string) => Promise<void>
+  updateUserProfile: (labId: string, userId: string, data: { fullName: string; universityId: string; email: string; role: string }) => Promise<void>
+  resetUserPin: (labId: string, userId: string, pin: string) => Promise<void>
+  updateUserStatus: (labId: string, userId: string, status: 'active' | 'suspended') => Promise<void>
 }
 
 const defaultStatus: SystemStatus = {
@@ -148,6 +152,24 @@ export const useAdminStore = create<AdminStore>((set) => ({
 
   deleteUser: async (labId, userId) => {
     await deleteUser(labId, userId)
+    const users = await getLabUsers(labId)
+    set({ users })
+  },
+
+  updateUserProfile: async (labId, userId, data) => {
+    await updateUser(labId, userId, data)
+    const users = await getLabUsers(labId)
+    set({ users })
+  },
+
+  resetUserPin: async (labId, userId, pin) => {
+    await resetUserPin(labId, userId, pin)
+    const users = await getLabUsers(labId)
+    set({ users })
+  },
+
+  updateUserStatus: async (labId, userId, status) => {
+    await updateUserStatus(labId, userId, status)
     const users = await getLabUsers(labId)
     set({ users })
   },

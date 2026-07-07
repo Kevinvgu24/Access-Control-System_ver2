@@ -5,7 +5,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { fmtTs } from '@/lib/format'
-import type { UserRole, UserStatus } from '@/types/admin'
+import type { User, UserRole, UserStatus } from '@/types/admin'
 import { useNavigate } from 'react-router-dom'
 
 const ROLE_OPTS: UserRole[] = ['student', 'faculty', 'lab_assistant', 'guest', 'maintenance']
@@ -16,7 +16,10 @@ const ROLE_LABEL: Record<UserRole, string> = {
 const STATUS_TONE: Record<UserStatus, 'green' | 'red'> = { active: 'green', suspended: 'red' }
 
 export function UsersPage() {
-  const { users, refreshUsers, deleteUser } = useAdminStore()
+  const { 
+    users, refreshUsers, deleteUser,
+    updateUserProfile, resetUserPin, updateUserStatus 
+  } = useAdminStore()
   const { selectedLabId }       = useLabStore()
   const navigate = useNavigate()
   const [search, setSearch]           = useState('')
@@ -25,6 +28,19 @@ export function UsersPage() {
   const [menuOpen, setMenuOpen]       = useState<string | null>(null)
   const [importing, setImporting]     = useState(false)
   const fileInputRef                  = useRef<HTMLInputElement>(null)
+
+  // Edit Profile States
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editUniId, setEditUniId] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editRole, setEditRole] = useState<UserRole>('student')
+  const [updatingProfile, setUpdatingProfile] = useState(false)
+
+  // Reset PIN States
+  const [pinUser, setPinUser] = useState<User | null>(null)
+  const [newPin, setNewPin] = useState('')
+  const [updatingPin, setUpdatingPin] = useState(false)
 
   const triggerFileInput = () => {
     fileInputRef.current?.click()
@@ -68,14 +84,73 @@ export function UsersPage() {
     (statusFilter === 'all' || u.status === statusFilter)
   )
 
-  const handleDelete = async (userId: string) => {
+  const handleToggleStatus = async (user: User) => {
     if (!selectedLabId) return
-    if (confirm('Are you sure you want to revoke access and delete this user?')) {
+    const newStatus = user.status === 'active' ? 'suspended' : 'active'
+    const verb = newStatus === 'active' ? 'grant access to' : 'revoke access for'
+    if (confirm(`Are you sure you want to ${verb} "${user.fullName}"?`)) {
       try {
-        await deleteUser(selectedLabId, userId)
+        await updateUserStatus(selectedLabId, user.id, newStatus)
+        alert(`Successfully updated status for "${user.fullName}" to ${newStatus}`)
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to delete user')
+        alert(err instanceof Error ? err.message : 'Failed to update user status')
       }
+    }
+  }
+
+  const handleOpenEditModal = (user: User) => {
+    setEditingUser(user)
+    setEditName(user.fullName)
+    setEditUniId(user.universityId || user.university_id || '')
+    setEditEmail(user.email || '')
+    setEditRole(user.roles?.[0] || 'student')
+  }
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLabId || !editingUser) return
+    if (!editName.trim()) {
+      alert('Full Name is required')
+      return
+    }
+    setUpdatingProfile(true)
+    try {
+      await updateUserProfile(selectedLabId, editingUser.id, {
+        fullName: editName.trim(),
+        universityId: editUniId.trim(),
+        email: editEmail.trim(),
+        role: editRole
+      })
+      alert('User profile updated successfully!')
+      setEditingUser(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update profile')
+    } finally {
+      setUpdatingProfile(false)
+    }
+  }
+
+  const handleOpenPinModal = (user: User) => {
+    setPinUser(user)
+    setNewPin(user.pin || '')
+  }
+
+  const handleUpdatePin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLabId || !pinUser) return
+    if (newPin && !/^\d{4,6}$/.test(newPin)) {
+      alert('PIN must be 4 to 6 numeric digits, or empty to disable PIN access.')
+      return
+    }
+    setUpdatingPin(true)
+    try {
+      await resetUserPin(selectedLabId, pinUser.id, newPin.trim())
+      alert(newPin ? 'PIN set successfully!' : 'PIN cleared successfully!')
+      setPinUser(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update PIN')
+    } finally {
+      setUpdatingPin(false)
     }
   }
 
@@ -179,16 +254,24 @@ export function UsersPage() {
                     className="w-8 h-8 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#0f172a] hover:bg-slate-100 transition-colors cursor-pointer text-lg">⋯</button>
                   {menuOpen === u.id && (
                     <div className="absolute right-4 top-12 z-20 bg-white border border-line rounded shadow-lg min-w-[150px] overflow-hidden py-1">
-                      {['Edit Profile', 'Reset PIN', 'Revoke Access'].map(a => (
-                        <button key={a} 
-                          onClick={() => {
-                            setMenuOpen(null)
-                            if (a === 'Revoke Access') handleDelete(u.id)
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer hover:bg-slate-50 ${a === 'Revoke Access' ? 'text-red' : 'text-[#475569]'}`}>
-                          {a}
-                        </button>
-                      ))}
+                      <button 
+                        onClick={() => { setMenuOpen(null); handleOpenEditModal(u); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-[#475569] hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Edit Profile
+                      </button>
+                      <button 
+                        onClick={() => { setMenuOpen(null); handleOpenPinModal(u); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-[#475569] hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Reset PIN
+                      </button>
+                      <button 
+                        onClick={() => { setMenuOpen(null); handleToggleStatus(u); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer hover:bg-slate-50 ${u.status === 'active' ? 'text-red' : 'text-green'}`}
+                      >
+                        {u.status === 'active' ? 'Revoke Access' : 'Grant Access'}
+                      </button>
                     </div>
                   )}
                 </td>
@@ -200,6 +283,109 @@ export function UsersPage() {
           <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No users match the current filters.</p>
         )}
       </Panel>
+
+      {/* Edit Profile Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !updatingProfile && setEditingUser(null)} />
+          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-[#0f172a]">Edit User Profile</h3>
+              <button onClick={() => !updatingProfile && setEditingUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
+            </div>
+            
+            <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Full Name</label>
+                <input 
+                  type="text" 
+                  value={editName} 
+                  onChange={e => setEditName(e.target.value)}
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">University ID</label>
+                <input 
+                  type="text" 
+                  value={editUniId} 
+                  onChange={e => setEditUniId(e.target.value)}
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Email Address</label>
+                <input 
+                  type="email" 
+                  value={editEmail} 
+                  onChange={e => setEditEmail(e.target.value)}
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Role</label>
+                <select 
+                  value={editRole}
+                  onChange={e => setEditRole(e.target.value as UserRole)}
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full cursor-pointer"
+                >
+                  {ROLE_OPTS.map(role => (
+                    <option key={role} value={role}>{ROLE_LABEL[role]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-2 justify-end mt-4">
+                <Button variant="ghost" type="button" onClick={() => setEditingUser(null)} disabled={updatingProfile}>Cancel</Button>
+                <Button variant="primary" type="submit" disabled={updatingProfile || !editName.trim()}>
+                  {updatingProfile ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset PIN Modal */}
+      {pinUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !updatingPin && setPinUser(null)} />
+          <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-[#0f172a]">Reset Access PIN</h3>
+              <button onClick={() => !updatingPin && setPinUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
+            </div>
+            
+            <form onSubmit={handleUpdatePin} className="flex flex-col gap-4">
+              <p className="text-xs text-[#475569]">
+                Set a 4 to 6 digit PIN for <strong>{pinUser.fullName}</strong>. Leave empty to clear and disable PIN access for this user.
+              </p>
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">New PIN</label>
+                <input 
+                  type="password" 
+                  maxLength={6}
+                  pattern="\d*"
+                  value={newPin} 
+                  onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g., 123456"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full tracking-widest font-mono text-center text-lg"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end mt-4">
+                <Button variant="ghost" type="button" onClick={() => setPinUser(null)} disabled={updatingPin}>Cancel</Button>
+                <Button variant="primary" type="submit" disabled={updatingPin}>
+                  {updatingPin ? 'Saving...' : 'Update PIN'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

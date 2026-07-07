@@ -347,3 +347,43 @@ export async function deleteUser(labId: string, userId: string): Promise<void> {
     throw new Error(err.error || 'Failed to delete user')
   }
 }
+
+export async function updateUser(
+  labId: string,
+  userId: string,
+  data: { fullName: string; universityId: string; email: string; role: string }
+): Promise<void> {
+  const res = await fetch(`/api/labs/${labId}/users/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Update failed' }))
+    throw new Error(err.error || 'Failed to update user profile')
+  }
+}
+
+export async function resetUserPin(labId: string, userId: string, pin: string): Promise<void> {
+  const res = await fetch(`/api/labs/${labId}/users/${userId}/reset-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Reset PIN failed' }))
+    throw new Error(err.error || 'Failed to reset user PIN')
+  }
+}
+
+export async function updateUserStatus(labId: string, userId: string, status: 'active' | 'suspended'): Promise<void> {
+  const res = await fetch(`/api/labs/${labId}/users/${userId}/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Update status failed' }))
+    throw new Error(err.error || 'Failed to update user status')
+  }
+}

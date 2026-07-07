@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { subscribeVisibleLabs, createLab } from '@/lib/db'
+import { subscribeVisibleLabs, createLab, archiveLab } from '@/lib/db'
 import { useLabStore } from '@/store/labStore'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
@@ -87,6 +87,17 @@ export function LabSelectorPage() {
     }
   }
 
+  const handleDeleteLab = async (labId: string, labName: string) => {
+    if (confirm(`Are you sure you want to delete/deactivate "${labName}"? All schedules and configurations will be hidden.`)) {
+      try {
+        await archiveLab(labId)
+        alert(`Lab room "${labName}" deleted successfully.`)
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to delete lab room')
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col gap-7">
       <div className="flex justify-between items-end gap-4 flex-wrap">
@@ -119,22 +130,38 @@ export function LabSelectorPage() {
       ) : (
         <div className="grid grid-cols-3 gap-4">
           {labs.map(lab => (
-            <button
+            <div
               key={lab.id}
               onClick={() => pick(lab)}
-              className="bg-surface border border-line rounded-lg p-6 text-left hover:border-green/25 hover:bg-green/5 transition-all cursor-pointer shadow-sm"
+              className="group bg-surface border border-line rounded-lg p-6 text-left hover:border-green/25 hover:bg-green/5 transition-all cursor-pointer shadow-sm flex flex-col justify-between min-h-[145px]"
             >
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <span className={`inline-flex px-2 py-0.5 rounded font-mono text-[11px] border ${
-                  lab.status === 'active'
-                    ? 'bg-green/10 text-green border-green/20'
-                    : 'bg-amber/10 text-amber border-amber/20'
-                }`}>{lab.status}</span>
-                <span className="font-mono text-[11px] text-[#94a3b8]">{lab.code}</span>
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <span className={`inline-flex px-2 py-0.5 rounded font-mono text-[11px] border ${
+                    lab.status === 'active'
+                      ? 'bg-green/10 text-green border-green/20'
+                      : 'bg-amber/10 text-amber border-amber/20'
+                  }`}>{lab.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-[#94a3b8]">{lab.code}</span>
+                    {admin?.type === 'super_admin' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteLab(lab.id, lab.name)
+                        }}
+                        className="text-red/40 hover:text-red transition-colors text-xs p-1 rounded hover:bg-red/5"
+                        title="Delete Lab"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-lg font-bold text-[#0f172a] leading-tight">{lab.name}</p>
               </div>
-              <p className="text-lg font-bold text-[#0f172a] leading-tight">{lab.name}</p>
               <p className="font-mono text-[11px] text-[#94a3b8] mt-2">{[lab.location, lab.manager].filter(Boolean).join(' · ') || '—'}</p>
-            </button>
+            </div>
           ))}
         </div>
       )}
