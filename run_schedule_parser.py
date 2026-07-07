@@ -119,18 +119,35 @@ class UniversalScheduleParser:
         if None in (y_r, m_r, d_r, dt_r, ma_r, s_r, h_r):
             raise ValueError("Không thể phát hiện đầy đủ cấu trúc các dòng lịch trình (Năm, Tháng, Ngày, Ca, Phiên, Header).")
 
-        # Parse timeline columns starting from column index 6
-        self._parse_timeline_columns(y_r, m_r, d_r, dt_r, ma_r, s_r, start_col=6)
-
-        # Parse student rows
+        # Parse student rows (will populate self.group_col_idx, self.nr_col_idx, etc.)
         self._parse_students_rows(h_r, name_col=3, id_col=4, group_col=1, nr_col=2)
+        
+        # Dynamically detect where the timeline starts by looking for the first digit in the date row
+        start_col = None
+        for c in range(len(self.grid[dt_r])):
+            cell = self.grid[dt_r][c]
+            if not cell:
+                continue
+            txt = cell["text"].strip()
+            if txt.endswith('.0'):
+                txt = txt[:-2]
+            if txt.isdigit():
+                start_col = c
+                break
+        if start_col is None:
+            start_col = 6 # fallback
+
+        print(f"Phát hiện cột bắt đầu Timeline (HTML): {start_col}")
+
+        # Parse timeline columns
+        self._parse_timeline_columns(y_r, m_r, d_r, dt_r, ma_r, s_r, start_col=start_col)
 
         # Detect dominant color (blocked cell color) in student schedule grid
         color_freq = {}
         for std in self.students:
             r_idx = std["row"]
             row = self.grid[r_idx]
-            for c_idx in range(6, min(142, len(row))):
+            for c_idx in range(start_col, min(142, len(row))):
                 cell = row[c_idx]
                 if not cell:
                     continue
@@ -140,13 +157,14 @@ class UniversalScheduleParser:
         self.dominant_color = max(color_freq, key=color_freq.get) if color_freq else "NO_COLOR"
 
         # Resolve experiments and build schedule records
+        g_col = getattr(self, "group_col_idx", 1)
         group_experiments = {}
         for r_idx in range(h_r + 1, len(self.grid)):
             row = self.grid[r_idx]
-            if len(row) < 5 or not row[1]:
+            if len(row) <= g_col or not row[g_col]:
                 continue
-            group_nr = row[1]["text"]
-            for c_idx in range(6, min(142, len(row))):
+            group_nr = row[g_col]["text"]
+            for c_idx in range(start_col, min(142, len(row))):
                 cell = row[c_idx]
                 if cell and cell["text"]:
                     group_experiments[(group_nr, c_idx)] = cell["text"]
@@ -157,8 +175,8 @@ class UniversalScheduleParser:
             group_nr = std["group"]
             row = self.grid[r_idx]
 
-            for c_idx in range(6, min(142, len(row))):
-                t_idx = c_idx - 6
+            for c_idx in range(start_col, min(142, len(row))):
+                t_idx = c_idx - start_col
                 if t_idx >= len(self.timeline) or self.timeline[t_idx] is None:
                     continue
 
@@ -169,10 +187,21 @@ class UniversalScheduleParser:
 
                 cls = cell["attrs"].get("class", "")
                 color = class_colors.get(cls, "NO_COLOR")
+                cell_text = cell["text"].strip()
                 
-                # Active if color is different from the dominant blocked color
-                if color != self.dominant_color:
-                    exp = cell["text"]
+                # Active if the cell has text OR color is different from the dominant blocked color
+                is_active = False
+                if cell_text:
+                    is_active = True
+                elif color != self.dominant_color:
+                    if self.dominant_color == "NO_COLOR":
+                        if color != "NO_COLOR":
+                            is_active = True
+                    else:
+                        is_active = True
+                
+                if is_active:
+                    exp = cell_text
                     if not exp:
                         exp = group_experiments.get((group_nr, c_idx), "")
 
@@ -257,29 +286,49 @@ class UniversalScheduleParser:
             if os.path.exists(temp_file): os.remove(temp_file)
             raise ValueError("Không thể phát hiện cấu trúc các dòng lịch trình (Năm, Tháng, Ngày, Ca, Phiên, Header).")
 
-        # Parse timeline columns starting from Column G (7)
-        self._parse_timeline_columns(y_r, m_r, d_r, dt_r, ma_r, s_r, start_col=7)
-
-        # Parse student rows (Column C/3 is Name, Column D/4 is ID, Column A/1 is Group, Column B/2 is Nr)
+        # Parse student rows (will populate self.group_col_idx, etc.)
         self._parse_students_rows(h_r, name_col=3, id_col=4, group_col=1, nr_col=2)
+
+        # Dynamically detect where the timeline starts by looking for the first digit in the date row
+        start_col = None
+        for c in range(1, len(self.grid[dt_r])):
+            cell = self.grid[dt_r][c]
+            if not cell:
+                continue
+            txt = cell["text"].strip()
+            if txt.endswith('.0'):
+                txt = txt[:-2]
+            if txt.isdigit():
+                start_col = c
+                break
+        if start_col is None:
+            start_col = 7 # fallback
+
+        print(f"Phát hiện cột bắt đầu Timeline (XLSX): {start_col}")
+
+        # Parse timeline columns starting from start_col
+        self._parse_timeline_columns(y_r, m_r, d_r, dt_r, ma_r, s_r, start_col=start_col)
 
         # Detect dominant color in grid
         color_freq = {}
         for std in self.students:
             r_idx = std["row"]
-            for c_idx in range(7, min(143, max_cols + 1)):
+            for c_idx in range(start_col, min(143, max_cols + 1)):
                 cell = self.grid[r_idx][c_idx]
                 color = cell["color"]
                 color_freq[color] = color_freq.get(color, 0) + 1
         self.dominant_color = max(color_freq, key=color_freq.get) if color_freq else "NO_COLOR"
 
         # Resolve experiments and build schedule records
+        g_col = getattr(self, "group_col_idx", 1)
         group_experiments = {}
         for r_idx in range(h_r + 1, max_rows + 1):
-            group_nr = self.grid[r_idx][1]["text"]
+            if len(self.grid[r_idx]) <= g_col:
+                continue
+            group_nr = self.grid[r_idx][g_col]["text"]
             if not group_nr or group_nr in ["MSE", "ICT", "Name ↓"]:
                 continue
-            for c_idx in range(7, min(143, max_cols + 1)):
+            for c_idx in range(start_col, min(143, max_cols + 1)):
                 cell = self.grid[r_idx][c_idx]
                 if cell and cell["text"]:
                     group_experiments[(group_nr, c_idx)] = cell["text"]
@@ -289,17 +338,28 @@ class UniversalScheduleParser:
             r_idx = std["row"]
             group_nr = std["group"]
 
-            for c_idx in range(7, min(143, max_cols + 1)):
-                t_idx = c_idx - 7
+            for c_idx in range(start_col, min(143, max_cols + 1)):
+                t_idx = c_idx - start_col
                 if t_idx >= len(self.timeline) or self.timeline[t_idx] is None:
                     continue
 
                 t_info = self.timeline[t_idx]
                 cell = self.grid[r_idx][c_idx]
+                cell_text = cell["text"].strip()
                 
-                # Active if color is different from the dominant blocked color
-                if cell["color"] != self.dominant_color:
-                    exp = cell["text"]
+                # Active if the cell has text OR color is different from the dominant blocked color
+                is_active = False
+                if cell_text:
+                    is_active = True
+                elif cell["color"] != self.dominant_color:
+                    if self.dominant_color == "NO_COLOR":
+                        if cell["color"] != "NO_COLOR":
+                            is_active = True
+                    else:
+                        is_active = True
+
+                if is_active:
+                    exp = cell_text
                     if not exp:
                         exp = group_experiments.get((group_nr, c_idx), "")
 
@@ -336,13 +396,13 @@ class UniversalScheduleParser:
                 if not row: continue
                 row_txts = [cell["text"].strip().lower() if cell else "" for cell in row[:limit_col]]
                 
-            if "year" in row_txts and y_r is None: y_r = r
-            if "month" in row_txts and m_r is None: m_r = r
-            if "day" in row_txts and d_r is None: d_r = r
-            if "date" in row_txts and dt_r is None: dt_r = r
-            if any("morning/afternoon" in t or "(m/a)" in t for t in row_txts) and ma_r is None: ma_r = r
-            if any("session" in t for t in row_txts) and s_r is None: s_r = r
-            if any("group nr" in t or "name ↓" in t or "id ↓" in t for t in row_txts) and h_r is None: h_r = r
+            if any("year" in t or "năm" in t or "nam" in t for t in row_txts) and y_r is None: y_r = r
+            if any("month" in t or "tháng" in t or "thang" in t for t in row_txts) and m_r is None: m_r = r
+            if any("day" in t or "thứ" in t or "thu" in t for t in row_txts) and d_r is None: d_r = r
+            if any("date" in t or "ngày" in t or "ngay" in t for t in row_txts) and dt_r is None: dt_r = r
+            if any("morning/afternoon" in t or "(m/a)" in t or "buổi" in t or "buoi" in t for t in row_txts) and ma_r is None: ma_r = r
+            if any("session" in t or "ca" in t or "phiên" in t or "phien" in t for t in row_txts) and s_r is None: s_r = r
+            if any("group nr" in t or "name ↓" in t or "id ↓" in t or "nhóm" in t or "nhom" in t or "họ và tên" in t or "ho va ten" in t or "mssv" in t or "stt" in t for t in row_txts) and h_r is None: h_r = r
             
         return y_r, m_r, d_r, dt_r, ma_r, s_r, h_r
 
@@ -429,22 +489,63 @@ class UniversalScheduleParser:
 
     def _parse_students_rows(self, h_r, name_col, id_col, group_col, nr_col):
         """Parse student info (skipping sub-headers)."""
+        header_row = self.grid[h_r]
+        start_col_idx = 1 if self.is_xlsx else 0
+        
+        detected_group = detected_nr = detected_name = detected_id = None
+        for c_idx in range(start_col_idx, len(header_row)):
+            cell = header_row[c_idx]
+            if not cell:
+                continue
+            text = cell.get("text", "").strip().lower() if isinstance(cell, dict) else str(cell).strip().lower()
+            if not text:
+                continue
+            
+            if any(x in text for x in ["group", "nhóm", "nhom"]) and detected_group is None:
+                detected_group = c_idx
+            elif any(x in text for x in ["nr", "no.", "stt", "number", "thứ tự", "thu tu"]) and detected_nr is None:
+                detected_nr = c_idx
+            elif any(x in text for x in ["name", "tên", "ten", "họ", "ho"]) and detected_name is None:
+                detected_name = c_idx
+            elif any(x in text for x in ["id", "mssv", "mã", "ma"]) and detected_id is None:
+                detected_id = c_idx
+                
+        # Assign to self so other methods can access the correct indices
+        self.group_col_idx = detected_group if detected_group is not None else group_col
+        self.nr_col_idx = detected_nr if detected_nr is not None else nr_col
+        self.name_col_idx = detected_name if detected_name is not None else name_col
+        self.id_col_idx = detected_id if detected_id is not None else id_col
+        
+        print(f"Phát hiện cột: Group={self.group_col_idx}, Nr={self.nr_col_idx}, Name={self.name_col_idx}, ID={self.id_col_idx}")
+        
         self.students = []
         start_idx = h_r + 1
         end_idx = len(self.grid)
         
         for r in range(start_idx, end_idx):
             row = self.grid[r]
-            if not row or len(row) < 5: continue
+            if not row or len(row) <= max(self.group_col_idx, self.nr_col_idx, self.name_col_idx, self.id_col_idx):
+                continue
             
-            group_nr = row[group_col]["text"] if row[group_col] else ""
-            student_nr = row[nr_col]["text"] if row[nr_col] else ""
-            name = row[name_col]["text"] if row[name_col] else ""
-            std_id = row[id_col]["text"] if row[id_col] else ""
+            group_nr = row[self.group_col_idx]["text"] if row[self.group_col_idx] else ""
+            student_nr = row[self.nr_col_idx]["text"] if row[self.nr_col_idx] else ""
+            name = row[self.name_col_idx]["text"] if row[self.name_col_idx] else ""
+            std_id = row[self.id_col_idx]["text"] if row[self.id_col_idx] else ""
 
             if not name and not std_id: continue
-            if name in ["Name ↓", "MSE", "ICT"] or name.startswith("Students:"): continue
+            if name in ["Name ↓", "MSE", "ICT", "Nhóm", "STT", "Họ và Tên", "MSSV"] or name.startswith("Students:"): continue
             
+            # Clean floating representation of student numbers and IDs
+            if group_nr.endswith('.0'):
+                try: group_nr = str(int(float(group_nr)))
+                except ValueError: pass
+            if student_nr.endswith('.0'):
+                try: student_nr = str(int(float(student_nr)))
+                except ValueError: pass
+            if std_id.endswith('.0'):
+                try: std_id = str(int(float(std_id)))
+                except ValueError: pass
+                
             self.students.append({
                 "row": r,
                 "group": group_nr,
