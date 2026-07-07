@@ -92,37 +92,7 @@ export function SystemPage() {
       </div>
 
       <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>
-        <Panel>
-          <PanelHeader eyebrow="Model Tuning" title="Recognition Thresholds"
-            action={
-              <Button variant="primary" size="sm" onClick={save} disabled={saving}>
-                {saved ? '✓ Saved' : saving ? 'Saving…' : 'Apply Changes'}
-              </Button>
-            }
-          />
-          <div className="flex flex-col gap-8">
-            <Slider label="Match Confidence Threshold" hint="Minimum confidence score to grant face access."
-              value={localConf} onChange={v => setLocalConf(v)} warn={localConf < 80} />
-            <Slider label="Liveness Threshold" hint="How aggressively the system rejects spoofing attempts."
-              value={localLiv} onChange={v => setLocalLiv(v)} />
-          </div>
-          {conf < 80 && (
-            <div className="flex items-start gap-3 px-4 py-3.5 bg-amber/5 border border-amber/20 rounded text-sm text-amber mt-7">
-              <span className="shrink-0">⚠</span> Low threshold increases false positives. Recommended minimum: 80%.
-            </div>
-          )}
-          {nodeConfig && (
-            <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
-              Updated {fmtTs(nodeConfig.updatedAt)} · {nodeConfig.updatedBy}
-            </p>
-          )}
-          {!nodeConfig && (
-            <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
-              No config found — defaults shown. Apply to create initial config.
-            </p>
-          )}
-        </Panel>
-
+        {/* Left Column - Live View and Hardware Metrics */}
         <div className="flex flex-col gap-5">
           {selectedLabId && selectedNodeId && (
             <Panel>
@@ -144,6 +114,41 @@ export function SystemPage() {
               <p className="font-mono text-[11px] text-[#94a3b8]">No telemetry — node offline or no node found.</p>
             )}
           </Panel>
+        </div>
+
+        {/* Right Column - Controls and Tuning */}
+        <div className="flex flex-col gap-5">
+          <Panel>
+            <PanelHeader eyebrow="Model Tuning" title="Recognition Thresholds"
+              action={
+                <Button variant="primary" size="sm" onClick={save} disabled={saving}>
+                  {saved ? '✓ Saved' : saving ? 'Saving…' : 'Apply Changes'}
+                </Button>
+              }
+            />
+            <div className="flex flex-col gap-8">
+              <Slider label="Match Confidence Threshold" hint="Minimum confidence score to grant face access."
+                value={localConf} onChange={v => setLocalConf(v)} warn={localConf < 80} />
+              <Slider label="Liveness Threshold" hint="How aggressively the system rejects spoofing attempts."
+                value={localLiv} onChange={v => setLocalLiv(v)} />
+            </div>
+            {conf < 80 && (
+              <div className="flex items-start gap-3 px-4 py-3.5 bg-amber/5 border border-amber/20 rounded text-sm text-amber mt-7">
+                <span className="shrink-0">⚠</span> Low threshold increases false positives. Recommended minimum: 80%.
+              </div>
+            )}
+            {nodeConfig && (
+              <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
+                Updated {fmtTs(nodeConfig.updatedAt)} · {nodeConfig.updatedBy}
+              </p>
+            )}
+            {!nodeConfig && (
+              <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
+                No config found — defaults shown. Apply to create initial config.
+              </p>
+            )}
+          </Panel>
+
           <Panel>
             <PanelHeader eyebrow="Notes" title="Testing Tips" />
             <ul className="flex flex-col gap-3">
