@@ -25,10 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install minimal python dependencies for the API server
 # (No NPU or OpenCV libraries needed on the central dashboard server)
-RUN pip install --no-cache-dir flask flask-cors numpy qdrant-client
+RUN pip install --no-cache-dir flask flask-cors numpy qdrant-client openpyxl
 
 # Copy backend Python source files
 COPY src/ /app/src/
+COPY run_schedule_parser.py /app/
 
 # Copy built React frontend assets from Stage 1 into the location expected by api_server.py
 COPY --from=frontend-builder /build/dist /app/web_app/dist

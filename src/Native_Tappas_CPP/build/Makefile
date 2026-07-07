@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP
+CMAKE_SOURCE_DIR = /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build
+CMAKE_BINARY_DIR = /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -168,6 +168,69 @@ face_align/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/build
 .PHONY : face_align/fast
 
+#=============================================================================
+# Target rules for targets named anti_spoofing
+
+# Build rule for target.
+anti_spoofing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 anti_spoofing
+.PHONY : anti_spoofing
+
+# fast build rule for target.
+anti_spoofing/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/build
+.PHONY : anti_spoofing/fast
+
+#=============================================================================
+# Target rules for targets named local_sync_client
+
+# Build rule for target.
+local_sync_client: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 local_sync_client
+.PHONY : local_sync_client
+
+# fast build rule for target.
+local_sync_client/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/build
+.PHONY : local_sync_client/fast
+
+#=============================================================================
+# Target rules for targets named auto_sync_watcher
+
+# Build rule for target.
+auto_sync_watcher: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 auto_sync_watcher
+.PHONY : auto_sync_watcher
+
+# fast build rule for target.
+auto_sync_watcher/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/build
+.PHONY : auto_sync_watcher/fast
+
+anti_spoofing.o: anti_spoofing.cpp.o
+.PHONY : anti_spoofing.o
+
+# target to build an object file
+anti_spoofing.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/anti_spoofing.cpp.o
+.PHONY : anti_spoofing.cpp.o
+
+anti_spoofing.i: anti_spoofing.cpp.i
+.PHONY : anti_spoofing.i
+
+# target to preprocess a source file
+anti_spoofing.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/anti_spoofing.cpp.i
+.PHONY : anti_spoofing.cpp.i
+
+anti_spoofing.s: anti_spoofing.cpp.s
+.PHONY : anti_spoofing.s
+
+# target to generate assembly for a file
+anti_spoofing.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/anti_spoofing.cpp.s
+.PHONY : anti_spoofing.cpp.s
+
 arcface_post.o: arcface_post.cpp.o
 .PHONY : arcface_post.o
 
@@ -191,6 +254,30 @@ arcface_post.s: arcface_post.cpp.s
 arcface_post.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/arcface_post.dir/build.make CMakeFiles/arcface_post.dir/arcface_post.cpp.s
 .PHONY : arcface_post.cpp.s
+
+auto_sync_watcher.o: auto_sync_watcher.cpp.o
+.PHONY : auto_sync_watcher.o
+
+# target to build an object file
+auto_sync_watcher.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/auto_sync_watcher.cpp.o
+.PHONY : auto_sync_watcher.cpp.o
+
+auto_sync_watcher.i: auto_sync_watcher.cpp.i
+.PHONY : auto_sync_watcher.i
+
+# target to preprocess a source file
+auto_sync_watcher.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/auto_sync_watcher.cpp.i
+.PHONY : auto_sync_watcher.cpp.i
+
+auto_sync_watcher.s: auto_sync_watcher.cpp.s
+.PHONY : auto_sync_watcher.s
+
+# target to generate assembly for a file
+auto_sync_watcher.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/auto_sync_watcher.cpp.s
+.PHONY : auto_sync_watcher.cpp.s
 
 db_matcher_post.o: db_matcher_post.cpp.o
 .PHONY : db_matcher_post.o
@@ -240,6 +327,30 @@ face_align.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/face_align.cpp.s
 .PHONY : face_align.cpp.s
 
+local_sync_client.o: local_sync_client.cpp.o
+.PHONY : local_sync_client.o
+
+# target to build an object file
+local_sync_client.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/local_sync_client.cpp.o
+.PHONY : local_sync_client.cpp.o
+
+local_sync_client.i: local_sync_client.cpp.i
+.PHONY : local_sync_client.i
+
+# target to preprocess a source file
+local_sync_client.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/local_sync_client.cpp.i
+.PHONY : local_sync_client.cpp.i
+
+local_sync_client.s: local_sync_client.cpp.s
+.PHONY : local_sync_client.s
+
+# target to generate assembly for a file
+local_sync_client.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/local_sync_client.cpp.s
+.PHONY : local_sync_client.cpp.s
+
 yolo26_landmark_post.o: yolo26_landmark_post.cpp.o
 .PHONY : yolo26_landmark_post.o
 
@@ -272,19 +383,31 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... anti_spoofing"
 	@echo "... arcface_post"
+	@echo "... auto_sync_watcher"
 	@echo "... db_matcher_post"
 	@echo "... face_align"
+	@echo "... local_sync_client"
 	@echo "... yolo26_landmark_post"
+	@echo "... anti_spoofing.o"
+	@echo "... anti_spoofing.i"
+	@echo "... anti_spoofing.s"
 	@echo "... arcface_post.o"
 	@echo "... arcface_post.i"
 	@echo "... arcface_post.s"
+	@echo "... auto_sync_watcher.o"
+	@echo "... auto_sync_watcher.i"
+	@echo "... auto_sync_watcher.s"
 	@echo "... db_matcher_post.o"
 	@echo "... db_matcher_post.i"
 	@echo "... db_matcher_post.s"
 	@echo "... face_align.o"
 	@echo "... face_align.i"
 	@echo "... face_align.s"
+	@echo "... local_sync_client.o"
+	@echo "... local_sync_client.i"
+	@echo "... local_sync_client.s"
 	@echo "... yolo26_landmark_post.o"
 	@echo "... yolo26_landmark_post.i"
 	@echo "... yolo26_landmark_post.s"

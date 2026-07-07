@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -fPIC -Wall -Wl,--dependency-file=CMakeFiles/auto_sync_watcher.dir/link.d CMakeFiles/auto_sync_watcher.dir/auto_sync_watcher.cpp.o -o auto_sync_watcher  -lsqlite3

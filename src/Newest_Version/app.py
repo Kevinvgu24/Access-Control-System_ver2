@@ -760,8 +760,8 @@ class ProfessionalSmartDoor:
             # Chuyển đổi định dạng kích thước chuẩn 112x112 RGB cho ArcFace
             f"video/x-raw, width=112, height=112, format=RGB ! "
 
-            # [Python Probe] Căn chỉnh khuôn mặt sẽ được thực hiện bởi on_face_crop_probe
-            # đăng ký trên src pad của queue này (sau khi pipeline được khởi tạo)
+            # [C++] Căn chỉnh khuôn mặt bằng 5 điểm landmark của YOLO (Affine Partial 2D)
+            f"hailofilter so-path={face_align_so} ! "
             f"queue name=queue_align max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! "
 
             # [NPU] Chạy mô hình trích xuất đặc trưng ArcFace (512 chiều) trên NPU
@@ -800,18 +800,8 @@ class ProfessionalSmartDoor:
         pad = overlay.get_static_pad("sink")
         pad.add_probe(Gst.PadProbeType.BUFFER, self.on_new_frame_probe, None)
 
-        # [CĂN CHỈNH] Đăng ký probe trên queue_align src pad để căn chỉnh khuôn mặt
-        # trước khi ArcFace NPU xử lý embedding
-        align_queue = self.pipeline.get_by_name("queue_align")
-        if align_queue:
-            align_pad = align_queue.get_static_pad("src")
-            if align_pad:
-                align_pad.add_probe(Gst.PadProbeType.BUFFER, self.on_face_crop_probe, None)
-                logger.info("[Face Aligner] Python probe registered on queue_align.src")
-            else:
-                logger.warning("Could not get queue_align src pad")
-        else:
-            logger.warning("queue_align element not found")
+        # [CĂN CHỈNH] Căn chỉnh khuôn mặt hiện được thực hiện tự động bằng C++ plugin (libface_align.so)
+        # tích hợp trực tiếp trong GStreamer pipeline trước queue_align. Không cần Python probe.
 
         if appsink_callback is not None:
             appsink = self.pipeline.get_by_name("appsink")

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
@@ -23,6 +23,41 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter]   = useState<UserRole | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all')
   const [menuOpen, setMenuOpen]       = useState<string | null>(null)
+  const [importing, setImporting]     = useState(false)
+  const fileInputRef                  = useRef<HTMLInputElement>(null)
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedLabId) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    setImporting(true)
+    try {
+      const response = await fetch(`/api/labs/${selectedLabId}/users/import-excel`, {
+        method: 'POST',
+        body: formData
+      })
+      const result = await response.json()
+      if (response.ok) {
+        const fmtName = result.format === 'schedule_template' ? 'Schedule Template' : 'Standard List';
+        alert(`Successfully imported Excel (${fmtName}):\n- ${result.inserted} new users added\n- ${result.updated} users updated`)
+        refreshUsers(selectedLabId)
+      } else {
+        alert(result.error || 'Failed to import Excel file')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'An error occurred during import')
+    } finally {
+      setImporting(false)
+      if (e.target) e.target.value = ''
+    }
+  }
 
   const filtered = users.filter(u =>
     (!search || u.fullName.toLowerCase().includes(search.toLowerCase()) || u.universityId.includes(search)) &&
@@ -56,6 +91,10 @@ export function UsersPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => selectedLabId && refreshUsers(selectedLabId)}>↻ Refresh</Button>
+          <input type="file" ref={fileInputRef} accept=".xlsx" onChange={handleImportExcel} className="hidden" />
+          <Button variant="ghost" onClick={triggerFileInput} disabled={importing}>
+            {importing ? 'Importing...' : '📥 Import Excel'}
+          </Button>
           <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add New User</Button>
         </div>
       </div>

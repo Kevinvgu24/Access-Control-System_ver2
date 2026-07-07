@@ -471,34 +471,60 @@ class InterfaceMonitorApp(QMainWindow):
                                 self.last_detection_time = now
                                 return
                         
-                        # Liveness passed! Unlock
-                        self.tabAccess.lblScanStatus.setText("🔓 ACCESS GRANTED")
-                        self.tabAccess.lblScanStatus.setStyleSheet("""
-                            color: #10b981;
-                            font-size: 24px;
-                            font-weight: bold;
-                            padding: 20px;
-                            background-color: rgba(16, 185, 129, 0.08);
-                            border-radius: 8px;
-                            border: 1px solid rgba(16, 185, 129, 0.25);
-                        """)
-                        self.tabAccess.lblScanDetails.setText(f"Welcome back, {name} (Recognized)!")
+                        # Liveness passed! Check schedule before unlock
+                        is_allowed, university_id, schedule_msg = self.check_user_schedule_today(name)
                         
-                        # Automatically unlock the door (only once per session)
-                        self.unlock_door()
-                        self.user_unlocked_this_session = True
-                        
-                        # Log the event exactly once
-                        self.add_log("Scan", f"Granted: {name} (Recognized)")
-                        self.last_logged_name = name
-                        self.last_logged_time = now
-                        
-                        self.log_event_async(
-                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                            userId="", universityId="", displayName=name, method="face",
-                            result="granted", reason="Face match + Liveness verified",
-                            confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
-                        )
+                        if is_allowed:
+                            self.tabAccess.lblScanStatus.setText("🔓 ACCESS GRANTED")
+                            self.tabAccess.lblScanStatus.setStyleSheet("""
+                                color: #10b981;
+                                font-size: 24px;
+                                font-weight: bold;
+                                padding: 20px;
+                                background-color: rgba(16, 185, 129, 0.08);
+                                border-radius: 8px;
+                                border: 1px solid rgba(16, 185, 129, 0.25);
+                            """)
+                            self.tabAccess.lblScanDetails.setText(f"Welcome back, {name}!\n{schedule_msg}")
+                            
+                            self.unlock_door()
+                            self.user_unlocked_this_session = True
+                            
+                            self.add_log("Scan", f"Granted: {name} (Recognized) - {schedule_msg}")
+                            self.last_logged_name = name
+                            self.last_logged_time = now
+                            
+                            self.log_event_async(
+                                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                userId="", universityId=university_id, displayName=name, method="face",
+                                result="granted", reason=f"Face ID + Liveness: {schedule_msg}",
+                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                            )
+                        else:
+                            self.tabAccess.lblScanStatus.setText("🚫 ACCESS DENIED")
+                            self.tabAccess.lblScanStatus.setStyleSheet("""
+                                color: #ef4444;
+                                font-size: 20px;
+                                font-weight: bold;
+                                padding: 20px;
+                                background-color: rgba(239, 68, 68, 0.1);
+                                border-radius: 8px;
+                                border: 2px solid #ef4444;
+                            """)
+                            self.tabAccess.lblScanDetails.setText(f"{name}: {schedule_msg}")
+                            
+                            self.user_unlocked_this_session = True
+                            
+                            self.add_log("Scan", f"Denied: {name} - {schedule_msg}")
+                            self.last_logged_name = name
+                            self.last_logged_time = now
+                            
+                            self.log_event_async(
+                                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                userId="", universityId=university_id, displayName=name, method="face",
+                                result="denied", reason=schedule_msg,
+                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                            )
                 else:
                     # Show remaining progress countdown
                     remaining = max(0.0, 2.0 - duration)
@@ -642,6 +668,55 @@ class InterfaceMonitorApp(QMainWindow):
         # [MEM] Buộc CPython giải phóng ngay lập tức thay vì đợi vòng GC tiếp theo
         gc.collect()
 
+    def check_user_schedule_today(self, name):
+        """Checks if a student is scheduled for any lab session today. Bypasses for admins/faculty."""
+        import sqlite3
+        import datetime
+        
+        if not self.door_app or not self.door_app.db:
+            return True, "", "Offline bypass (system initializing)"
+            
+        db_path = self.door_app.db.db_path
+        try:
+            conn = sqlite3.connect(db_path)
+            c = conn.cursor()
+            
+            # Fetch role and university_id
+            c.execute("SELECT role, university_id FROM users WHERE name = ?", (name,))
+            row = c.fetchone()
+            if not row:
+                conn.close()
+                return True, "", "Unknown User profile"
+                
+            role, university_id = row
+            if role != 'student':
+                conn.close()
+                return True, university_id, f"Allowed bypass ({role})"
+                
+            # Check if there are any schedules stored at all
+            c.execute("SELECT COUNT(*) FROM lab_schedules")
+            total_scheds = c.fetchone()[0]
+            if total_scheds == 0:
+                conn.close()
+                return True, university_id, "No schedules uploaded (Default allowed)"
+                
+            # Get today's date in YYYY-MM-DD
+            today_str = datetime.date.today().isoformat()
+            
+            # Check schedule
+            c.execute("SELECT experiment, session_num, ma FROM lab_schedules WHERE student_id = ? AND date = ?", (university_id, today_str))
+            scheds = c.fetchall()
+            conn.close()
+            
+            if scheds:
+                details = ", ".join(f"Session {r[1]} ({r[2]}): {r[0]}" for r in scheds)
+                return True, university_id, f"Scheduled: {details}"
+            else:
+                return False, university_id, "Access Denied: No lab session scheduled for today."
+        except Exception as e:
+            logger.error(f"Error checking schedule: {e}")
+            return True, "", f"Schedule check error (allowed): {e}"
+
     def handle_pin_submitted(self, pin):
         """Validates touch-pad PIN entries against local SQLite and grants access upon verification."""
         import sqlite3
@@ -661,15 +736,37 @@ class InterfaceMonitorApp(QMainWindow):
                 logger.error(f"[PIN DB ERROR] {e}")
 
         if user_name:
-            self.add_log("Keypad", f"Correct PIN entered by {user_name}.")
-            self.log_event_async(
-                labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                userId="", universityId="", displayName=user_name, method="pin",
-                result="granted", reason="PIN validation success",
-                confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
-            )
-            self.unlock_door()
-            self.tabs.setCurrentIndex(0)  # Navigate back to Access Home
+            if user_name == "Master Admin":
+                self.add_log("Keypad", "Correct PIN entered by Master Admin.")
+                self.log_event_async(
+                    labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                    userId="", universityId="", displayName="Master Admin", method="pin",
+                    result="granted", reason="Master PIN validation success",
+                    confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
+                )
+                self.unlock_door()
+                self.tabs.setCurrentIndex(0)
+            else:
+                is_allowed, university_id, schedule_msg = self.check_user_schedule_today(user_name)
+                if is_allowed:
+                    self.add_log("Keypad", f"Correct PIN entered by {user_name}. {schedule_msg}")
+                    self.log_event_async(
+                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                        userId="", universityId=university_id, displayName=user_name, method="pin",
+                        result="granted", reason=f"PIN validation: {schedule_msg}",
+                        confidence=1.0, livenessScore=1.0, pinFallbackUsed=1
+                    )
+                    self.unlock_door()
+                    self.tabs.setCurrentIndex(0)
+                else:
+                    self.add_log("Keypad", f"Access Denied for {user_name} via PIN: {schedule_msg}")
+                    self.log_event_async(
+                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                        userId="", universityId=university_id, displayName=user_name, method="pin",
+                        result="denied", reason=schedule_msg,
+                        confidence=0.0, livenessScore=0.0, pinFallbackUsed=1
+                    )
+                    QMessageBox.warning(self, "Access Denied", f"{user_name}: {schedule_msg}")
         else:
             self.add_log("Keypad", "Warning: Incorrect PIN attempt.")
             self.log_event_async(

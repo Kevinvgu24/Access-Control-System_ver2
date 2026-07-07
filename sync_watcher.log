@@ -1,0 +1,8 @@
+=========================================================
+   STARTING INOTIFY C++ DATABASE DIRECTORY WATCHER DEEMON 
+Watching directory: /home/kevinvgu/Access-Control-System_ver2/database
+SQLite Database:    /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
+YOLO model:         /home/kevinvgu/Access-Control-System_ver2/models/yolo26_landmark.hef
+ArcFace model:      /home/kevinvgu/Access-Control-System_ver2/models/arcface_mobilefacenet.hef
+=========================================================
+

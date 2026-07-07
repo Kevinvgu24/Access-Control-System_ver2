@@ -6,17 +6,77 @@ import hashlib
 import numpy as np
 import time
 import threading
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
+
+def parse_xlsx(file_stream):
+    """
+    Parses a basic .xlsx file stream without external dependencies (pandas/openpyxl).
+    Returns a list of dictionaries mapping column letters (A, B, C...) to string values.
+    """
+    with zipfile.ZipFile(file_stream) as z:
+        # 1. Read shared strings
+        shared_strings = []
+        try:
+            with z.open("xl/sharedStrings.xml") as f:
+                tree = ET.parse(f)
+                root = tree.getroot()
+                # Find all text elements. The tags are usually {namespace}t
+                for elem in root.iter():
+                    if elem.tag.endswith('}t') or elem.tag == 't':
+                        shared_strings.append(elem.text or "")
+        except KeyError:
+            pass  # No shared strings
+
+        # 2. Read sheet1.xml
+        with z.open("xl/worksheets/sheet1.xml") as f:
+            tree = ET.parse(f)
+            root = tree.getroot()
+            
+            # Find the row elements
+            rows_data = []
+            for row in root.iter():
+                if row.tag.endswith('}row') or row.tag == 'row':
+                    row_cells = {}
+                    for c in row:
+                        if c.tag.endswith('}c') or c.tag == 'c':
+                            r_attr = c.attrib.get('r', '')  # e.g., "A1"
+                            col_letter = ''.join([char for char in r_attr if char.isalpha()])
+                            t_attr = c.attrib.get('t', '')
+                            
+                            val = ""
+                            v_elem = None
+                            for child in c:
+                                if child.tag.endswith('}v') or child.tag == 'v':
+                                    v_elem = child
+                                    break
+                            
+                            if v_elem is not None:
+                                val = v_elem.text or ""
+                                if t_attr == 's':  # shared string index
+                                    try:
+                                        val = shared_strings[int(val)]
+                                    except (ValueError, IndexError):
+                                        pass
+                            row_cells[col_letter] = val
+                    if row_cells:
+                        rows_data.append(row_cells)
+            return rows_data
 
 # Add parent directory to path to allow importing database module
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
+project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from database import FaceDatabase
 from logger import get_logger
+from run_schedule_parser import UniversalScheduleParser
 
 logger = get_logger("api_server")
 
@@ -377,6 +437,155 @@ def get_users(lab_id):
         
     return jsonify(users_list)
 
+# 8b. Import Users from Excel
+@app.route("/api/labs/<lab_id>/users/import-excel", methods=["POST"])
+def import_users_excel(lab_id):
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+        
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+        
+    if not file.filename.lower().endswith(".xlsx"):
+        return jsonify({"error": "Only .xlsx Excel files are supported"}), 400
+        
+    import tempfile
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            file.save(tmp.name)
+            temp_path = tmp.name
+
+        students_to_import = []
+        is_schedule_format = False
+
+        # Try to parse as Universal Schedule Excel format first
+        try:
+            parser = UniversalScheduleParser(temp_path)
+            parser.parse()
+            if parser.students:
+                is_schedule_format = True
+                for std in parser.students:
+                    students_to_import.append({
+                        "mssv": std["id"],
+                        "name": std["name"],
+                        "email": f"{std['id']}@student.vgu.edu.vn" if std["id"] else "",
+                        "pin": "",
+                        "status": "active"
+                    })
+        except Exception as e:
+            logger.info(f"Could not parse as schedule template, trying flat table format: {e}")
+
+        # Fallback to simple flat format if schedule format failed or yielded no students
+        if not is_schedule_format or not students_to_import:
+            with open(temp_path, "rb") as f_stream:
+                rows_data = parse_xlsx(f_stream)
+                
+            if not rows_data or len(rows_data) < 2:
+                return jsonify({"error": "Excel file is empty or has no data rows"}), 400
+                
+            # Parse headers from first row
+            header_row = rows_data[0]
+            col_mapping = {}
+            for col_letter, val in header_row.items():
+                val_lower = str(val).strip().lower()
+                if any(x in val_lower for x in ["mssv", "mã sinh viên", "student id", "student_code", "code"]):
+                    col_mapping['mssv'] = col_letter
+                elif any(x in val_lower for x in ["họ tên", "họ và tên", "full name", "name"]):
+                    col_mapping['name'] = col_letter
+                elif "email" in val_lower:
+                    col_mapping['email'] = col_letter
+                elif any(x in val_lower for x in ["trạng thái", "status", "allowed", "hoạt động"]):
+                    col_mapping['status'] = col_letter
+                elif "pin" in val_lower:
+                    col_mapping['pin'] = col_letter
+
+            # Fallbacks
+            if 'mssv' not in col_mapping: col_mapping['mssv'] = 'A'
+            if 'name' not in col_mapping: col_mapping['name'] = 'B'
+            if 'email' not in col_mapping: col_mapping['email'] = 'C'
+            if 'status' not in col_mapping: col_mapping['status'] = 'D'
+            if 'pin' not in col_mapping: col_mapping['pin'] = 'E'
+
+            for row in rows_data[1:]:
+                mssv = str(row.get(col_mapping['mssv'], '')).strip()
+                name = str(row.get(col_mapping['name'], '')).strip()
+                email = str(row.get(col_mapping['email'], '')).strip()
+                status_raw = str(row.get(col_mapping['status'], '')).strip().lower()
+                pin = str(row.get(col_mapping['pin'], '')).strip()
+                
+                # Remove decimal part if it was imported as float (e.g. 12345.0)
+                if pin.endswith(".0"): pin = pin[:-2]
+                if mssv.endswith(".0"): mssv = mssv[:-2]
+                    
+                if not mssv or not name or mssv == "None" or name == "None":
+                    continue
+                    
+                is_allowed = True
+                if any(x in status_raw for x in ["không", "suspend", "block", "cấm", "khóa", "false", "0"]):
+                    is_allowed = False
+                    
+                status = "active" if is_allowed else "suspended"
+                students_to_import.append({
+                    "mssv": mssv,
+                    "name": name,
+                    "email": email,
+                    "pin": pin,
+                    "status": status
+                })
+
+        # Process DB insertions/updates
+        inserted_count = 0
+        updated_count = 0
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        for std in students_to_import:
+            mssv = std["mssv"]
+            name = std["name"]
+            email = std["email"]
+            pin = std["pin"]
+            status = std["status"]
+            
+            c.execute("SELECT id FROM users WHERE university_id = ?", (mssv,))
+            exists_row = c.fetchone()
+            
+            if exists_row:
+                # Update existing user
+                c.execute("""
+                    UPDATE users 
+                    SET name = ?, email = ?, status = ?, pin = ?, pinStatus = ?, updatedAt = datetime('now')
+                    WHERE university_id = ?
+                """, (name, email, status, pin, 'set' if pin else 'missing', mssv))
+                updated_count += 1
+            else:
+                # Insert new user (faceStatus starts as incomplete until they enroll their face)
+                c.execute("""
+                    INSERT INTO users (name, university_id, email, password, role, status, faceStatus, pinStatus, pin, embedding, createdAt)
+                    VALUES (?, ?, ?, '', 'student', ?, 'incomplete', ?, ?, NULL, datetime('now'))
+                """, (name, mssv, email, status, 'set' if pin else 'missing', pin))
+                inserted_count += 1
+                
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "inserted": inserted_count,
+            "updated": updated_count,
+            "format": "schedule_template" if is_schedule_format else "flat_table"
+        })
+    except Exception as e:
+        logger.error(f"Excel import failed: {e}")
+        return jsonify({"error": f"Failed to parse Excel file: {str(e)}"}), 500
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
 # 9. Enroll New User from Web App
 @app.route("/api/labs/<lab_id>/enroll", methods=["POST"])
 def enroll_user(lab_id):
@@ -730,9 +939,106 @@ def identify_face():
     except Exception as e:
         return jsonify({"error": f"Search failed: {str(e)}"}), 500
 
+# 19. Retrieve Lab Schedules
+@app.route("/api/labs/<lab_id>/schedules", methods=["GET"])
+def get_lab_schedules(lab_id):
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("""
+        SELECT id, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt 
+        FROM lab_schedules 
+        WHERE labId = ?
+        ORDER BY date ASC, session_num ASC
+    """, (lab_id,))
+    rows = c.fetchall()
+    conn.close()
+    
+    schedules = [dict(row) for row in rows]
+    return jsonify(schedules)
+
+# 20. Import Lab Schedules from Excel
+@app.route("/api/labs/<lab_id>/schedules/import", methods=["POST"])
+def import_lab_schedules(lab_id):
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+        
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+        
+    if not file.filename.lower().endswith((".xlsx", ".html", ".htm")):
+        return jsonify({"error": "Unsupported file format. Please upload .xlsx or .html schedule file"}), 400
+        
+    import tempfile
+    suffix = ".xlsx" if file.filename.lower().endswith(".xlsx") else ".html"
+    temp_path = None
+    
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            file.save(tmp.name)
+            temp_path = tmp.name
+            
+        parser = UniversalScheduleParser(temp_path)
+        records = parser.parse()
+        
+        if not records:
+            return jsonify({"error": "No schedule records found in the uploaded file"}), 400
+            
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Clear existing schedules for this lab
+        c.execute("DELETE FROM lab_schedules WHERE labId = ?", (lab_id,))
+        
+        # Insert new records
+        now_str = datetime.now().isoformat()
+        insert_data = []
+        for r in records:
+            insert_data.append((
+                lab_id,
+                r.get("student_id", ""),
+                r.get("student_name", ""),
+                r.get("group_nr", ""),
+                r.get("student_nr", ""),
+                r.get("date", ""),
+                r.get("day_of_week", ""),
+                r.get("ma", ""),
+                r.get("session_num", ""),
+                r.get("experiment", ""),
+                now_str
+            ))
+            
+        c.executemany("""
+            INSERT INTO lab_schedules 
+                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, insert_data)
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "count": len(records)
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to import schedules: {e}")
+        return jsonify({"error": f"Failed to parse and save schedules: {str(e)}"}), 500
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
 if __name__ == "__main__":
     logger.info("=== STARTING OFFLINE ACCESS CONTROL API SERVER ===")
     logger.info(f"Database Path: {db_path}")
     logger.info(f"Web Static Files Path: {static_dir}")
     logger.info("Running locally on http://0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    
+    # Run with debug mode only if FLASK_DEBUG env var is set to 1
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)

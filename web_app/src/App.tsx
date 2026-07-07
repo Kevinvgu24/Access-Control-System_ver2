@@ -7,6 +7,7 @@ import { LabSelectorPage } from '@/pages/LabSelectorPage'
 import { OverviewPage }    from '@/pages/OverviewPage'
 import { UsersPage }       from '@/pages/UsersPage'
 import { EnrollmentPage }  from '@/pages/EnrollmentPage'
+import { SchedulesPage }   from '@/pages/SchedulesPage'
 import { LogsPage }        from '@/pages/LogsPage'
 import { SystemPage }      from '@/pages/SystemPage'
 import { ControlPage }     from '@/pages/ControlPage'
@@ -101,6 +102,7 @@ function AuthenticatedApp() {
                 <Route path="/overview"   element={<OverviewPage />} />
                 <Route path="/users"      element={<UsersPage />} />
                 <Route path="/enrollment" element={<EnrollmentPage />} />
+                <Route path="/schedules"  element={<SchedulesPage />} />
                 <Route path="/logs"       element={<LogsPage />} />
                 <Route path="/system"     element={<SystemPage />} />
               </>

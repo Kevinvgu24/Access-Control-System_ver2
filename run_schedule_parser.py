@@ -191,7 +191,8 @@ class UniversalScheduleParser:
 
     def _parse_xlsx(self):
         print(f"Đang đọc tệp Excel (.xlsx): {self.path}...")
-        temp_file = "temp_parsing_schedule.xlsx"
+        import uuid
+        temp_file = f"temp_parsing_schedule_{uuid.uuid4().hex}.xlsx"
         shutil.copy(self.path, temp_file)
         
         try:

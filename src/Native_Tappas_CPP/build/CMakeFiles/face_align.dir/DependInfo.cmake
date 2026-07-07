@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/face_align.cpp" "CMakeFiles/face_align.dir/face_align.cpp.o" "gcc" "CMakeFiles/face_align.dir/face_align.cpp.o.d"
+  "/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/face_align.cpp" "CMakeFiles/face_align.dir/face_align.cpp.o" "gcc" "CMakeFiles/face_align.dir/face_align.cpp.o.d"
   "" "libface_align.so" "gcc" "CMakeFiles/face_align.dir/link.d"
   )
 

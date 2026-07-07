@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -fPIC -Wall -Wl,--dependency-file=CMakeFiles/local_sync_client.dir/link.d CMakeFiles/local_sync_client.dir/local_sync_client.cpp.o -o local_sync_client  /usr/lib/aarch64-linux-gnu/libcurl.so -lsqlite3

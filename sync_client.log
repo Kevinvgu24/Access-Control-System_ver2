@@ -1,31 +1,84 @@
-
 =========================================================
-   STARTING EDGE NODE -> CENTRAL SERVER SYNC CLIENT   
+   STARTING EDGE NODE -> CENTRAL SERVER C++ SYNC CLIENT  
 Server URL:   http://192.168.1.244:5000
 Lab ID:       default-lab
 Node ID:      default-node
 Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 =========================================================
 
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [LOG SYNC] Pushing 1 unsynced access events to server...
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 15 unsynced access events...
   [+] Access events synced successfully.
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [LOG SYNC] Pushing 1 unsynced access events to server...
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
   [+] Access events synced successfully.
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
-[*] [TELEMETRY] Telemetry pushed successfully to server (IP: http://192.168.1.244:5000), IR streaming flag = True
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1

@@ -29,6 +29,7 @@ class FaceDatabase:
     def _init_db(self):
         conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
+        c.execute("PRAGMA journal_mode=WAL;")
         
         # 1. Tạo bảng users mở rộng
         c.execute('''
@@ -172,6 +173,23 @@ class FaceDatabase:
                 displayName TEXT,
                 type TEXT DEFAULT 'super_admin',
                 status TEXT DEFAULT 'active',
+                createdAt TEXT
+            )
+        ''')
+
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS lab_schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                labId TEXT,
+                student_id TEXT,
+                student_name TEXT,
+                group_nr TEXT,
+                student_nr TEXT,
+                date TEXT,
+                day_of_week TEXT,
+                ma TEXT,
+                session_num TEXT,
+                experiment TEXT,
                 createdAt TEXT
             )
         ''')

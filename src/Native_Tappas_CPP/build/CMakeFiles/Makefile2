@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP
+CMAKE_SOURCE_DIR = /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build
+CMAKE_BINARY_DIR = /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -67,6 +67,9 @@ all: CMakeFiles/yolo26_landmark_post.dir/all
 all: CMakeFiles/arcface_post.dir/all
 all: CMakeFiles/db_matcher_post.dir/all
 all: CMakeFiles/face_align.dir/all
+all: CMakeFiles/anti_spoofing.dir/all
+all: CMakeFiles/local_sync_client.dir/all
+all: CMakeFiles/auto_sync_watcher.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
@@ -74,6 +77,9 @@ codegen: CMakeFiles/yolo26_landmark_post.dir/codegen
 codegen: CMakeFiles/arcface_post.dir/codegen
 codegen: CMakeFiles/db_matcher_post.dir/codegen
 codegen: CMakeFiles/face_align.dir/codegen
+codegen: CMakeFiles/anti_spoofing.dir/codegen
+codegen: CMakeFiles/local_sync_client.dir/codegen
+codegen: CMakeFiles/auto_sync_watcher.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -85,6 +91,9 @@ clean: CMakeFiles/yolo26_landmark_post.dir/clean
 clean: CMakeFiles/arcface_post.dir/clean
 clean: CMakeFiles/db_matcher_post.dir/clean
 clean: CMakeFiles/face_align.dir/clean
+clean: CMakeFiles/anti_spoofing.dir/clean
+clean: CMakeFiles/local_sync_client.dir/clean
+clean: CMakeFiles/auto_sync_watcher.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -94,14 +103,14 @@ clean: CMakeFiles/face_align.dir/clean
 CMakeFiles/yolo26_landmark_post.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolo26_landmark_post.dir/build.make CMakeFiles/yolo26_landmark_post.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolo26_landmark_post.dir/build.make CMakeFiles/yolo26_landmark_post.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=7,8 "Built target yolo26_landmark_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=13,14 "Built target yolo26_landmark_post"
 .PHONY : CMakeFiles/yolo26_landmark_post.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/yolo26_landmark_post.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/yolo26_landmark_post.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
 .PHONY : CMakeFiles/yolo26_landmark_post.dir/rule
 
 # Convenience name for target.
@@ -111,7 +120,7 @@ yolo26_landmark_post: CMakeFiles/yolo26_landmark_post.dir/rule
 # codegen rule for target.
 CMakeFiles/yolo26_landmark_post.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolo26_landmark_post.dir/build.make CMakeFiles/yolo26_landmark_post.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=7,8 "Finished codegen for target yolo26_landmark_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=13,14 "Finished codegen for target yolo26_landmark_post"
 .PHONY : CMakeFiles/yolo26_landmark_post.dir/codegen
 
 # clean rule for target.
@@ -126,14 +135,14 @@ CMakeFiles/yolo26_landmark_post.dir/clean:
 CMakeFiles/arcface_post.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/arcface_post.dir/build.make CMakeFiles/arcface_post.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/arcface_post.dir/build.make CMakeFiles/arcface_post.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=1,2 "Built target arcface_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=3,4 "Built target arcface_post"
 .PHONY : CMakeFiles/arcface_post.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/arcface_post.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/arcface_post.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
 .PHONY : CMakeFiles/arcface_post.dir/rule
 
 # Convenience name for target.
@@ -143,7 +152,7 @@ arcface_post: CMakeFiles/arcface_post.dir/rule
 # codegen rule for target.
 CMakeFiles/arcface_post.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/arcface_post.dir/build.make CMakeFiles/arcface_post.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=1,2 "Finished codegen for target arcface_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=3,4 "Finished codegen for target arcface_post"
 .PHONY : CMakeFiles/arcface_post.dir/codegen
 
 # clean rule for target.
@@ -158,14 +167,14 @@ CMakeFiles/arcface_post.dir/clean:
 CMakeFiles/db_matcher_post.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/db_matcher_post.dir/build.make CMakeFiles/db_matcher_post.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/db_matcher_post.dir/build.make CMakeFiles/db_matcher_post.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=3,4 "Built target db_matcher_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=7,8 "Built target db_matcher_post"
 .PHONY : CMakeFiles/db_matcher_post.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/db_matcher_post.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/db_matcher_post.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
 .PHONY : CMakeFiles/db_matcher_post.dir/rule
 
 # Convenience name for target.
@@ -175,7 +184,7 @@ db_matcher_post: CMakeFiles/db_matcher_post.dir/rule
 # codegen rule for target.
 CMakeFiles/db_matcher_post.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/db_matcher_post.dir/build.make CMakeFiles/db_matcher_post.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=3,4 "Finished codegen for target db_matcher_post"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=7,8 "Finished codegen for target db_matcher_post"
 .PHONY : CMakeFiles/db_matcher_post.dir/codegen
 
 # clean rule for target.
@@ -190,14 +199,14 @@ CMakeFiles/db_matcher_post.dir/clean:
 CMakeFiles/face_align.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=5,6 "Built target face_align"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=9,10 "Built target face_align"
 .PHONY : CMakeFiles/face_align.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/face_align.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/face_align.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
 .PHONY : CMakeFiles/face_align.dir/rule
 
 # Convenience name for target.
@@ -207,13 +216,109 @@ face_align: CMakeFiles/face_align.dir/rule
 # codegen rule for target.
 CMakeFiles/face_align.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=5,6 "Finished codegen for target face_align"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=9,10 "Finished codegen for target face_align"
 .PHONY : CMakeFiles/face_align.dir/codegen
 
 # clean rule for target.
 CMakeFiles/face_align.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/face_align.dir/build.make CMakeFiles/face_align.dir/clean
 .PHONY : CMakeFiles/face_align.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/anti_spoofing.dir
+
+# All Build rule for target.
+CMakeFiles/anti_spoofing.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=1,2 "Built target anti_spoofing"
+.PHONY : CMakeFiles/anti_spoofing.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/anti_spoofing.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/anti_spoofing.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
+.PHONY : CMakeFiles/anti_spoofing.dir/rule
+
+# Convenience name for target.
+anti_spoofing: CMakeFiles/anti_spoofing.dir/rule
+.PHONY : anti_spoofing
+
+# codegen rule for target.
+CMakeFiles/anti_spoofing.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=1,2 "Finished codegen for target anti_spoofing"
+.PHONY : CMakeFiles/anti_spoofing.dir/codegen
+
+# clean rule for target.
+CMakeFiles/anti_spoofing.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/anti_spoofing.dir/build.make CMakeFiles/anti_spoofing.dir/clean
+.PHONY : CMakeFiles/anti_spoofing.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/local_sync_client.dir
+
+# All Build rule for target.
+CMakeFiles/local_sync_client.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=11,12 "Built target local_sync_client"
+.PHONY : CMakeFiles/local_sync_client.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/local_sync_client.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/local_sync_client.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
+.PHONY : CMakeFiles/local_sync_client.dir/rule
+
+# Convenience name for target.
+local_sync_client: CMakeFiles/local_sync_client.dir/rule
+.PHONY : local_sync_client
+
+# codegen rule for target.
+CMakeFiles/local_sync_client.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=11,12 "Finished codegen for target local_sync_client"
+.PHONY : CMakeFiles/local_sync_client.dir/codegen
+
+# clean rule for target.
+CMakeFiles/local_sync_client.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/local_sync_client.dir/build.make CMakeFiles/local_sync_client.dir/clean
+.PHONY : CMakeFiles/local_sync_client.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/auto_sync_watcher.dir
+
+# All Build rule for target.
+CMakeFiles/auto_sync_watcher.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=5,6 "Built target auto_sync_watcher"
+.PHONY : CMakeFiles/auto_sync_watcher.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/auto_sync_watcher.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/auto_sync_watcher.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles 0
+.PHONY : CMakeFiles/auto_sync_watcher.dir/rule
+
+# Convenience name for target.
+auto_sync_watcher: CMakeFiles/auto_sync_watcher.dir/rule
+.PHONY : auto_sync_watcher
+
+# codegen rule for target.
+CMakeFiles/auto_sync_watcher.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/build/CMakeFiles --progress-num=5,6 "Finished codegen for target auto_sync_watcher"
+.PHONY : CMakeFiles/auto_sync_watcher.dir/codegen
+
+# clean rule for target.
+CMakeFiles/auto_sync_watcher.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/auto_sync_watcher.dir/build.make CMakeFiles/auto_sync_watcher.dir/clean
+.PHONY : CMakeFiles/auto_sync_watcher.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.
