@@ -140,14 +140,14 @@ def get_nodes(lab_id, cluster_id):
     for row in rows:
         node_dict = dict(row)
         
-        # Check heartbeat age (older than 15s means the board/sync client is offline)
+        # Check heartbeat age (older than 5s means the board/sync client is offline)
         is_offline = True
         updated_at_str = node_dict.get("updatedAt")
         if updated_at_str:
             try:
                 last_update = datetime.fromisoformat(updated_at_str)
                 age_seconds = (datetime.now() - last_update).total_seconds()
-                if age_seconds < 15.0:
+                if age_seconds < 5.0:
                     is_offline = False
             except Exception:
                 pass

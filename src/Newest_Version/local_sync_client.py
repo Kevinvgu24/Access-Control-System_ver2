@@ -238,7 +238,7 @@ def sync_telemetry():
             try:
                 last_update = datetime.fromisoformat(updated_at_str)
                 diff = (datetime.now() - last_update).total_seconds()
-                if diff < 12.0:
+                if diff < 5.0:
                     is_app_running = True
             except Exception as e:
                 print(f"[-] [TELEMETRY] Error parsing local updatedAt: {e}")
@@ -320,17 +320,40 @@ def sync_config():
         pass
 
 def main():
+    last_telemetry_time = 0.0
+    last_logs_time = 0.0
+    last_users_config_time = 0.0
+    
     while True:
-        try:
-            sync_users()
-            sync_logs()
-            sync_config()
-            sync_telemetry()
-        except Exception as e:
-            print(f"[-] [SYNC CLIENT] Error in main sync loop: {e}")
+        now = time.time()
+        
+        # 1. Telemetry runs every 2 seconds
+        if now - last_telemetry_time >= 2.0:
+            try:
+                sync_telemetry()
+            except Exception as e:
+                print(f"[-] [SYNC CLIENT] Error syncing telemetry: {e}")
+            last_telemetry_time = time.time()
             
-        # Yield/Wait 4 seconds before next sync iteration
-        time.sleep(4)
+        # 2. Logs run every 4 seconds
+        if now - last_logs_time >= 4.0:
+            try:
+                sync_logs()
+            except Exception as e:
+                print(f"[-] [SYNC CLIENT] Error syncing logs: {e}")
+            last_logs_time = time.time()
+            
+        # 3. Users & Config run every 15 seconds
+        if now - last_users_config_time >= 15.0:
+            try:
+                sync_config()
+                sync_users()
+            except Exception as e:
+                print(f"[-] [SYNC CLIENT] Error syncing users/config: {e}")
+            last_users_config_time = time.time()
+            
+        # Yield to prevent high CPU utilization
+        time.sleep(0.2)
 
 
 if __name__ == "__main__":
