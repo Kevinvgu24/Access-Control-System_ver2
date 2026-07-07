@@ -71,8 +71,8 @@ function AuthenticatedApp() {
           <div className="bg-red/10 border-b border-red/20 px-8 py-3 flex items-center justify-between text-red shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-sm">⚠️</span>
-              <span className="text-xs font-semibold uppercase tracking-wider font-mono">Cảnh báo hệ thống:</span>
-              <span className="text-xs font-medium">Thiết bị ghi nhận ngoại tuyến (Offline). Vui lòng kiểm tra nguồn điện hoặc kết nối mạng.</span>
+              <span className="text-xs font-semibold uppercase tracking-wider font-mono">System Alert:</span>
+              <span className="text-xs font-medium">Device is currently offline. Please check power source or network connection.</span>
             </div>
             <div className="text-[10px] uppercase font-mono px-2 py-0.5 bg-red/20 text-red rounded font-bold">
               SYSTEM OFFLINE
@@ -82,8 +82,8 @@ function AuthenticatedApp() {
           <div className="bg-green/10 border-b border-green/20 px-8 py-3 flex items-center justify-between text-green shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-sm">⚠️</span>
-              <span className="text-xs font-semibold uppercase tracking-wider font-mono">Cảnh báo dịch vụ:</span>
-              <span className="text-xs font-medium">Tiến trình nhận diện khuôn mặt đang TẮT. Vui lòng kiểm tra hoặc khởi động lại ứng dụng.</span>
+              <span className="text-xs font-semibold uppercase tracking-wider font-mono">Service Alert:</span>
+              <span className="text-xs font-medium">Face recognition process is stopped. Please check or restart the application.</span>
             </div>
             <div className="text-[10px] uppercase font-mono px-2 py-0.5 bg-green/20 text-green rounded font-bold">
               CAMERA STOPPED

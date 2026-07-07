@@ -241,9 +241,9 @@ class FaceDatabase:
                 c.execute("INSERT INTO users (name, embedding, status, faceStatus, createdAt, updatedAt) VALUES (?, ?, 'active', 'complete', ?, ?)", 
                           (name, embedding, now_str, now_str))
             conn.commit()
-            logger.info(f"Đã lưu/cập nhật hồ sơ: {name}")
+            logger.info(f"Saved/Updated profile: {name}")
         except Exception as e:
-            logger.error(f"Lỗi khi lưu {name}: {e}")
+            logger.error(f"Error saving {name}: {e}")
         finally:
             conn.close()
 
@@ -253,9 +253,9 @@ class FaceDatabase:
         try:
             c.execute("DELETE FROM users WHERE name = ?", (name,))
             conn.commit()
-            logger.info(f"Đã xóa vĩnh viễn hồ sơ: {name}")
+            logger.info(f"Permanently deleted profile: {name}")
         except Exception as e:
-            logger.error(f"Lỗi khi xóa {name}: {e}")
+            logger.error(f"Error deleting {name}: {e}")
         finally:
             conn.close()
 

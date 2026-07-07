@@ -95,11 +95,11 @@ class InterfaceMonitorApp(QMainWindow):
         self.enroll_pending_password = ""
         self.enroll_pending_role = ""
         self.enroll_angles = [
-            {"id": "straight", "label": "1/5: Nhìn thẳng (Look Straight)"},
-            {"id": "left", "label": "2/5: Quay đầu sang TRÁI (Turn Left)"},
-            {"id": "right", "label": "3/5: Quay đầu sang PHẢI (Turn Right)"},
-            {"id": "up", "label": "4/5: Ngước đầu LÊN TRÊN (Look Up)"},
-            {"id": "down", "label": "5/5: Cúi đầu XUỐNG DƯỚI (Look Down)"}
+            {"id": "straight", "label": "1/5: Look Straight"},
+            {"id": "left", "label": "2/5: Turn Left"},
+            {"id": "right", "label": "3/5: Turn Right"},
+            {"id": "up", "label": "4/5: Look Up"},
+            {"id": "down", "label": "5/5: Look Down"}
         ]
         
         # Enrollment workflow timers
@@ -350,8 +350,8 @@ class InterfaceMonitorApp(QMainWindow):
             
             # Show appropriate warning on Access tab
             if num_faces > 2:
-                warning_msg = "Cảnh báo: Chỉ cho phép tối đa 1 hoặc 2 người hợp lệ xuất hiện cùng lúc!"
-                self.tabAccess.lblScanStatus.setText("⚠️ CẢNH BÁO BẢO MẬT")
+                warning_msg = "Warning: Only 1 or 2 valid people allowed at the same time!"
+                self.tabAccess.lblScanStatus.setText("⚠️ SECURITY WARNING")
                 self.tabAccess.lblScanStatus.setStyleSheet("""
                     color: #ef4444;
                     font-size: 20px;
@@ -375,8 +375,8 @@ class InterfaceMonitorApp(QMainWindow):
                         confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
                     )
             else:
-                warning_msg = "Cảnh báo: Phát hiện khuôn mặt không hợp lệ! Cửa đã khóa."
-                self.tabAccess.lblScanStatus.setText("🚫 TRUY CẬP BỊ TỪ CHỐI")
+                warning_msg = "Warning: Invalid face detected! Door remains locked."
+                self.tabAccess.lblScanStatus.setText("🚫 ACCESS DENIED")
                 self.tabAccess.lblScanStatus.setStyleSheet("""
                     color: #ef4444;
                     font-size: 20px;
@@ -426,7 +426,7 @@ class InterfaceMonitorApp(QMainWindow):
                 border-radius: 8px;
                 border: 1px solid rgba(234, 88, 12, 0.25);
             """)
-            self.tabAccess.lblScanDetails.setText(f"Hãy đứng yên 2.0s để xác thực: {name}")
+            self.tabAccess.lblScanDetails.setText(f"Please stand still 2.0s to verify: {name}")
         else:
             # Same person holding their face
             if not self.user_unlocked_this_session:
@@ -443,7 +443,7 @@ class InterfaceMonitorApp(QMainWindow):
                             is_real, liveness_score, liveness_msg = self.door_app.verify_liveness_on_ir(bbox, landmarks)
                             if not is_real:
                                 # Access denied - Spoof detected
-                                self.tabAccess.lblScanStatus.setText("⚠️ PHÁT HIỆN GIẢ MẠO")
+                                self.tabAccess.lblScanStatus.setText("⚠️ SPOOF DETECTED")
                                 self.tabAccess.lblScanStatus.setStyleSheet("""
                                     color: #ef4444;
                                     font-size: 20px;
@@ -453,7 +453,7 @@ class InterfaceMonitorApp(QMainWindow):
                                     border-radius: 8px;
                                     border: 2px solid #ef4444;
                                 """)
-                                self.tabAccess.lblScanDetails.setText(f"Cảnh báo giả mạo: {liveness_msg}")
+                                self.tabAccess.lblScanDetails.setText(f"Spoof warning: {liveness_msg}")
                                 
                                 if f"Spoof warning: {name}" != self.last_logged_name or (now - self.last_logged_time > 10):
                                     self.add_log("Security", f"⚠️ SPOOF DETECTED for {name}: {liveness_msg}")
@@ -502,7 +502,7 @@ class InterfaceMonitorApp(QMainWindow):
                 else:
                     # Show remaining progress countdown
                     remaining = max(0.0, 2.0 - duration)
-                    self.tabAccess.lblScanDetails.setText(f"Hãy đứng yên: {name} ({remaining:.1f}s)")
+                    self.tabAccess.lblScanDetails.setText(f"Please stand still: {name} ({remaining:.1f}s)")
         
         self.last_detection_time = now
 

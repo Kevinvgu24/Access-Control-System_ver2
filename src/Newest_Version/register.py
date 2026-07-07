@@ -33,10 +33,10 @@ def auto_sync_database(yolo_hef, arcface_hef, lbf_model_path, database_dir):
     new_users = [u for u in folders if u not in known_users]
     
     if not new_users:
-        print("-> [REGISTER] Không có người dùng mới. Dữ liệu đã đồng bộ.")
+        print("-> [REGISTER] No new users. Data is synchronized.")
         return
 
-    print(f"-> [REGISTER] Phát hiện {len(new_users)} người dùng mới. Đang cấp phát NPU...")
+    print(f"-> [REGISTER] Detected {len(new_users)} new users. Allocating NPU...")
     shared_vdevice = VDevice()
     yolo_engine = HailoPythonInferenceEngine(yolo_hef, target=shared_vdevice)
     arcface_engine = HailoPythonInferenceEngine(arcface_hef, target=shared_vdevice)
@@ -44,7 +44,7 @@ def auto_sync_database(yolo_hef, arcface_hef, lbf_model_path, database_dir):
 
     for user_name in new_users:
         user_path = os.path.join(database_dir, user_name)
-        print(f"[*] Đang quét sinh trắc cho: '{user_name}'...")
+        print(f"[*] Scanning biometrics for: '{user_name}'...")
         
         image_paths = glob.glob(os.path.join(user_path, '*.[jp][pn]g'))
         image_paths += glob.glob(os.path.join(user_path, '*.[JP][PN]G'))
@@ -87,9 +87,9 @@ def auto_sync_database(yolo_hef, arcface_hef, lbf_model_path, database_dir):
             avg_embedding = np.mean(embeddings, axis=0)
             final_embedding = avg_embedding / np.linalg.norm(avg_embedding)
             db.save_user(user_name, final_embedding)
-            print(f"[+] Đã lưu '{user_name}' vào SQLite thành công!")
+            print(f"[+] Saved '{user_name}' to SQLite successfully!")
         else:
-            print(f"[-] Bỏ qua '{user_name}': Không tìm thấy khuôn mặt hợp lệ.")
+            print(f"[-] Skipped '{user_name}': Valid face not found.")
 
 def extract_single_face_embedding(img, yolo_hef, arcface_hef, lbf_model_path):
     """
