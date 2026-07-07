@@ -4,7 +4,7 @@ import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { fmtTs } from '@/lib/format'
 
-import { getAllLabs, createLab } from '@/lib/db'
+import { getAllLabs } from '@/lib/db'
 import type { Lab } from '@/types/admin'
 
 interface ScheduleRecord {
@@ -31,14 +31,6 @@ export function SchedulesPage() {
   const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Quick Open Lab states
-  const [showNewLabModal, setShowNewLabModal] = useState(false)
-  const [newLabName, setNewLabName] = useState('')
-  const [newLabCode, setNewLabCode] = useState('')
-  const [newLabLocation, setNewLabLocation] = useState('')
-  const [newLabManager, setNewLabManager] = useState('')
-  const [creatingLab, setCreatingLab] = useState(false)
 
   // Fetch labs list on mount
   const loadLabs = async () => {
@@ -134,42 +126,6 @@ export function SchedulesPage() {
     }
   }
 
-  const openCreateLabModal = () => {
-    setNewLabName('')
-    setNewLabCode('')
-    setNewLabLocation('')
-    setNewLabManager('')
-    setShowNewLabModal(true)
-  }
-
-  const handleCreateLab = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newLabName.trim()) {
-      alert('Lab Name is required')
-      return
-    }
-    setCreatingLab(true)
-    try {
-      const newId = await createLab({
-        name: newLabName.trim(),
-        code: newLabCode.trim() || undefined,
-        location: newLabLocation.trim() || '',
-        timezone: 'Asia/Ho_Chi_Minh',
-        manager: newLabManager.trim()
-      }, 'admin')
-      alert(`Lab room "${newLabName}" created successfully!`)
-      setShowNewLabModal(false)
-      
-      // Reload list and select the newly created lab
-      await loadLabs()
-      setViewLabId(newId)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create lab room')
-    } finally {
-      setCreatingLab(false)
-    }
-  }
-
   const filtered = schedules.filter(s =>
     !search ||
     s.student_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -207,9 +163,6 @@ export function SchedulesPage() {
               <option key={l.id} value={l.id}>{l.name} ({l.code})</option>
             ))}
           </select>
-          <Button variant="ghost" onClick={openCreateLabModal}>
-            + New Lab
-          </Button>
         </div>
       </div>
 
@@ -219,7 +172,7 @@ export function SchedulesPage() {
           <div className="text-5xl">📅</div>
           <h3 className="text-lg font-bold text-[#0f172a]">No Lab Selected</h3>
           <p className="text-sm text-[#475569] max-w-md">
-            Please select a lab room from the dropdown menu in the upper-right corner to view and manage its schedules, or open a new one.
+            Please select a lab room from the dropdown menu in the upper-right corner to view and manage its schedules.
           </p>
         </div>
       ) : (
@@ -321,72 +274,6 @@ export function SchedulesPage() {
             )}
           </Panel>
         </>
-      )}
-
-      {/* New Lab Creation Modal */}
-      {showNewLabModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => !creatingLab && setShowNewLabModal(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-[#0f172a]">Open New Lab Room</h3>
-              <button onClick={() => !creatingLab && setShowNewLabModal(false)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
-            </div>
-            
-            <form onSubmit={handleCreateLab} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab Name</label>
-                <input 
-                  type="text" 
-                  value={newLabName} 
-                  onChange={e => setNewLabName(e.target.value)}
-                  placeholder="e.g., IoT Lab C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab Code</label>
-                <input 
-                  type="text" 
-                  value={newLabCode} 
-                  onChange={e => setNewLabCode(e.target.value.toUpperCase())}
-                  placeholder="e.g., IoT-C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Location</label>
-                <input 
-                  type="text" 
-                  value={newLabLocation} 
-                  onChange={e => setNewLabLocation(e.target.value)}
-                  placeholder="e.g., Building C, Room 205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Manager / Supervisor</label>
-                <input 
-                  type="text" 
-                  value={newLabManager} 
-                  onChange={e => setNewLabManager(e.target.value)}
-                  placeholder="e.g., TS. Nguyen Van A"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end mt-4">
-                <Button variant="ghost" type="button" onClick={() => setShowNewLabModal(false)} disabled={creatingLab}>Cancel</Button>
-                <Button variant="primary" type="submit" disabled={creatingLab || !newLabName.trim()}>
-                  {creatingLab ? 'Creating...' : 'Open Lab'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   )
