@@ -461,12 +461,12 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
                   <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{a.email}</p>
                 </td>
                 <td className="px-5 py-4">
-                  <Badge tone={a.role === 'super_admin' ? 'blue' : 'neutral'}>
-                    {a.role === 'super_admin' ? 'Super Admin' : 'Lab Admin'}
+                  <Badge tone={a.type === 'super_admin' ? 'blue' : 'neutral'}>
+                    {a.type === 'super_admin' ? 'Super Admin' : 'Lab Admin'}
                   </Badge>
                 </td>
                 <td className="px-5 py-4 font-mono text-xs text-[#475569]">
-                  {a.role === 'super_admin'
+                  {a.type === 'super_admin'
                     ? 'All labs'
                     : (a.labAccessIds?.length ?? 0) > 0
                       ? `${a.labAccessIds!.length} lab${a.labAccessIds!.length !== 1 ? 's' : ''}`
@@ -474,7 +474,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex gap-3 justify-end">
-                    {a.role !== 'super_admin' && (
+                    {a.type !== 'super_admin' && (
                       <>
                         <button onClick={() => openEdit(a)}
                           className="font-mono text-[11px] text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer">Edit Access</button>

@@ -94,7 +94,7 @@ function AuthenticatedApp() {
 
         <main className="flex-1 overflow-y-auto p-8 pb-16">
           <Routes>
-            <Route path="/control" element={admin.role === 'super_admin' ? <ControlPage /> : <Navigate to="/labs" replace />} />
+            <Route path="/control" element={admin.type === 'super_admin' ? <ControlPage /> : <Navigate to="/labs" replace />} />
             <Route path="/labs"    element={<LabSelectorPage />} />
             {selectedLabId ? (
               <>
