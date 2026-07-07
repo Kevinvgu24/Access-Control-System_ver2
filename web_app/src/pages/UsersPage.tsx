@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
@@ -8,16 +8,16 @@ import { fmtTs } from '@/lib/format'
 import type { User, UserRole, UserStatus } from '@/types/admin'
 import { useNavigate } from 'react-router-dom'
 
-const ROLE_OPTS: UserRole[] = ['student', 'faculty', 'lab_assistant', 'guest', 'maintenance']
+const ROLE_OPTS: UserRole[] = ['student', 'lecturer', 'teacher_assistant', 'guest', 'maintenance']
 const ROLE_LABEL: Record<UserRole, string> = {
-  student: 'Student', faculty: 'Faculty',
-  lab_assistant: 'Lab Asst', guest: 'Guest', maintenance: 'Maintenance',
+  student: 'Student', lecturer: 'Lecturer',
+  teacher_assistant: 'Teacher Assistant', guest: 'Guest', maintenance: 'Maintenance',
 }
 const STATUS_TONE: Record<UserStatus, 'green' | 'red'> = { active: 'green', suspended: 'red' }
 
 export function UsersPage() {
   const { 
-    users, refreshUsers, deleteUser,
+    users, refreshUsers,
     updateUserProfile, resetUserPin, updateUserStatus 
   } = useAdminStore()
   const { selectedLabId }       = useLabStore()
@@ -26,8 +26,6 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter]   = useState<UserRole | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all')
   const [menuOpen, setMenuOpen]       = useState<string | null>(null)
-  const [importing, setImporting]     = useState(false)
-  const fileInputRef                  = useRef<HTMLInputElement>(null)
 
   // Edit Profile States
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -41,39 +39,6 @@ export function UsersPage() {
   const [pinUser, setPinUser] = useState<User | null>(null)
   const [newPin, setNewPin] = useState('')
   const [updatingPin, setUpdatingPin] = useState(false)
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !selectedLabId) return
-
-    const formData = new FormData()
-    formData.append('file', file)
-
-    setImporting(true)
-    try {
-      const response = await fetch(`/api/labs/${selectedLabId}/users/import-excel`, {
-        method: 'POST',
-        body: formData
-      })
-      const result = await response.json()
-      if (response.ok) {
-        const fmtName = result.format === 'schedule_template' ? 'Schedule Template' : 'Standard List';
-        alert(`Successfully imported Excel (${fmtName}):\n- ${result.inserted} new users added\n- ${result.updated} users updated`)
-        refreshUsers(selectedLabId)
-      } else {
-        alert(result.error || 'Failed to import Excel file')
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'An error occurred during import')
-    } finally {
-      setImporting(false)
-      if (e.target) e.target.value = ''
-    }
-  }
 
   const filtered = users.filter(u =>
     (!search ||
@@ -121,7 +86,7 @@ export function UsersPage() {
         email: editEmail.trim(),
         role: editRole
       })
-      alert('User profile updated successfully!')
+      alert('Administrator profile updated successfully!')
       setEditingUser(null)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update profile')
@@ -163,17 +128,13 @@ export function UsersPage() {
     <div className="flex flex-col gap-7">
       <div className="flex justify-between items-end">
         <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">The Roster</p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">User Directory</h1>
-          <p className="text-sm text-[#475569] mt-2">Everyone authorized to access this lab.</p>
+          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Management</p>
+          <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Administrators</h1>
+          <p className="text-sm text-[#475569] mt-2">Administrators authorized to manage this lab.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => selectedLabId && refreshUsers(selectedLabId)}>↻ Refresh</Button>
-          <input type="file" ref={fileInputRef} accept=".xlsx" onChange={handleImportExcel} className="hidden" />
-          <Button variant="ghost" onClick={triggerFileInput} disabled={importing}>
-            {importing ? 'Importing...' : '📥 Import Excel'}
-          </Button>
-          <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add New User</Button>
+          <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add Administrator</Button>
         </div>
       </div>
 
@@ -280,7 +241,7 @@ export function UsersPage() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No users match the current filters.</p>
+          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No administrators match the current filters.</p>
         )}
       </Panel>
 
@@ -290,7 +251,7 @@ export function UsersPage() {
           <div className="absolute inset-0 bg-black/60" onClick={() => !updatingProfile && setEditingUser(null)} />
           <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-[#0f172a]">Edit User Profile</h3>
+              <h3 className="text-lg font-bold text-[#0f172a]">Edit Administrator Profile</h3>
               <button onClick={() => !updatingProfile && setEditingUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
             </div>
             

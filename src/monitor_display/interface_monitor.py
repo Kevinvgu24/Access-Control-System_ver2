@@ -669,7 +669,7 @@ class InterfaceMonitorApp(QMainWindow):
         gc.collect()
 
     def check_user_schedule_today(self, name):
-        """Checks if a student is scheduled for any lab session today. Bypasses for admins/faculty."""
+        """Checks if a student/TA/other user is scheduled for any lab session today. Bypasses only for lecturers."""
         import sqlite3
         import datetime
         
@@ -689,7 +689,7 @@ class InterfaceMonitorApp(QMainWindow):
                 return True, "", "Unknown User profile"
                 
             role, university_id = row
-            if role != 'student':
+            if role == 'lecturer':
                 conn.close()
                 return True, university_id, f"Allowed bypass ({role})"
                 

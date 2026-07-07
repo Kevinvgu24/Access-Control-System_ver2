@@ -115,12 +115,12 @@ export function EnrollmentPage() {
     <div className="flex flex-col gap-7">
       <div>
         <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Done</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">User Enrolled</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Administrator Enrolled</h1>
         <p className="text-sm text-[#475569] mt-2">{draft.firstName} {draft.lastName} has been added to the lab.</p>
       </div>
       <div className="flex gap-3">
         <Button variant="primary" onClick={() => { setDone(false); setStep('identity'); setDraft(initDraft()); setPhotos(initPhotos()) }}>Enroll Another</Button>
-        <Button variant="ghost" onClick={() => navigate('/users')}>View Users</Button>
+        <Button variant="ghost" onClick={() => navigate('/users')}>View Administrators</Button>
       </div>
     </div>
   )
@@ -128,7 +128,7 @@ export function EnrollmentPage() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Add New User</p>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Add New Administrator</p>
         <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Enrollment Wizard</h1>
         <p className="text-sm text-[#475569] mt-2">Step-by-step to prevent biometric data errors at the door.</p>
       </div>
@@ -175,8 +175,8 @@ export function EnrollmentPage() {
               <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))}
                 className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30">
                 <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="lab_assistant">Lab Assistant</option>
+                <option value="lecturer">Lecturer</option>
+                <option value="teacher_assistant">Teacher Assistant</option>
                 <option value="guest">Guest</option>
                 <option value="maintenance">Maintenance</option>
               </select>
@@ -291,7 +291,7 @@ export function EnrollmentPage() {
               </div>
             )}
             <Button variant="primary" className="mt-3 w-fit" onClick={handleConfirm} disabled={submitting}>
-              {submitting ? 'Enrolling…' : 'Confirm & Enroll User'}
+              {submitting ? 'Enrolling…' : 'Confirm & Enroll Administrator'}
             </Button>
           </div>
         </Panel>

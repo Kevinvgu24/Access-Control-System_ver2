@@ -2,7 +2,7 @@ export type Timestamp = any;
 
 export type AdminRole       = 'super_admin' | 'lab_admin'
 export type AdminStatus     = 'active' | 'suspended'
-export type UserRole        = 'student' | 'faculty' | 'lab_assistant' | 'guest' | 'maintenance'
+export type UserRole        = 'student' | 'lecturer' | 'teacher_assistant' | 'guest' | 'maintenance'
 export type UserStatus      = 'active' | 'suspended'
 export type AccessMethod    = 'face' | 'face_pin_fallback'
 export type AccessResult    = 'granted' | 'denied' | 'liveness_failed' | 'unknown_user' | 'pin_failed' | 'system_error'
