@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install minimal python dependencies for the API server
 # (No NPU or OpenCV libraries needed on the central dashboard server)
-RUN pip install --no-cache-dir flask flask-cors numpy
+RUN pip install --no-cache-dir flask flask-cors numpy qdrant-client
 
 # Copy backend Python source files
 COPY src/ /app/src/

@@ -4,6 +4,8 @@ import sqlite3
 import json
 import hashlib
 import numpy as np
+import time
+import threading
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
@@ -29,6 +31,84 @@ db_path = os.path.join(db_dir, "smart_door.db")
 
 # Initialize database
 db = FaceDatabase(db_path)
+
+# Initialize Qdrant Client
+qdrant_client = None
+QDRANT_COLLECTION = "faces"
+
+def init_qdrant():
+    global qdrant_client
+    qdrant_host = os.environ.get("QDRANT_HOST", "qdrant")
+    qdrant_port = int(os.environ.get("QDRANT_PORT", 6333))
+    try:
+        from qdrant_client import QdrantClient
+        from qdrant_client.models import Distance, VectorParams
+        logger.info(f"Connecting to Qdrant at {qdrant_host}:{qdrant_port}...")
+        client = QdrantClient(host=qdrant_host, port=qdrant_port, timeout=10.0)
+        
+        # Check if collection exists
+        collections_res = client.get_collections()
+        existing = [c.name for c in collections_res.collections]
+        if QDRANT_COLLECTION not in existing:
+            logger.info(f"Creating Qdrant collection '{QDRANT_COLLECTION}'...")
+            client.create_collection(
+                collection_name=QDRANT_COLLECTION,
+                vectors_config=VectorParams(size=512, distance=Distance.COSINE),
+            )
+        qdrant_client = client
+        logger.info("Successfully connected to Qdrant and verified 'faces' collection.")
+        backfill_existing_embeddings()
+    except Exception as e:
+        logger.warning(f"Could not initialize Qdrant (using SQLite fallback): {e}")
+        qdrant_client = None
+
+def backfill_existing_embeddings():
+    if qdrant_client is None:
+        return
+    try:
+        conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        c.execute("SELECT id, name, embedding FROM users WHERE embedding IS NOT NULL")
+        rows = c.fetchall()
+        conn.close()
+        
+        if not rows:
+            logger.info("No existing embeddings in SQLite to backfill.")
+            return
+            
+        logger.info(f"Syncing {len(rows)} existing user embeddings from SQLite to Qdrant...")
+        from qdrant_client.models import PointStruct
+        
+        points = []
+        for row in rows:
+            user_id, name, emb = row
+            if isinstance(emb, np.ndarray):
+                points.append(
+                    PointStruct(
+                        id=user_id,
+                        vector=emb.tolist(),
+                        payload={"name": name}
+                    )
+                )
+                
+        if points:
+            qdrant_client.upsert(
+                collection_name=QDRANT_COLLECTION,
+                points=points
+            )
+            logger.info("Successfully synced all existing embeddings to Qdrant.")
+    except Exception as e:
+        logger.error(f"Error backfilling embeddings to Qdrant: {e}")
+
+# Run initialization in background thread to prevent blocking web server startup
+def qdrant_init_thread():
+    for i in range(10):
+        init_qdrant()
+        if qdrant_client is not None:
+            break
+        time.sleep(3)
+
+threading.Thread(target=qdrant_init_thread, daemon=True).start()
 
 # Global dictionary to track on-demand IR livestream sessions: { node_id: timestamp_last_requested }
 active_ir_streams = {}
@@ -366,6 +446,17 @@ def delete_lab_user(lab_id, user_id):
     # Delete from database
     db.delete_user(full_name)
     
+    # Delete from Qdrant if client is available
+    if qdrant_client is not None:
+        try:
+            qdrant_client.delete(
+                collection_name=QDRANT_COLLECTION,
+                points_selector=[int(user_id)]
+            )
+            logger.info(f"Deleted user '{full_name}' (ID: {user_id}) from Qdrant successfully.")
+        except Exception as qe:
+            logger.warning(f"Failed to delete user '{full_name}' from Qdrant: {qe}")
+    
     # Delete local folder for user photos
     user_photos_dir = os.path.join(db_dir, full_name)
     if os.path.exists(user_photos_dir):
@@ -407,6 +498,32 @@ def upload_user_embedding(full_name):
     try:
         arr = np.array(emb, dtype=np.float32)
         db.save_user(full_name, arr)
+        
+        # Get user's ID from database for stable Qdrant Point ID
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE name = ?", (full_name,))
+        row = c.fetchone()
+        conn.close()
+        
+        if row and qdrant_client is not None:
+            user_id = row[0]
+            try:
+                from qdrant_client.models import PointStruct
+                qdrant_client.upsert(
+                    collection_name=QDRANT_COLLECTION,
+                    points=[
+                        PointStruct(
+                            id=user_id,
+                            vector=emb,
+                            payload={"name": full_name}
+                        )
+                    ]
+                )
+                logger.info(f"Upserted vector for user '{full_name}' (ID: {user_id}) to Qdrant successfully.")
+            except Exception as qe:
+                logger.warning(f"Failed to upsert to Qdrant: {qe}")
+                
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": f"Failed to save embedding: {str(e)}"}), 500
@@ -578,6 +695,40 @@ def get_user_embedding(full_name):
         
     emb_list = row[0].tolist()
     return jsonify({"embedding": emb_list})
+
+# 18. Identify Face from Embedding (Vector Search via Qdrant)
+@app.route("/api/users/identify", methods=["POST"])
+def identify_face():
+    if qdrant_client is None:
+        return jsonify({"error": "Qdrant vector search is not initialized"}), 503
+        
+    data = request.get_json() or {}
+    emb = data.get("embedding")
+    limit = int(data.get("limit", 1))
+    threshold = float(data.get("threshold", 0.0))
+    
+    if not emb or not isinstance(emb, list):
+        return jsonify({"error": "Invalid embedding"}), 400
+        
+    try:
+        search_results = qdrant_client.search(
+            collection_name=QDRANT_COLLECTION,
+            query_vector=emb,
+            limit=limit
+        )
+        
+        matches = []
+        for res in search_results:
+            if res.score >= threshold:
+                matches.append({
+                    "id": res.id,
+                    "name": res.payload.get("name"),
+                    "score": res.score
+                })
+                
+        return jsonify({"matches": matches})
+    except Exception as e:
+        return jsonify({"error": f"Search failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
     logger.info("=== STARTING OFFLINE ACCESS CONTROL API SERVER ===")

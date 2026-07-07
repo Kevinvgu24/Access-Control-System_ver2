@@ -10,4 +10,16 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./database:/app/database
+      - /mnt/smart-door/database:/app/database
+      - /mnt/smart-door/database/logs:/app/logs
+    depends_on:
+      - qdrant
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-server
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - /mnt/smart-door/database/qdrant_storage:/qdrant/storage
