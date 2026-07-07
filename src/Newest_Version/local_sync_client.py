@@ -217,7 +217,7 @@ def sync_telemetry():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT latestTelemetry, status, onlineState FROM nodes WHERE id = ?", (NODE_ID,))
+    c.execute("SELECT latestTelemetry, status, onlineState, updatedAt FROM nodes WHERE id = ?", (NODE_ID,))
     row = c.fetchone()
     conn.close()
 
@@ -231,11 +231,23 @@ def sync_telemetry():
         return
 
     try:
+        from datetime import datetime
+        is_app_running = False
+        updated_at_str = row["updatedAt"]
+        if updated_at_str:
+            try:
+                last_update = datetime.fromisoformat(updated_at_str)
+                diff = (datetime.now() - last_update).total_seconds()
+                if diff < 12.0:
+                    is_app_running = True
+            except Exception as e:
+                print(f"[-] [TELEMETRY] Error parsing local updatedAt: {e}")
+
         telemetry = json.loads(telemetry_str)
         payload = {
-            "status": row["status"],
-            "onlineState": row["onlineState"],
-            "cameraFps": telemetry.get("cameraFps", 0.0),
+            "status": "online" if is_app_running else "offline",
+            "onlineState": "online",
+            "cameraFps": telemetry.get("cameraFps", 0.0) if is_app_running else 0.0,
             "cpuPercent": telemetry.get("cpuPercent", 0.0),
             "ramPercent": telemetry.get("ramPercent", 0.0),
             "temperatureC": telemetry.get("temperatureC", 0.0)

@@ -139,13 +139,40 @@ def get_nodes(lab_id, cluster_id):
     nodes_list = []
     for row in rows:
         node_dict = dict(row)
+        
+        # Check heartbeat age (older than 15s means the board/sync client is offline)
+        is_offline = True
+        updated_at_str = node_dict.get("updatedAt")
+        if updated_at_str:
+            try:
+                last_update = datetime.fromisoformat(updated_at_str)
+                age_seconds = (datetime.now() - last_update).total_seconds()
+                if age_seconds < 15.0:
+                    is_offline = False
+            except Exception:
+                pass
+                
+        if is_offline:
+            node_dict["onlineState"] = "offline"
+            node_dict["status"] = "offline"
+            
         if node_dict.get("latestTelemetry"):
             try:
                 node_dict["latestTelemetry"] = json.loads(node_dict["latestTelemetry"])
+                if is_offline:
+                    node_dict["latestTelemetry"]["onlineState"] = "offline"
+                    node_dict["latestTelemetry"]["modelStatus"] = "stopped"
+                    node_dict["latestTelemetry"]["cameraFps"] = 0.0
             except Exception:
                 node_dict["latestTelemetry"] = {}
         else:
             node_dict["latestTelemetry"] = {}
+            if is_offline:
+                node_dict["latestTelemetry"] = {
+                    "onlineState": "offline",
+                    "modelStatus": "stopped",
+                    "cameraFps": 0.0
+                }
         nodes_list.append(node_dict)
         
     return jsonify(nodes_list)
