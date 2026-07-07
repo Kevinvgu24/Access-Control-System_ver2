@@ -54,16 +54,26 @@ export async function createLab(
   createdBy: string
 ): Promise<string> {
   void createdBy
-  // Stub for offline mode - return a fake ID
-  return 'default-lab'
+  const result = await fetchJson<{ success: boolean; id: string }>('/api/labs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  return result.id
 }
 
 export async function updateLab(labId: string, patch: Partial<Lab>): Promise<void> {
-  void labId; void patch;
+  await fetchJson<void>(`/api/labs/${labId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch)
+  })
 }
 
 export async function archiveLab(labId: string): Promise<void> {
-  void labId;
+  await fetchJson<void>(`/api/labs/${labId}/archive`, {
+    method: 'POST'
+  })
 }
 
 // ── Clusters ──────────────────────────────────────────────────────────────────
@@ -73,8 +83,13 @@ export async function getLabClusters(labId: string): Promise<Cluster[]> {
 }
 
 export async function createCluster(labId: string, name: string, createdBy: string): Promise<string> {
-  void labId; void name; void createdBy;
-  return 'default-cluster'
+  void createdBy
+  const result = await fetchJson<{ success: boolean; id: string }>(`/api/labs/${labId}/clusters`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  })
+  return result.id
 }
 
 export async function createNode(
@@ -83,14 +98,23 @@ export async function createNode(
   data: { name: string; deviceId?: string; location?: string },
   createdBy: string
 ): Promise<string> {
-  void labId; void clusterId; void data; void createdBy;
-  return 'default-node'
+  void createdBy
+  const result = await fetchJson<{ success: boolean; id: string }>(`/api/labs/${labId}/clusters/${clusterId}/nodes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  return result.id
 }
 
 export async function updateNode(
   labId: string, clusterId: string, nodeId: string, patch: Partial<Node>
 ): Promise<void> {
-  void labId; void clusterId; void nodeId; void patch;
+  await fetchJson<void>(`/api/labs/${labId}/clusters/${clusterId}/nodes/${nodeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch)
+  })
 }
 
 export async function getClusterNodes(labId: string, clusterId: string): Promise<Node[]> {
@@ -98,7 +122,9 @@ export async function getClusterNodes(labId: string, clusterId: string): Promise
 }
 
 export async function deleteNode(labId: string, clusterId: string, nodeId: string): Promise<void> {
-  void labId; void clusterId; void nodeId;
+  await fetchJson<void>(`/api/labs/${labId}/clusters/${clusterId}/nodes/${nodeId}`, {
+    method: 'DELETE'
+  })
 }
 
 // ── Admins ────────────────────────────────────────────────────────────────────
