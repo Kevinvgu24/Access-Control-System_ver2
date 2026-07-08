@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { subscribeVisibleLabs, createLab, archiveLab } from '@/lib/db'
+import { subscribeVisibleLabs, createLab, updateLab, archiveLab } from '@/lib/db'
 import { useLabStore } from '@/store/labStore'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +21,15 @@ export function LabSelectorPage() {
   const [newLabLocation, setNewLabLocation] = useState('')
   const [newLabManager, setNewLabManager] = useState('')
   const [creatingLab, setCreatingLab] = useState(false)
+
+  // Edit Lab states
+  const [showEditLabModal, setShowEditLabModal] = useState(false)
+  const [editLabId, setEditLabId] = useState('')
+  const [editLabName, setEditLabName] = useState('')
+  const [editLabCode, setEditLabCode] = useState('')
+  const [editLabLocation, setEditLabLocation] = useState('')
+  const [editLabManager, setEditLabManager] = useState('')
+  const [updatingLab, setUpdatingLab] = useState(false)
 
   useEffect(() => {
     if (!admin) {
@@ -87,11 +96,34 @@ export function LabSelectorPage() {
     }
   }
 
+  const handleUpdateLab = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editLabName.trim()) {
+      alert('Lab Name is required')
+      return
+    }
+    setUpdatingLab(true)
+    try {
+      await updateLab(editLabId, {
+        name: editLabName.trim(),
+        code: editLabCode.trim() || undefined,
+        location: editLabLocation.trim() || '',
+        manager: editLabManager.trim()
+      })
+      alert(`Lab room "${editLabName}" updated successfully!`)
+      setShowEditLabModal(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update lab room')
+    } finally {
+      setUpdatingLab(false)
+    }
+  }
+
   const handleDeleteLab = async (labId: string, labName: string) => {
-    if (confirm(`Are you sure you want to delete/deactivate "${labName}"? All schedules and configurations will be hidden.`)) {
+    if (confirm(`Are you sure you want to permanently delete "${labName}"?\nWARNING: This will permanently delete the lab room and all its configurations, schedules, clusters, nodes, and event logs.`)) {
       try {
         await archiveLab(labId)
-        alert(`Lab room "${labName}" deleted successfully.`)
+        alert(`Lab room "${labName}" and all associated data have been permanently deleted.`)
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to delete lab room')
       }
@@ -144,6 +176,21 @@ export function LabSelectorPage() {
                   }`}>{lab.status}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] text-[#94a3b8]">{lab.code}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditLabId(lab.id)
+                        setEditLabName(lab.name)
+                        setEditLabCode(lab.code || '')
+                        setEditLabLocation(lab.location || '')
+                        setEditLabManager(lab.manager || '')
+                        setShowEditLabModal(true)
+                      }}
+                      className="text-blue/60 hover:text-blue transition-colors text-[11px] font-mono px-1.5 py-0.5 rounded hover:bg-blue/5 flex items-center gap-1 border border-transparent hover:border-blue/10 cursor-pointer"
+                      title="Edit Lab"
+                    >
+                      ✏️ Edit
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -223,6 +270,88 @@ export function LabSelectorPage() {
                 <Button variant="ghost" type="button" onClick={() => setShowNewLabModal(false)} disabled={creatingLab}>Cancel</Button>
                 <Button variant="primary" type="submit" disabled={creatingLab || !newLabName.trim()}>
                   {creatingLab ? 'Creating...' : 'Open Lab'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lab Modal */}
+      {showEditLabModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !updatingLab && setShowEditLabModal(false)} />
+          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-[#0f172a]">Edit Lab Room Details</h3>
+              <button onClick={() => !updatingLab && setShowEditLabModal(false)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
+            </div>
+            
+            <form onSubmit={handleUpdateLab} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab Name</label>
+                <input 
+                  type="text" 
+                  value={editLabName} 
+                  onChange={e => setEditLabName(e.target.value)} 
+                  placeholder="e.g., IoT Lab C205"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  disabled={updatingLab}
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab Code</label>
+                <input 
+                  type="text" 
+                  value={editLabCode} 
+                  onChange={e => setEditLabCode(e.target.value.toUpperCase())} 
+                  placeholder="e.g., IoT-C205"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  disabled={updatingLab}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Location</label>
+                <input 
+                  type="text" 
+                  value={editLabLocation} 
+                  onChange={e => setEditLabLocation(e.target.value)} 
+                  placeholder="e.g., Building C, Room 205"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  disabled={updatingLab}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Manager / Supervisor</label>
+                <input 
+                  type="text" 
+                  value={editLabManager} 
+                  onChange={e => setEditLabManager(e.target.value)} 
+                  placeholder="e.g., TS. Nguyen Van A"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  disabled={updatingLab}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end mt-4">
+                <Button 
+                  variant="ghost" 
+                  type="button" 
+                  onClick={() => setShowEditLabModal(false)}
+                  disabled={updatingLab}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  type="submit"
+                  disabled={updatingLab || !editLabName.trim()}
+                >
+                  {updatingLab ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </form>

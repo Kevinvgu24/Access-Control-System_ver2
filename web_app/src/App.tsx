@@ -10,7 +10,6 @@ import { EnrollmentPage }  from '@/pages/EnrollmentPage'
 import { SchedulesPage }   from '@/pages/SchedulesPage'
 import { LogsPage }        from '@/pages/LogsPage'
 import { SystemPage }      from '@/pages/SystemPage'
-import { ControlPage }     from '@/pages/ControlPage'
 import { useAuthStore }    from '@/store/authStore'
 import { useLabStore }     from '@/store/labStore'
 import { useAdminStore }   from '@/store/adminStore'
@@ -94,7 +93,6 @@ function AuthenticatedApp() {
 
         <main className="flex-1 overflow-y-auto p-8 pb-16">
           <Routes>
-            <Route path="/control" element={admin.type === 'super_admin' ? <ControlPage /> : <Navigate to="/labs" replace />} />
             <Route path="/labs"    element={<LabSelectorPage />} />
             {selectedLabId ? (
               <>

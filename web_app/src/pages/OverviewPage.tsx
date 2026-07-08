@@ -85,21 +85,6 @@ export function OverviewPage() {
         {/* Right */}
         <div className="flex flex-col gap-4">
           <Panel>
-            <PanelHeader eyebrow="Watch" title="Incidents" />
-            <div className="flex flex-col gap-2">
-              {incidents.length === 0 ? (
-                <div className="flex gap-3 items-start px-3 py-2.5 rounded bg-green/5 border-l-2 border-green/40 text-sm text-[#475569]">
-                  System healthy. Monitoring live activity.
-                </div>
-              ) : incidents.map(inc => (
-                <div key={inc.id} className={`flex gap-3 items-start px-3 py-2.5 rounded border-l-2 text-sm text-[#475569] ${
-                  inc.severity === 'high' ? 'bg-red/5 border-red/40' : 'bg-amber/5 border-amber/40'
-                }`}>{inc.summary}</div>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel>
             <PanelHeader eyebrow="Trend" title="Confidence Band" />
             <div className="flex flex-col gap-3">
               {events.slice(0, 6).map(ev => {

@@ -14,7 +14,7 @@ const NAV = [
 
 export function Sidebar() {
   const { admin, signOut }          = useAuthStore()
-  const { selectedLabName, clearLab } = useLabStore()
+  const { selectedLabId, selectedLabName, clearLab } = useLabStore()
   const systemStatus                  = useAdminStore(s => s.systemStatus)
   const navigate                      = useNavigate()
 
@@ -45,6 +45,12 @@ export function Sidebar() {
       <nav className="flex flex-col p-3 gap-0.5 flex-1">
         {NAV.map(({ href, icon, label }) => (
           <NavLink key={href} to={href}
+            onClick={(e) => {
+              if (!selectedLabId) {
+                e.preventDefault()
+                alert('You must choose a lab to continue')
+              }
+            }}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all
                ${isActive ? 'bg-green/10 text-green' : 'text-[#475569] hover:text-[#334155] hover:bg-slate-100'}`
@@ -55,18 +61,6 @@ export function Sidebar() {
           </NavLink>
         ))}
 
-        {/* Control Panel — super_admin only */}
-        {admin?.type === 'super_admin' && (
-          <NavLink to="/control"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all mt-3
-               ${isActive ? 'bg-green/10 text-green' : 'text-[#475569] hover:text-[#334155] hover:bg-slate-100'}`
-            }
-          >
-            <span className="text-base leading-none">⚙</span>
-            Control Panel
-          </NavLink>
-        )}
 
         {/* Switch lab */}
         <button

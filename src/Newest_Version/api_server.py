@@ -1185,23 +1185,34 @@ def update_lab(lab_id):
         logger.error(f"Failed to update lab: {e}")
         return jsonify({"error": str(e)}), 500
 
-# 23. Archive a lab
+# 23. Archive/Delete a lab permanently
 @app.route("/api/labs/<lab_id>/archive", methods=["POST"])
 def archive_lab(lab_id):
-    now_str = datetime.now().isoformat()
     try:
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        c.execute("""
-            UPDATE labs
-            SET status = 'inactive', updatedAt = ?
-            WHERE id = ?
-        """, (now_str, lab_id))
+        
+        # Delete lab record
+        c.execute("DELETE FROM labs WHERE id = ?", (lab_id,))
+        
+        # Delete related clusters
+        c.execute("DELETE FROM clusters WHERE labId = ?", (lab_id,))
+        
+        # Delete related nodes
+        c.execute("DELETE FROM nodes WHERE labId = ?", (lab_id,))
+        
+        # Delete schedules inside
+        c.execute("DELETE FROM lab_schedules WHERE labId = ?", (lab_id,))
+        
+        # Delete events & incidents inside
+        c.execute("DELETE FROM access_events WHERE labId = ?", (lab_id,))
+        c.execute("DELETE FROM incidents WHERE labId = ?", (lab_id,))
+        
         conn.commit()
         conn.close()
         return jsonify({"success": True})
     except Exception as e:
-        logger.error(f"Failed to archive lab: {e}")
+        logger.error(f"Failed to delete lab permanently: {e}")
         return jsonify({"error": str(e)}), 500
 
 # 24. Create a cluster
