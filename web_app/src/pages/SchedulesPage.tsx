@@ -33,6 +33,8 @@ export function SchedulesPage() {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const ITEMS_PER_PAGE = 50
   const [templateType, setTemplateType] = useState<string>('type1')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -109,6 +111,10 @@ export function SchedulesPage() {
       setSchedules([])
     }
   }, [selectedFileKey])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, selectedFileKey])
 
   const handleImportDirect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -219,17 +225,24 @@ export function SchedulesPage() {
     }
   }
 
-  const filtered = schedules.filter(s =>
-    !search ||
-    s.student_name.toLowerCase().includes(search.toLowerCase()) ||
-    s.student_id.toLowerCase().includes(search.toLowerCase()) ||
-    s.date.includes(search) ||
-    s.experiment.toLowerCase().includes(search.toLowerCase()) ||
-    s.group_nr.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = schedules.filter(s => {
+    const sName = s.student_name || ""
+    const sId = s.student_id || ""
+    const sDate = s.date || ""
+    const sExp = s.experiment || ""
+    const sGroup = s.group_nr || ""
+    return !search ||
+      sName.toLowerCase().includes(search.toLowerCase()) ||
+      sId.toLowerCase().includes(search.toLowerCase()) ||
+      sDate.includes(search) ||
+      sExp.toLowerCase().includes(search.toLowerCase()) ||
+      sGroup.toLowerCase().includes(search.toLowerCase())
+  })
+
+  const displayedSchedules = filtered.slice(0, currentPage * ITEMS_PER_PAGE)
 
   // Compute stats
-  const uniqueStudents = new Set(schedules.map(s => s.student_id)).size
+  const uniqueStudents = new Set(schedules.map(s => s.student_id).filter(Boolean)).size
   const totalSessions = schedules.length
   const uniqueExperiments = new Set(schedules.map(s => s.experiment).filter(Boolean)).size
 
@@ -372,7 +385,7 @@ export function SchedulesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(s => (
+                {displayedSchedules.map(s => (
                   <tr key={s.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                     <td className="px-5 py-4">
                       <div>
@@ -401,6 +414,14 @@ export function SchedulesPage() {
                 ))}
               </tbody>
             </table>
+
+            {filtered.length > currentPage * ITEMS_PER_PAGE && (
+              <div className="p-5 border-t border-line text-center bg-raised">
+                <Button variant="ghost" onClick={() => setCurrentPage(p => p + 1)}>
+                  ➕ Tải thêm ({filtered.length - currentPage * ITEMS_PER_PAGE} dòng ẩn)
+                </Button>
+              </div>
+            )}
 
             {filtered.length === 0 && (
               <div className="py-16 text-center">
