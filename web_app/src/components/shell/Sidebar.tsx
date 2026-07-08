@@ -14,7 +14,7 @@ const NAV = [
 
 export function Sidebar() {
   const { admin, signOut }          = useAuthStore()
-  const { selectedLabId, selectedLabName, clearLab } = useLabStore()
+  const { selectedLabId, selectedLabName, clearLab, setWarning } = useLabStore()
   const systemStatus                  = useAdminStore(s => s.systemStatus)
   const navigate                      = useNavigate()
 
@@ -48,7 +48,7 @@ export function Sidebar() {
             onClick={(e) => {
               if (!selectedLabId) {
                 e.preventDefault()
-                alert('You must choose a lab to continue')
+                setWarning('You must choose a lab to continue')
               }
             }}
             className={({ isActive }) =>

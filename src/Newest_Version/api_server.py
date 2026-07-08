@@ -1104,7 +1104,7 @@ def import_lab_schedules(lab_id):
         c.executemany("""
             INSERT INTO lab_schedules 
                 (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, insert_data)
         
         conn.commit()

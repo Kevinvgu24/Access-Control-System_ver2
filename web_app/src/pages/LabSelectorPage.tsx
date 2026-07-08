@@ -10,7 +10,7 @@ export function LabSelectorPage() {
   const [labs, setLabs] = useState<Lab[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { selectLab } = useLabStore()
+  const { selectLab, warning, setWarning } = useLabStore()
   const { admin, labAccessIds } = useAuthStore()
   const navigate = useNavigate()
 
@@ -132,6 +132,20 @@ export function LabSelectorPage() {
 
   return (
     <div className="flex flex-col gap-7">
+      {warning && (
+        <div className="bg-amber/10 border border-amber/20 text-amber text-xs font-mono px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{warning}</span>
+          </div>
+          <button 
+            onClick={() => setWarning(null)} 
+            className="text-amber/60 hover:text-amber cursor-pointer text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="flex justify-between items-end gap-4 flex-wrap">
         <div>
           <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Select</p>
