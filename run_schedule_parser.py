@@ -39,8 +39,9 @@ class ExcelHTMLParser(HTMLParser):
             self.raw_rows.append(self.current_row)
 
 class UniversalScheduleParser:
-    def __init__(self, path):
+    def __init__(self, path, template_type='type1'):
         self.path = path.strip('"').strip("'")
+        self.template_type = template_type
         self.grid = []
         self.timeline = []
         self.students = []
@@ -55,17 +56,332 @@ class UniversalScheduleParser:
             if html_files:
                 target_file = os.path.join(self.path, html_files[0])
                 self.is_xlsx = False
-                return self._parse_html(target_file)
+                if self.template_type == 'type1':
+                    return self._parse_new_format(target_file)
+                else:
+                    return self._parse_html(target_file)
             else:
                 raise ValueError("Không tìm thấy tệp .html trong thư mục.")
         elif self.path.endswith('.html') or self.path.endswith('.htm'):
             self.is_xlsx = False
-            return self._parse_html(self.path)
+            if self.template_type == 'type1':
+                return self._parse_new_format(self.path)
+            else:
+                return self._parse_html(self.path)
         elif self.path.endswith('.xlsx'):
             self.is_xlsx = True
-            return self._parse_xlsx()
+            if self.template_type == 'type1':
+                return self._parse_new_format(self.path)
+            else:
+                return self._parse_xlsx()
         else:
             raise ValueError("Định dạng tệp không được hỗ trợ (chỉ nhận thư mục HTML, tệp .html hoặc tệp .xlsx).")
+
+    def _parse_new_format(self, file_path_or_self_path):
+        # 1. Build grid
+        if self.is_xlsx:
+            print(f"Đang đọc tệp Excel (.xlsx): {self.path}...")
+            import uuid
+            temp_file = f"temp_parsing_schedule_{uuid.uuid4().hex}.xlsx"
+            shutil.copy(self.path, temp_file)
+            
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(temp_file, data_only=True)
+                sheet_name = None
+                for name in wb.sheetnames:
+                    if any(x in name.lower() for x in ['schedule', 'group', 'lịch', 'nhóm']):
+                        sheet_name = name
+                        break
+                if sheet_name is None:
+                    sheet_name = wb.sheetnames[0]
+                    
+                print(f"Đang phân tích trang tính (Sheet): '{sheet_name}'")
+                ws = wb[sheet_name]
+            except Exception as e:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                raise RuntimeError(f"Không thể mở tệp Excel: {e}")
+
+            max_rows = ws.max_row
+            max_cols = ws.max_column
+            merged_ranges = ws.merged_cells.ranges
+            
+            # Read grid values and cell colors
+            self.grid = [[{"text": "", "color": "NO_COLOR"} for _ in range(max_cols + 1)] for _ in range(max_rows + 1)]
+            for r in range(1, max_rows + 1):
+                for c in range(1, max_cols + 1):
+                    cell = ws.cell(row=r, column=c)
+                    val = cell.value
+                    txt = str(val).strip() if val is not None else ""
+                    
+                    if txt.endswith(".0"):
+                        try:
+                            txt = str(int(float(txt)))
+                        except ValueError:
+                            pass
+                            
+                    color = "NO_COLOR"
+                    fill = cell.fill
+                    if fill and fill.fill_type and fill.fill_type != 'none':
+                        if hasattr(fill.fgColor, 'rgb') and fill.fgColor.rgb:
+                            color = str(fill.fgColor.rgb)
+                    self.grid[r][c] = {"text": txt, "color": color}
+
+            # Apply merged values to all spanned cells
+            for merged_range in merged_ranges:
+                min_col, min_row, max_col, max_row = merged_range.bounds
+                origin_val = self.grid[min_row][min_col]
+                for r in range(min_row, max_row + 1):
+                    for c in range(min_col, max_col + 1):
+                        if r == min_row and c == min_col:
+                            continue
+                        self.grid[r][c]["text"] = origin_val["text"]
+                        self.grid[r][c]["color"] = origin_val["color"]
+            
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        else:
+            print(f"Đang đọc tệp HTML: {file_path_or_self_path}...")
+            with open(file_path_or_self_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            parser = ExcelHTMLParser()
+            parser.feed(html_content)
+            raw_rows = parser.raw_rows
+
+            max_cols = 0
+            for row in raw_rows:
+                cols_in_row = 0
+                for cell in row:
+                    cols_in_row += int(cell["attrs"].get("colspan", "1"))
+                max_cols = max(max_cols, cols_in_row)
+
+            self.grid = [[None for _ in range(max_cols)] for _ in range(len(raw_rows))]
+            for r_idx, row in enumerate(raw_rows):
+                c_idx = 0
+                for cell in row:
+                    while c_idx < max_cols and self.grid[r_idx][c_idx] is not None:
+                        c_idx += 1
+                    if c_idx >= max_cols:
+                        break
+                    colspan = int(cell["attrs"].get("colspan", "1"))
+                    rowspan = int(cell["attrs"].get("rowspan", "1"))
+                    for dr in range(rowspan):
+                        for dc in range(colspan):
+                            tr = r_idx + dr
+                            tc = c_idx + dc
+                            if tr < len(self.grid) and tc < max_cols:
+                                self.grid[tr][tc] = cell
+                    c_idx += colspan
+
+        # 2. Extract year from filename/path
+        year = 2026
+        match = re.search(r'\b(202\d)\b', self.path)
+        if match:
+            year = int(match.group(1))
+
+        # 3. Propagate and construct timeline
+        self.timeline = []
+        start_col = 5 if self.is_xlsx else 4
+        limit_cols = len(self.grid[0]) if self.is_xlsx else len(self.grid[0])
+        
+        months = []
+        curr_month = "4"
+        month_row = 6 if self.is_xlsx else 5
+        
+        if len(self.grid) > month_row:
+            row_len = len(self.grid[month_row])
+            for c in range(start_col, row_len):
+                cell = self.grid[month_row][c]
+                txt = ""
+                if cell:
+                    txt = cell["text"].strip() if isinstance(cell, dict) else cell.get("text", "").strip()
+                if txt:
+                    m_match = re.search(r'\d+', txt)
+                    curr_month = m_match.group(0) if m_match else txt
+                months.append(curr_month)
+
+        for c in range(start_col, len(self.grid[0])):
+            t_idx = c - start_col
+            
+            month_val = months[t_idx] if t_idx < len(months) else "4"
+            
+            d_row = 7 if self.is_xlsx else 6
+            day_of_week = ""
+            if len(self.grid) > d_row and c < len(self.grid[d_row]):
+                cell_d = self.grid[d_row][c]
+                if cell_d:
+                    day_of_week = cell_d["text"].strip() if isinstance(cell_d, dict) else cell_d.get("text", "").strip()
+
+            dt_row = 8 if self.is_xlsx else 7
+            day_val = ""
+            if len(self.grid) > dt_row and c < len(self.grid[dt_row]):
+                cell_dt = self.grid[dt_row][c]
+                if cell_dt:
+                    day_val = cell_dt["text"].strip() if isinstance(cell_dt, dict) else cell_dt.get("text", "").strip()
+            if day_val.endswith('.0'):
+                day_val = day_val[:-2]
+
+            if not day_val or not day_val.isdigit():
+                self.timeline.append(None)
+                continue
+
+            ma_row = 9 if self.is_xlsx else 8
+            ma_val = ""
+            if len(self.grid) > ma_row and c < len(self.grid[ma_row]):
+                cell_ma = self.grid[ma_row][c]
+                if cell_ma:
+                    ma_val = cell_ma["text"].strip() if isinstance(cell_ma, dict) else cell_ma.get("text", "").strip()
+            if ma_val.upper() == 'A':
+                ma_val = 'Afternoon'
+            elif ma_val.upper() == 'M':
+                ma_val = 'Morning'
+
+            s_row = 10 if self.is_xlsx else 9
+            session_val = ""
+            if len(self.grid) > s_row and c < len(self.grid[s_row]):
+                cell_s = self.grid[s_row][c]
+                if cell_s:
+                    session_val = cell_s["text"].strip() if isinstance(cell_s, dict) else cell_s.get("text", "").strip()
+            if session_val.endswith('.0'):
+                session_val = session_val[:-2]
+
+            try:
+                month_num = int(month_val) if month_val.isdigit() else 4
+                day_num = int(day_val)
+                date_str = f"{year:04d}-{month_num:02d}-{day_num:02d}"
+            except Exception:
+                date_str = f"2026-04-{int(day_val):02d}"
+
+            self.timeline.append({
+                "col": c,
+                "date": date_str,
+                "day": day_of_week,
+                "ma": ma_val,
+                "session": session_val
+            })
+
+        # 4. Parse students starting from row 13 (index 13 in xlsx, index 12 in html)
+        start_row = 13 if self.is_xlsx else 12
+        self.students = []
+        
+        for r in range(start_row, len(self.grid)):
+            row = self.grid[r]
+            g_idx = 1 if self.is_xlsx else 0
+            n_idx = 3 if self.is_xlsx else 2
+            id_idx = 4 if self.is_xlsx else 3
+            
+            if len(row) <= max(g_idx, n_idx, id_idx):
+                continue
+                
+            group_cell = row[g_idx]
+            name_cell = row[n_idx]
+            id_cell = row[id_idx]
+            
+            group_nr = ""
+            if group_cell:
+                group_nr = group_cell["text"].strip() if isinstance(group_cell, dict) else group_cell.get("text", "").strip()
+            name = ""
+            if name_cell:
+                name = name_cell["text"].strip() if isinstance(name_cell, dict) else name_cell.get("text", "").strip()
+            std_id = ""
+            if id_cell:
+                std_id = id_cell["text"].strip() if isinstance(id_cell, dict) else id_cell.get("text", "").strip()
+                
+            if not name and not std_id:
+                continue
+                
+            # Skip headers
+            if name in ["Name ↓", "Họ và Tên", "MSSV", "STT"] or group_nr == "Group Nr.":
+                continue
+                
+            if group_nr.endswith('.0'):
+                group_nr = group_nr[:-2]
+            if std_id.endswith('.0'):
+                std_id = std_id[:-2]
+
+            self.students.append({
+                "row": r,
+                "group": group_nr,
+                "nr": "",
+                "name": name,
+                "id": std_id
+            })
+
+        # Helper for color matching
+        def is_color_active(color_str):
+            if not color_str:
+                return False
+            color_str = color_str.strip().lower()
+            if color_str in ("no_color", "white", "#ffffff", "#fff", "ffffffff", "00000000", "00ffffff", "rgb(255,255,255)", "rgb(255, 255, 255)", "none", ""):
+                return False
+            return True
+
+        # Parse active lab days for each student
+        class_colors = {}
+        if not self.is_xlsx:
+            with open(file_path_or_self_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            styles = re.findall(r'<style[^>]*>(.*?)</style>', html_content, re.DOTALL)
+            if styles:
+                style_content = styles[0]
+                rules = re.findall(r'\.s(\d+)\b[^{]*\{([^}]+)\}', style_content)
+                for cls_num, props in rules:
+                    bg_match = re.search(r'background-color\s*:\s*([^;]+)', props)
+                    if bg_match:
+                        class_colors[f"s{cls_num}"] = bg_match.group(1).strip().lower()
+
+        self.parsed_records = []
+        for std in self.students:
+            r = std["row"]
+            group_nr = std["group"]
+            name = std["name"]
+            std_id = std["id"]
+            row = self.grid[r]
+            
+            for c in range(start_col, len(row)):
+                t_idx = c - start_col
+                if t_idx >= len(self.timeline) or self.timeline[t_idx] is None:
+                    continue
+                    
+                t_info = self.timeline[t_idx]
+                cell = row[c]
+                if not cell:
+                    continue
+                    
+                cell_text = cell["text"].strip() if isinstance(cell, dict) else cell.get("text", "").strip()
+                
+                # Check color
+                color = "NO_COLOR"
+                if self.is_xlsx:
+                    color = cell.get("color", "NO_COLOR")
+                else:
+                    style_val = cell["attrs"].get("style", "").lower() if isinstance(cell, dict) and "attrs" in cell else ""
+                    bg_match = re.search(r'background(?:-color)?\s*:\s*([^;]+)', style_val)
+                    if bg_match:
+                        color = bg_match.group(1).strip().lower()
+                    else:
+                        cls = cell["attrs"].get("class", "") if isinstance(cell, dict) and "attrs" in cell else ""
+                        color = class_colors.get(cls, "NO_COLOR")
+
+                if is_color_active(color):
+                    exp = cell_text
+                    if not exp:
+                        exp = "Lab Session"
+                        
+                    self.parsed_records.append({
+                        "student_id": std_id,
+                        "student_name": name,
+                        "group_nr": group_nr,
+                        "student_nr": "",
+                        "date": t_info["date"],
+                        "day_of_week": t_info["day"],
+                        "ma": t_info["ma"],
+                        "session_num": t_info["session"],
+                        "experiment": exp
+                    })
+        return self.parsed_records
 
     def _parse_html(self, file_path):
         print(f"Đang đọc tệp HTML: {file_path}...")

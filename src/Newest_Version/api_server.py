@@ -1068,7 +1068,11 @@ def import_lab_schedules(lab_id):
             file.save(tmp.name)
             temp_path = tmp.name
             
-        parser = UniversalScheduleParser(temp_path)
+        template_type = request.form.get("template_type", "type1")
+        if not template_type:
+            template_type = "type1"
+
+        parser = UniversalScheduleParser(temp_path, template_type=template_type)
         records = parser.parse()
         
         if not records:
