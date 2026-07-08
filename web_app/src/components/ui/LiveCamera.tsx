@@ -114,7 +114,7 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
             onClick={captureFrame}
             disabled={!hasLoadedAtLeastOnce}
             className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white font-mono text-[11px] px-3.5 py-1.5 rounded-md border border-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm font-semibold active:scale-[0.98]"
-            title="Chụp ảnh khung hình hiện tại"
+            title="Capture current stream frame"
           >
             📸 Capture Photo
           </button>

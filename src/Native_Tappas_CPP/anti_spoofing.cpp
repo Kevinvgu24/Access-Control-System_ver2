@@ -39,7 +39,7 @@ extern "C" {
         if (mean_brightness < 35.0) {
             res.is_live = false;
             res.score = (float)mean_brightness;
-            std::snprintf(res.reason, sizeof(res.reason), "Crop qua toi/Man hinh hap thu IR (brightness: %.1f)", mean_brightness);
+            std::snprintf(res.reason, sizeof(res.reason), "Crop too dark/IR absorption (brightness: %.1f)", mean_brightness);
             return res;
         }
 
@@ -202,35 +202,35 @@ extern "C" {
         if (hotspot_ratio > max_hotspot_ratio) {
             res.is_live = false;
             res.score = hotspot_ratio;
-            std::snprintf(res.reason, sizeof(res.reason), "Loa man hinh/Giay kinh (ratio: %.3f)", hotspot_ratio);
+            std::snprintf(res.reason, sizeof(res.reason), "Screen glare/Paper glass (ratio: %.3f)", hotspot_ratio);
             return res;
         }
 
         if (radial_ratio < min_radial_ratio) {
             res.is_live = false;
             res.score = radial_ratio;
-            std::snprintf(res.reason, sizeof(res.reason), "Mat phang ko co do sau 3D (radial: %.2f)", radial_ratio);
+            std::snprintf(res.reason, sizeof(res.reason), "Flat surface detected/No 3D depth (radial: %.2f)", radial_ratio);
             return res;
         }
 
         if (contrast_ratio < min_contrast_ratio) {
             res.is_live = false;
             res.score = contrast_ratio;
-            std::snprintf(res.reason, sizeof(res.reason), "Do tuong phan Mat vs Da qua thap (%.2f)", contrast_ratio);
+            std::snprintf(res.reason, sizeof(res.reason), "Low eye-skin contrast ratio (%.2f)", contrast_ratio);
             return res;
         }
 
         if (blur_var < min_blur_var) {
             res.is_live = false;
             res.score = blur_var;
-            std::snprintf(res.reason, sizeof(res.reason), "Anh qua mo / Mat net (variance: %.2f)", blur_var);
+            std::snprintf(res.reason, sizeof(res.reason), "Image blurry/Out of focus (variance: %.2f)", blur_var);
             return res;
         }
 
         if (blur_var > max_blur_var) {
             res.is_live = false;
             res.score = blur_var;
-            std::snprintf(res.reason, sizeof(res.reason), "Nhieu ket cau man hinh/Giay in (variance: %.2f)", blur_var);
+            std::snprintf(res.reason, sizeof(res.reason), "Moire/Print paper texture detected (variance: %.2f)", blur_var);
             return res;
         }
 

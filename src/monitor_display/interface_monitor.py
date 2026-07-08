@@ -900,7 +900,7 @@ class InterfaceMonitorApp(QMainWindow):
                     self.enroll_countdown_seconds = 7
                     
                     next_angle = self.enroll_angles[self.enroll_angle_index]
-                    self.videoWidget.guide_text = f"Chuẩn bị: {next_angle['label']} ({self.enroll_countdown_seconds}s)"
+                    self.videoWidget.guide_text = f"Prepare: {next_angle['label']} ({self.enroll_countdown_seconds}s)"
                     self.tabRegister.lblRegStatus.setText(f"Prepare next angle: {next_angle['id'].upper()} ({self.enroll_countdown_seconds}s)...")
                     self.tabRegister.lblRegStatus.setStyleSheet("color: #ea580c; font-weight: bold;")
                     self.tabRegister.btnEnroll.setEnabled(False)
@@ -923,7 +923,7 @@ class InterfaceMonitorApp(QMainWindow):
         self.enroll_countdown_seconds -= 1
         
         next_angle = self.enroll_angles[self.enroll_angle_index]
-        self.videoWidget.guide_text = f"Chuẩn bị: {next_angle['label']} ({self.enroll_countdown_seconds}s)"
+        self.videoWidget.guide_text = f"Prepare: {next_angle['label']} ({self.enroll_countdown_seconds}s)"
         self.tabRegister.lblRegStatus.setText(f"Prepare next angle: {next_angle['id'].upper()} ({self.enroll_countdown_seconds}s)...")
         self.tabRegister.btnEnroll.setText(f"WAITING... ({self.enroll_countdown_seconds}s)")
         
@@ -1252,7 +1252,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Smart Lab 7-inch touchscreen UI Monitor")
     parser.add_argument("--yolo_hef", type=str, required=True, help="Path to YOLO Face detector HEF")
     parser.add_argument("--arcface_hef", type=str, required=True, help="Path to ArcFace recognizer HEF")
-    parser.add_argument("--anti_spoofing_hef", type=str, default="/home/kevinvgu/Access-Control-System/models/mobilenet_v3.hef", help="Path to Anti-Spoofing NPU HEF")
+    parser.add_argument("--anti_spoofing_hef", type=str, default="/home/kevinvgu/Access-Control-System_ver2/models/mobilenet_v3.hef", help="Path to Anti-Spoofing NPU HEF")
     parser.add_argument("--db_dir", type=str, required=True, help="Database folder directory containing SQLite database and photos")
     parser.add_argument("--lbf_model", type=str, required=True, help="Path to LBF Facemark configuration YAML")
     parser.add_argument("--close_thresh", type=int, default=130, help="Minimum face size close distance threshold")

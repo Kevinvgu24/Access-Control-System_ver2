@@ -1,36 +1,36 @@
 #!/bin/bash
 
-# 1. Đi vào thư mục làm việc
-cd /home/kevinvgu/Access-Control-System-main/src/Native_Tappas_CPP/
+# 1. Navigate to the working directory
+cd /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/
 
 echo "============================================="
-echo " BIÊN DỊCH HẬU XỬ LÝ C++ TAPPAS (YOLOv8-Face)"
+echo " COMPILING C++ TAPPAS POST-PROCESSING (YOLOv8-Face)"
 echo "============================================="
 
-# Tạo thư mục build và tiến hành compile
+# Create build directory and compile
 mkdir -p build
 cd build
 cmake ..
 make -j$(nproc)
 
 if [ $? -ne 0 ]; then
-    echo "[LỖI] Biên dịch mã nguồn C++ thất bại!"
+    echo "[ERROR] C++ Compilation failed!"
     exit 1
 fi
 
-echo "-> Biên dịch thành công: build/libyolo26_landmark_post.so"
+echo "-> Compilation successful: build/libyolo26_landmark_post.so"
 cd ..
 
-# 2. Kích hoạt môi trường ảo hailo_env và khai báo PYTHONPATH
+# 2. Activate hailo_env virtual environment and export PYTHONPATH
 source /home/kevinvgu/hailo_env/bin/activate
 export PYTHONPATH="/home/kevinvgu/hailo_env/lib/python3.13/site-packages:/usr/lib/python3/dist-packages"
 
-# 3. Bật dịch vụ chia sẻ NPU của HailoRT
+# 3. Enable HailoRT service sharing
 export HAILORT_USE_SERVICE=1
 
 echo "============================================="
-echo " KHỞI CHẠY ĐƯỜNG ỐNG NATIVE C++ TAPPAS"
+echo " STARTING NATIVE C++ TAPPAS PIPELINE"
 echo "============================================="
 
-# Chạy pipeline với camera mặc định (/dev/video0) ở chế độ headless để debug terminal
+# Run the pipeline with default camera source in headless mode
 python3 main_native_tappas.py --source 0 --headless

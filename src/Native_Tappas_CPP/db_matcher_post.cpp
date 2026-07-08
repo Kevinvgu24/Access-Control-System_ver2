@@ -25,7 +25,7 @@ time_t g_last_mtime = 0;
 
 // [CHỨC NĂNG] Nạp/Tự động nạp lại cơ sở dữ liệu người dùng từ file nhị phân db.bin
 void reload_db() {
-    std::string bin_path = "/home/kevinvgu/Access-Control-System/scratch/db.bin";
+    std::string bin_path = "/home/kevinvgu/Access-Control-System_ver2/scratch/db.bin";
     struct stat attr;
     if (stat(bin_path.c_str(), &attr) != 0) return;
     if (attr.st_mtime == g_last_mtime) return; // Không thay đổi thì không nạp lại để tiết kiệm tài nguyên

@@ -288,14 +288,14 @@ export function SchedulesPage() {
             Please select an uploaded Excel schedule list from the dropdown menu in the upper-right corner.
           </p>
           <div className="mt-4 flex flex-col items-center gap-3 border-t border-line pt-6 w-full max-w-sm">
-            <span className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8] mb-1">Mẫu lịch trình (Template Type):</span>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8] mb-1">Schedule Template Type:</span>
             <select
               value={templateType}
               onChange={e => setTemplateType(e.target.value)}
               className="bg-surface border border-line rounded px-3 py-2 text-xs text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium w-full mb-3 shadow-sm"
             >
-              <option value="type1">Mẫu 1 (Theo nhóm học tập & màu ô lịch)</option>
-              <option value="original">Mẫu 2 (Bản thiết kế động nguyên bản)</option>
+              <option value="type1">Template 1 (By study group & calendar cell color)</option>
+              <option value="original">Template 2 (Original dynamic design)</option>
             </select>
             <span className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8]">Or upload new file for active lab:</span>
             <input 
@@ -332,8 +332,8 @@ export function SchedulesPage() {
                   onChange={e => setTemplateType(e.target.value)}
                   className="bg-surface border border-line rounded px-2.5 py-1 text-xs text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium"
                 >
-                  <option value="type1">Mẫu 1 (Mới)</option>
-                  <option value="original">Mẫu 2 (Cũ)</option>
+                  <option value="type1">Template 1 (New)</option>
+                  <option value="original">Template 2 (Old)</option>
                 </select>
               </div>
               <Button variant="ghost" onClick={() => fetchSchedules(selectedFileKey)} disabled={loading}>
@@ -423,7 +423,7 @@ export function SchedulesPage() {
             {filtered.length > currentPage * ITEMS_PER_PAGE && (
               <div className="p-5 border-t border-line text-center bg-raised">
                 <Button variant="ghost" onClick={() => setCurrentPage(p => p + 1)}>
-                  ➕ Tải thêm ({filtered.length - currentPage * ITEMS_PER_PAGE} dòng ẩn)
+                  ➕ Load More ({filtered.length - currentPage * ITEMS_PER_PAGE} rows hidden)
                 </Button>
               </div>
             )}
@@ -445,15 +445,15 @@ export function SchedulesPage() {
         };
 
         const getCellRole = (r: number, c: number) => {
-          if (r === monthRow && c >= startCol) return { name: 'Tháng', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
-          if (r === dayOfWeekRow && c >= startCol) return { name: 'Thứ', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
-          if (r === dateRow && c >= startCol) return { name: 'Ngày', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
-          if (r === maRow && c >= startCol) return { name: 'Buổi (M/A)', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
-          if (r === sessionRow && c >= startCol) return { name: 'Ca/Tiết', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === monthRow && c >= startCol) return { name: 'Month', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === dayOfWeekRow && c >= startCol) return { name: 'Day of Week', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === dateRow && c >= startCol) return { name: 'Date', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === maRow && c >= startCol) return { name: 'Session (M/A)', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === sessionRow && c >= startCol) return { name: 'Slot/Period', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
           
-          if (c === groupCol && r >= startRow) return { name: 'Nhóm học', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
-          if (c === nameCol && r >= startRow) return { name: 'Họ và Tên', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
-          if (c === idCol && r >= startRow) return { name: 'MSSV (ID)', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          if (c === groupCol && r >= startRow) return { name: 'Study Group', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          if (c === nameCol && r >= startRow) return { name: 'Full Name', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          if (c === idCol && r >= startRow) return { name: 'Student ID', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
           
           return null;
         };
@@ -470,17 +470,17 @@ export function SchedulesPage() {
         };
 
         const rowMappings = [
-          { key: 'month_row', label: 'Hàng chứa Tháng', value: monthRow },
-          { key: 'day_of_week_row', label: 'Hàng chứa Thứ', value: dayOfWeekRow },
-          { key: 'date_row', label: 'Hàng chứa Ngày', value: dateRow },
-          { key: 'ma_row', label: 'Hàng chứa Ca/Buổi (M/A)', value: maRow },
-          { key: 'session_row', label: 'Hàng chứa Tiết/Ca số', value: sessionRow },
+          { key: 'month_row', label: 'Row containing Month', value: monthRow },
+          { key: 'day_of_week_row', label: 'Row containing Day', value: dayOfWeekRow },
+          { key: 'date_row', label: 'Row containing Date', value: dateRow },
+          { key: 'ma_row', label: 'Row containing Session (M/A)', value: maRow },
+          { key: 'session_row', label: 'Row containing Slot/Period', value: sessionRow },
         ];
 
         const colMappings = [
-          { key: 'group_col', label: 'Cột chứa Nhóm học', value: groupCol },
-          { key: 'name_col', label: 'Cột chứa Họ Tên', value: nameCol },
-          { key: 'id_col', label: 'Cột chứa MSSV', value: idCol },
+          { key: 'group_col', label: 'Column containing Study Group', value: groupCol },
+          { key: 'name_col', label: 'Column containing Full Name', value: nameCol },
+          { key: 'id_col', label: 'Column containing Student ID', value: idCol },
         ];
 
         return (
@@ -490,10 +490,10 @@ export function SchedulesPage() {
               <div className="p-6 border-b border-line flex justify-between items-center bg-raised">
                 <div>
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    🗺️ Giao diện Ánh xạ Lịch trình Trực quan (Interactive Excel Mapping)
+                    🗺️ Interactive Excel Mapping Layout
                   </h2>
                   <p className="text-xs text-[#475569] mt-1">
-                    Đang nạp file: <span className="font-mono font-bold text-green">{previewData.filename}</span>. Nhấp vào các ô trong bảng để thiết lập vị trí các hàng và cột tương ứng.
+                    Loading file: <span className="font-mono font-bold text-green">{previewData.filename}</span>. Click cells on the grid to set their corresponding rows and columns.
                   </p>
                 </div>
                 <button 
@@ -509,10 +509,10 @@ export function SchedulesPage() {
                 {/* Left Side: Interactive Table Grid Preview */}
                 <div className="flex-1 p-6 overflow-auto bg-surface border-r border-line">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[#0f172a]">Bản xem trước dữ liệu (First 25 Rows / 20 Columns):</span>
+                    <span className="text-xs font-semibold text-[#0f172a]">Data Preview (First 25 Rows / 20 Columns):</span>
                     {selectedCell && (
                       <div className="text-xs bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32] px-3 py-1 rounded-full font-medium">
-                        Đang chọn: Hàng {selectedCell.row + 1}, Cột {getColLetter(selectedCell.col)} (Cột {selectedCell.col + 1}) = &ldquo;{previewData.grid[selectedCell.row]?.[selectedCell.col]?.text || ''}&rdquo;
+                        Selected: Row {selectedCell.row + 1}, Column {getColLetter(selectedCell.col)} (Col {selectedCell.col + 1}) = &ldquo;{previewData.grid[selectedCell.row]?.[selectedCell.col]?.text || ''}&rdquo;
                       </div>
                     )}
                   </div>
@@ -572,25 +572,25 @@ export function SchedulesPage() {
                     </table>
                   </div>
                   <div className="mt-4 p-4 bg-raised border border-line rounded-lg text-xs text-[#475569] flex flex-col gap-1">
-                    <p className="font-semibold text-[#0f172a] mb-1">💡 Hướng dẫn nhanh:</p>
-                    <p>1. <strong>Chọn ô:</strong> Click vào bất kỳ ô nào trên bảng xem trước.</p>
-                    <p>2. <strong>Gán hàng:</strong> Chọn một ô ở dòng mong muốn bên trái, rồi bấm nút &ldquo;Gán&rdquo; cạnh hàng tương ứng ở cột cấu hình bên phải.</p>
-                    <p>3. <strong>Gán cột:</strong> Chọn một ô ở cột mong muốn bên trái, rồi bấm nút &ldquo;Gán&rdquo; cạnh cột tương ứng ở cột cấu hình bên phải.</p>
+                    <p className="font-semibold text-[#0f172a] mb-1">💡 Quick Guide:</p>
+                    <p>1. <strong>Select Cell:</strong> Click any cell on the preview grid.</p>
+                    <p>2. <strong>Map Row:</strong> Select a cell in the desired row on the left, then click "Map" next to the corresponding row config on the right.</p>
+                    <p>3. <strong>Map Column:</strong> Select a cell in the desired column on the left, then click "Map" next to the corresponding column config on the right.</p>
                   </div>
                 </div>
 
                 {/* Right Side: Configuration Sidebar */}
                 <div className="w-96 bg-raised p-6 overflow-auto flex flex-col gap-5 border-l border-line">
                   <div>
-                    <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider mb-1">Cấu hình Ánh xạ</h3>
-                    <p className="text-xs text-[#475569]">Chọn ô bên bảng trái và nhấn nút gán tương ứng.</p>
+                    <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider mb-1">Mapping Configuration</h3>
+                    <p className="text-xs text-[#475569]">Select a cell on the left grid and click the corresponding Map button.</p>
                   </div>
 
                   <div className="flex flex-col gap-4">
                     {/* Rows Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-green uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        📅 Chỉ định Hàng Lịch trình
+                        📅 Map Schedule Rows
                       </h4>
                       
                       {rowMappings.map(mapping => {
@@ -600,7 +600,7 @@ export function SchedulesPage() {
                             <span className="text-[#475569] font-medium">{mapping.label}:</span>
                             <div className="flex items-center gap-1">
                               <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
-                                Hàng {mapping.value + 1}
+                                Row {mapping.value + 1}
                               </span>
                               <Button 
                                 variant="ghost" 
@@ -609,7 +609,7 @@ export function SchedulesPage() {
                                 onClick={() => updateMapping(mapping.key, selectedCell!.row)}
                                 className="py-0.5 px-1.5 text-[10px] hover:bg-green/10 hover:text-green"
                               >
-                                Gán
+                                Map
                               </Button>
                             </div>
                           </div>
@@ -620,7 +620,7 @@ export function SchedulesPage() {
                     {/* Columns Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-blue uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        👤 Chỉ định Cột Sinh viên
+                        👤 Map Student Columns
                       </h4>
                       
                       {colMappings.map(mapping => {
@@ -630,7 +630,7 @@ export function SchedulesPage() {
                             <span className="text-[#475569] font-medium">{mapping.label}:</span>
                             <div className="flex items-center gap-1">
                               <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
-                                Cột {getColLetter(mapping.value)}
+                                Column {getColLetter(mapping.value)}
                               </span>
                               <Button 
                                 variant="ghost" 
@@ -639,7 +639,7 @@ export function SchedulesPage() {
                                 onClick={() => updateMapping(mapping.key, selectedCell!.col)}
                                 className="py-0.5 px-1.5 text-[10px] hover:bg-blue/10 hover:text-blue"
                               >
-                                Gán
+                                Map
                               </Button>
                             </div>
                           </div>
@@ -650,14 +650,14 @@ export function SchedulesPage() {
                     {/* Boundaries Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-[#ffab00] uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        🏁 Điểm Bắt đầu Dữ liệu
+                        🏁 Data Start Point
                       </h4>
                       
                       <div className="flex justify-between items-center gap-2 text-xs">
-                        <span className="text-[#475569] font-medium">Cột Bắt đầu Lịch trình:</span>
+                        <span className="text-[#475569] font-medium">Schedule Start Column:</span>
                         <div className="flex items-center gap-1">
                           <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
-                            Cột {getColLetter(startCol)}
+                            Column {getColLetter(startCol)}
                           </span>
                           <Button 
                             variant="ghost" 
@@ -666,16 +666,16 @@ export function SchedulesPage() {
                             onClick={() => setStartCol(selectedCell!.col)}
                             className="py-0.5 px-1.5 text-[10px] hover:bg-amber/10 hover:text-amber"
                           >
-                            Gán
+                            Map
                           </Button>
                         </div>
                       </div>
 
                       <div className="flex justify-between items-center gap-2 text-xs">
-                        <span className="text-[#475569] font-medium">Hàng SV đầu tiên:</span>
+                        <span className="text-[#475569] font-medium">First Student Row:</span>
                         <div className="flex items-center gap-1">
                           <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
-                            Hàng {startRow + 1}
+                            Row {startRow + 1}
                           </span>
                           <Button 
                             variant="ghost" 
@@ -684,7 +684,7 @@ export function SchedulesPage() {
                             onClick={() => setStartRow(selectedCell!.row)}
                             className="py-0.5 px-1.5 text-[10px] hover:bg-amber/10 hover:text-amber"
                           >
-                            Gán
+                            Map
                           </Button>
                         </div>
                       </div>
@@ -698,14 +698,14 @@ export function SchedulesPage() {
                       onClick={handleConfirmMappingImport}
                       disabled={importing}
                     >
-                      {importing ? 'Đang nhập...' : '🚀 Xác nhận & Nhập lịch'}
+                      {importing ? 'Importing...' : '🚀 Confirm & Import Schedule'}
                     </Button>
                     <Button 
                       variant="ghost" 
                       className="w-full justify-center" 
                       onClick={() => setShowMappingModal(false)}
                     >
-                      Hủy
+                      Cancel
                     </Button>
                   </div>
                 </div>
