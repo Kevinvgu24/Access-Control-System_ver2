@@ -107,7 +107,7 @@ class UniversalScheduleParser:
             max_cols = ws.max_column
             merged_ranges = ws.merged_cells.ranges
             
-            # Read grid values and cell colors
+            # Read grid values and cell colors using the user's specific logic
             self.grid = [[{"text": "", "color": "NO_COLOR"} for _ in range(max_cols + 1)] for _ in range(max_rows + 1)]
             for r in range(1, max_rows + 1):
                 for c in range(1, max_cols + 1):
@@ -123,9 +123,21 @@ class UniversalScheduleParser:
                             
                     color = "NO_COLOR"
                     fill = cell.fill
-                    if fill and fill.fill_type and fill.fill_type != 'none':
-                        if hasattr(fill.fgColor, 'rgb') and fill.fgColor.rgb:
-                            color = str(fill.fgColor.rgb)
+                    is_colored = False
+                    if fill and fill.fill_type == 'solid':
+                        color_obj = fill.start_color
+                        # Theme 1 thường là màu trắng mặc định của Excel
+                        if hasattr(color_obj, 'theme') and color_obj.theme == 1:
+                            is_colored = False
+                        # Kiểm tra mã HEX (FFFFFFFF và 00000000 là trắng/trong suốt)
+                        elif hasattr(color_obj, 'rgb') and color_obj.rgb not in ['FFFFFFFF', '00000000', '00FFFFFF', None]:
+                            is_colored = True
+                        # Nếu có theme khác 1 và khác None thì cũng tính là có màu
+                        elif getattr(color_obj, 'theme', 1) not in [1, None]: 
+                            is_colored = True
+
+                    if is_colored:
+                        color = "ACTIVE_COLOR"
                     self.grid[r][c] = {"text": txt, "color": color}
 
             # Apply merged values to all spanned cells
@@ -181,14 +193,34 @@ class UniversalScheduleParser:
         if match:
             year = int(match.group(1))
 
+        # Helper to parse month names to numeric representation
+        def parse_month_to_num(month_str):
+            if not month_str:
+                return 3
+            month_str = str(month_str).lower().strip()
+            digit_match = re.search(r'\d+', month_str)
+            if digit_match:
+                return int(digit_match.group(0))
+            months_en = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+            for idx, m in enumerate(months_en):
+                if m in month_str:
+                    return idx + 1
+            return 3
+
         # 3. Propagate and construct timeline
         self.timeline = []
         start_col = 5 if self.is_xlsx else 4
-        limit_cols = len(self.grid[0]) if self.is_xlsx else len(self.grid[0])
+        
+        # Row indices matching the new structure:
+        # Row 7: Month | Row 8: Day | Row 9: Date | Row 10: M/A | Row 11: Session
+        month_row = 7 if self.is_xlsx else 6
+        d_row = 8 if self.is_xlsx else 7
+        dt_row = 9 if self.is_xlsx else 8
+        ma_row = 10 if self.is_xlsx else 9
+        s_row = 11 if self.is_xlsx else 10
         
         months = []
-        curr_month = "4"
-        month_row = 6 if self.is_xlsx else 5
+        curr_month = "3"
         
         if len(self.grid) > month_row:
             row_len = len(self.grid[month_row])
@@ -198,23 +230,19 @@ class UniversalScheduleParser:
                 if cell:
                     txt = cell["text"].strip() if isinstance(cell, dict) else cell.get("text", "").strip()
                 if txt:
-                    m_match = re.search(r'\d+', txt)
-                    curr_month = m_match.group(0) if m_match else txt
+                    curr_month = txt
                 months.append(curr_month)
 
         for c in range(start_col, len(self.grid[0])):
             t_idx = c - start_col
+            month_val = months[t_idx] if t_idx < len(months) else "3"
             
-            month_val = months[t_idx] if t_idx < len(months) else "4"
-            
-            d_row = 7 if self.is_xlsx else 6
             day_of_week = ""
             if len(self.grid) > d_row and c < len(self.grid[d_row]):
                 cell_d = self.grid[d_row][c]
                 if cell_d:
                     day_of_week = cell_d["text"].strip() if isinstance(cell_d, dict) else cell_d.get("text", "").strip()
 
-            dt_row = 8 if self.is_xlsx else 7
             day_val = ""
             if len(self.grid) > dt_row and c < len(self.grid[dt_row]):
                 cell_dt = self.grid[dt_row][c]
@@ -227,7 +255,6 @@ class UniversalScheduleParser:
                 self.timeline.append(None)
                 continue
 
-            ma_row = 9 if self.is_xlsx else 8
             ma_val = ""
             if len(self.grid) > ma_row and c < len(self.grid[ma_row]):
                 cell_ma = self.grid[ma_row][c]
@@ -238,7 +265,6 @@ class UniversalScheduleParser:
             elif ma_val.upper() == 'M':
                 ma_val = 'Morning'
 
-            s_row = 10 if self.is_xlsx else 9
             session_val = ""
             if len(self.grid) > s_row and c < len(self.grid[s_row]):
                 cell_s = self.grid[s_row][c]
@@ -248,11 +274,16 @@ class UniversalScheduleParser:
                 session_val = session_val[:-2]
 
             try:
-                month_num = int(month_val) if month_val.isdigit() else 4
-                day_num = int(day_val)
+                if '/' in day_val or '-' in day_val:
+                    parts = re.split(r'[/|-]', day_val)
+                    day_num = int(parts[0])
+                    month_num = int(parts[1]) if len(parts) > 1 else parse_month_to_num(month_val)
+                else:
+                    day_num = int(day_val)
+                    month_num = parse_month_to_num(month_val)
                 date_str = f"{year:04d}-{month_num:02d}-{day_num:02d}"
             except Exception:
-                date_str = f"2026-04-{int(day_val):02d}"
+                date_str = f"{year:04d}-03-{int(day_val):02d}"
 
             self.timeline.append({
                 "col": c,
@@ -266,6 +297,7 @@ class UniversalScheduleParser:
         start_row = 13 if self.is_xlsx else 12
         self.students = []
         
+        curr_group = ""
         for r in range(start_row, len(self.grid)):
             row = self.grid[r]
             g_idx = 1 if self.is_xlsx else 0
@@ -279,9 +311,12 @@ class UniversalScheduleParser:
             name_cell = row[n_idx]
             id_cell = row[id_idx]
             
-            group_nr = ""
+            group_val = ""
             if group_cell:
-                group_nr = group_cell["text"].strip() if isinstance(group_cell, dict) else group_cell.get("text", "").strip()
+                group_val = group_cell["text"].strip() if isinstance(group_cell, dict) else group_cell.get("text", "").strip()
+            if group_val:
+                curr_group = group_val
+
             name = ""
             if name_cell:
                 name = name_cell["text"].strip() if isinstance(name_cell, dict) else name_cell.get("text", "").strip()
@@ -293,17 +328,17 @@ class UniversalScheduleParser:
                 continue
                 
             # Skip headers
-            if name in ["Name ↓", "Họ và Tên", "MSSV", "STT"] or group_nr == "Group Nr.":
+            if name in ["Name ↓", "Họ và Tên", "MSSV", "STT"] or curr_group == "Group Nr.":
                 continue
                 
-            if group_nr.endswith('.0'):
-                group_nr = group_nr[:-2]
+            if curr_group.endswith('.0'):
+                curr_group = curr_group[:-2]
             if std_id.endswith('.0'):
                 std_id = std_id[:-2]
 
             self.students.append({
                 "row": r,
-                "group": group_nr,
+                "group": curr_group,
                 "nr": "",
                 "name": name,
                 "id": std_id
@@ -314,6 +349,8 @@ class UniversalScheduleParser:
             if not color_str:
                 return False
             color_str = color_str.strip().lower()
+            if color_str == "active_color":
+                return True
             if color_str in ("no_color", "white", "#ffffff", "#fff", "ffffffff", "00000000", "00ffffff", "rgb(255,255,255)", "rgb(255, 255, 255)", "none", ""):
                 return False
             return True
@@ -368,7 +405,7 @@ class UniversalScheduleParser:
                 if is_color_active(color):
                     exp = cell_text
                     if not exp:
-                        exp = "Lab Session"
+                        exp = "Có lịch (Ô gộp)"
                         
                     self.parsed_records.append({
                         "student_id": std_id,
