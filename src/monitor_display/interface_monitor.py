@@ -668,6 +668,25 @@ class InterfaceMonitorApp(QMainWindow):
         # [MEM] Buộc CPython giải phóng ngay lập tức thay vì đợi vòng GC tiếp theo
         gc.collect()
 
+    def _fetch_server_role(self, name):
+        """Fetch user role from central server API to detect role updates not yet synced."""
+        import os, json
+        try:
+            import urllib.request
+            server_url = os.environ.get("SERVER_URL", "http://192.168.1.244:5000")
+            lab_id = os.environ.get("LAB_ID", "default-lab")
+            url = f"{server_url}/api/labs/{lab_id}/users"
+            req = urllib.request.Request(url, headers={"User-Agent": "EdgeMonitor/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                users = json.loads(resp.read().decode())
+                for u in users:
+                    if u.get("fullName", "") == name or u.get("name", "") == name:
+                        roles = u.get("roles", [])
+                        return roles[0] if roles else u.get("role", "student")
+        except Exception as e:
+            logger.debug(f"Could not fetch server role for '{name}': {e}")
+        return None
+
     def check_user_schedule_today(self, name):
         """Checks if a student/TA/other user is scheduled for any lab session today. Bypasses only for lecturers."""
         import sqlite3
@@ -680,20 +699,8 @@ class InterfaceMonitorApp(QMainWindow):
         try:
             conn = sqlite3.connect(db_path)
             c = conn.cursor()
-            
-            # Write users table dump to scratch/db_dump.txt for debugging
-            try:
-                c.execute("SELECT id, name, university_id, role, status FROM users")
-                rows = c.fetchall()
-                with open("/home/kevinvgu/Access-Control-System_ver2/scratch/db_dump.txt", "w") as f:
-                    f.write("id | name | university_id | role | status\n")
-                    f.write("-----------------------------------------\n")
-                    for r in rows:
-                        f.write(f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]}\n")
-            except Exception as dump_err:
-                pass
 
-            # Fetch role and university_id
+            # Fetch role and university_id from local database
             c.execute("SELECT role, university_id FROM users WHERE name = ?", (name,))
             row = c.fetchone()
             if not row:
@@ -701,10 +708,25 @@ class InterfaceMonitorApp(QMainWindow):
                 return True, "", "Unknown User profile"
                 
             role, university_id = row
-            # Bypasses check if the user is a lecturer (case-insensitive and supports legacy 'faculty' role)
+            
+            # Bypasses check if the user is a lecturer (case-insensitive, supports legacy 'faculty' role)
             if role and role.strip().lower() in ('lecturer', 'faculty'):
                 conn.close()
+                logger.info(f"[Schedule] '{name}' has local role='{role}' → bypass (lecturer)")
                 return True, university_id, f"Allowed bypass ({role})"
+            
+            # Local role is NOT lecturer — check central server for latest role in case it was updated via web app
+            server_role = self._fetch_server_role(name)
+            if server_role and server_role.strip().lower() in ('lecturer', 'faculty'):
+                # Server says lecturer but local DB is outdated → update local DB immediately
+                logger.info(f"[Schedule] '{name}' server role='{server_role}' differs from local='{role}'. Updating local DB...")
+                try:
+                    c.execute("UPDATE users SET role = ? WHERE name = ?", (server_role, name))
+                    conn.commit()
+                except Exception as upd_err:
+                    logger.warning(f"Failed to update local role: {upd_err}")
+                conn.close()
+                return True, university_id, f"Allowed bypass ({server_role}, synced from server)"
                 
             # Check if there are any schedules stored at all
             c.execute("SELECT COUNT(*) FROM lab_schedules")

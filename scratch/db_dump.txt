@@ -1,0 +1,4 @@
+id | name | university_id | role | status
+-----------------------------------------
+7 | Kien | None | student | active
+8 | Tran Quang Nhu | None | student | active
