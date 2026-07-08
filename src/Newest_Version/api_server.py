@@ -1130,6 +1130,134 @@ def import_lab_schedules(lab_id):
             except Exception:
                 pass
 
+# 20b. Preview Schedule File and extract grid preview
+@app.route("/api/schedules/preview", methods=["POST"])
+def preview_schedule():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+    if not file.filename.lower().endswith((".xlsx", ".html", ".htm")):
+        return jsonify({"error": "Unsupported file format. Please upload .xlsx or .html schedule file"}), 400
+        
+    import tempfile
+    import uuid
+    import re
+    suffix = ".xlsx" if file.filename.lower().endswith(".xlsx") else ".html"
+    
+    # Save to a unique temp file in a temp directory
+    temp_dir = tempfile.gettempdir()
+    file_token = f"schedule_preview_{uuid.uuid4().hex}{suffix}"
+    temp_path = os.path.join(temp_dir, file_token)
+    file.save(temp_path)
+    
+    try:
+        parser = UniversalScheduleParser(temp_path)
+        parser.is_xlsx = file.filename.lower().endswith(".xlsx")
+        parser._build_grid(temp_path)
+        
+        # Extract first 25 rows and 20 columns to preview
+        preview_grid = []
+        for r in range(min(25, len(parser.grid))):
+            row_data = []
+            for c in range(min(20, len(parser.grid[r]))):
+                cell = parser.grid[r][c]
+                if cell is None:
+                    row_data.append({"text": "", "color": "NO_COLOR"})
+                elif isinstance(cell, dict):
+                    row_data.append({
+                        "text": cell.get("text", ""),
+                        "color": cell.get("color", "NO_COLOR")
+                    })
+                else:
+                    row_data.append({"text": "", "color": "NO_COLOR"})
+            preview_grid.append(row_data)
+            
+        return jsonify({
+            "grid": preview_grid,
+            "file_token": file_token,
+            "filename": file.filename
+        })
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try: os.remove(temp_path)
+            except Exception: pass
+        return jsonify({"error": f"Failed to build preview: {str(e)}"}), 500
+
+# 20c. Import Schedule File using user-supplied mappings
+@app.route("/api/labs/<lab_id>/schedules/import_mapped", methods=["POST"])
+def import_mapped_schedule(lab_id):
+    data = request.get_json() or {}
+    file_token = data.get("file_token")
+    filename = data.get("filename")
+    if not file_token or not filename:
+        return jsonify({"error": "Missing file_token or filename"}), 400
+        
+    import tempfile
+    temp_path = os.path.join(tempfile.gettempdir(), file_token)
+    if not os.path.exists(temp_path):
+        return jsonify({"error": "Temporary file not found or expired"}), 400
+        
+    try:
+        parser = UniversalScheduleParser(temp_path)
+        parser.is_xlsx = filename.lower().endswith(".xlsx")
+        records = parser.parse_with_mapping(data)
+        
+        if not records:
+            return jsonify({"error": "No schedule records found with the provided mappings"}), 400
+            
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Clear existing schedules with the same filename in this lab
+        c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
+        
+        # Insert new records
+        now_str = datetime.now().isoformat()
+        insert_data = []
+        for r in records:
+            insert_data.append((
+                lab_id,
+                r.get("student_id", ""),
+                r.get("student_name", ""),
+                r.get("group_nr", ""),
+                r.get("student_nr", ""),
+                r.get("date", ""),
+                r.get("day_of_week", ""),
+                r.get("ma", ""),
+                r.get("session_num", ""),
+                r.get("experiment", ""),
+                now_str,
+                filename
+            ))
+            
+        c.executemany("""
+            INSERT INTO lab_schedules 
+                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, insert_data)
+        
+        conn.commit()
+        conn.close()
+        
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            try: os.remove(temp_path)
+            except Exception: pass
+            
+        return jsonify({
+            "success": True,
+            "count": len(records),
+            "filename": filename
+        })
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try: os.remove(temp_path)
+            except Exception: pass
+        logger.error(f"Failed to import mapped schedules: {e}")
+        return jsonify({"error": f"Failed to parse and save schedules: {str(e)}"}), 500
+
 # 21. Create a new lab
 @app.route("/api/labs", methods=["POST"])
 def create_lab():

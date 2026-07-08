@@ -381,6 +381,40 @@ class UniversalScheduleParser:
                         "session_num": t_info["session"],
                         "experiment": exp
                     })
+        
+        # Write debug file
+        try:
+            with open("debug_parse.log", "w", encoding="utf-8") as df:
+                df.write(f"Is XLSX: {self.is_xlsx}\n")
+                df.write(f"Grid dimensions: {len(self.grid)} rows, {len(self.grid[0]) if self.grid else 0} cols\n")
+                
+                df.write("\n--- FIRST 20 ROWS & 10 COLS ---\n")
+                for r in range(min(20, len(self.grid))):
+                    row_cells = []
+                    for c in range(min(15, len(self.grid[r]))):
+                        cell = self.grid[r][c]
+                        if cell:
+                            txt = cell.get("text", "") if isinstance(cell, dict) else ""
+                            col_val = cell.get("color", "") if isinstance(cell, dict) else ""
+                            row_cells.append(f"[{r},{c}]={txt}({col_val})")
+                        else:
+                            row_cells.append(f"[{r},{c}]=None")
+                    df.write(" | ".join(row_cells) + "\n")
+                
+                df.write(f"\nTimeline length: {len(self.timeline)}\n")
+                for idx, t in enumerate(self.timeline):
+                    df.write(f"Col {idx}: {t}\n")
+                    
+                df.write(f"\nStudents parsed: {len(self.students)}\n")
+                for std in self.students[:50]:
+                    df.write(f"Row {std['row']}: {std}\n")
+                    
+                df.write(f"\nParsed records: {len(self.parsed_records)}\n")
+                for rec in self.parsed_records[:50]:
+                    df.write(f"{rec}\n")
+        except Exception as log_err:
+            print(f"DEBUG LOG ERROR: {log_err}")
+
         return self.parsed_records
 
     def _parse_html(self, file_path):
@@ -869,6 +903,291 @@ class UniversalScheduleParser:
                 "name": name,
                 "id": std_id
             })
+
+    def _build_grid(self, file_path_or_self_path):
+        import re
+        if self.is_xlsx:
+            import shutil
+            import uuid
+            import os
+            temp_file = f"temp_parsing_schedule_{uuid.uuid4().hex}.xlsx"
+            shutil.copy(file_path_or_self_path, temp_file)
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(temp_file, data_only=True)
+                sheet_name = None
+                for name in wb.sheetnames:
+                    if any(x in name.lower() for x in ['schedule', 'group', 'lịch', 'nhóm']):
+                        sheet_name = name
+                        break
+                if sheet_name is None:
+                    sheet_name = wb.sheetnames[0]
+                ws = wb[sheet_name]
+                max_rows = ws.max_row
+                max_cols = ws.max_column
+                merged_ranges = ws.merged_cells.ranges
+                
+                self.grid = [[{"text": "", "color": "NO_COLOR"} for _ in range(max_cols)] for _ in range(max_rows)]
+                for r in range(1, max_rows + 1):
+                    for c in range(1, max_cols + 1):
+                        cell = ws.cell(row=r, column=c)
+                        val = cell.value
+                        txt = str(val).strip() if val is not None else ""
+                        if txt.endswith(".0"):
+                            try: txt = str(int(float(txt)))
+                            except ValueError: pass
+                        color = "NO_COLOR"
+                        fill = cell.fill
+                        if fill and fill.fill_type and fill.fill_type != 'none':
+                            if hasattr(fill.fgColor, 'rgb') and fill.fgColor.rgb:
+                                color = str(fill.fgColor.rgb)
+                        self.grid[r-1][c-1] = {"text": txt, "color": color}
+                        
+                for merged_range in merged_ranges:
+                    min_col, min_row, max_col, max_row = merged_range.bounds
+                    # Ensure indices are within bounds
+                    m_row = min(min_row - 1, len(self.grid) - 1)
+                    m_col = min(min_col - 1, len(self.grid[0]) - 1)
+                    origin_val = self.grid[m_row][m_col]
+                    for r in range(min_row, min(max_row + 1, len(self.grid) + 1)):
+                        for c in range(min_col, min(max_col + 1, len(self.grid[0]) + 1)):
+                            if r == min_row and c == min_col:
+                                continue
+                            self.grid[r-1][c-1]["text"] = origin_val["text"]
+                            self.grid[r-1][c-1]["color"] = origin_val["color"]
+            finally:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+        else:
+            with open(file_path_or_self_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            parser = ExcelHTMLParser()
+            parser.feed(html_content)
+            raw_rows = parser.raw_rows
+            max_cols = 0
+            for row in raw_rows:
+                cols_in_row = 0
+                for cell in row:
+                    cols_in_row += int(cell["attrs"].get("colspan", "1"))
+                max_cols = max(max_cols, cols_in_row)
+            self.grid = [[None for _ in range(max_cols)] for _ in range(len(raw_rows))]
+            for r_idx, row in enumerate(raw_rows):
+                c_idx = 0
+                for cell in row:
+                    while c_idx < max_cols and self.grid[r_idx][c_idx] is not None:
+                        c_idx += 1
+                    if c_idx >= max_cols:
+                        break
+                    colspan = int(cell["attrs"].get("colspan", "1"))
+                    rowspan = int(cell["attrs"].get("rowspan", "1"))
+                    for dr in range(rowspan):
+                        for dc in range(colspan):
+                            tr = r_idx + dr
+                            tc = c_idx + dc
+                            if tr < len(self.grid) and tc < max_cols:
+                                self.grid[tr][tc] = cell
+                    c_idx += colspan
+            
+            # Convert HTML cells to standard text/color dicts
+            class_colors = {}
+            styles = re.findall(r'<style[^>]*>(.*?)</style>', html_content, re.DOTALL)
+            if styles:
+                style_content = styles[0]
+                rules = re.findall(r'\.s(\d+)\b[^{]*\{([^}]+)\}', style_content)
+                for cls_num, props in rules:
+                    bg_match = re.search(r'background-color\s*:\s*([^;]+)', props)
+                    if bg_match:
+                        class_colors[f"s{cls_num}"] = bg_match.group(1).strip().lower()
+
+            for r in range(len(self.grid)):
+                for c in range(len(self.grid[r])):
+                    cell = self.grid[r][c]
+                    if cell is None:
+                        self.grid[r][c] = {"text": "", "color": "NO_COLOR"}
+                    else:
+                        txt = cell.get("text", "").strip()
+                        style_val = cell["attrs"].get("style", "").lower() if "attrs" in cell else ""
+                        bg_match = re.search(r'background(?:-color)?\s*:\s*([^;]+)', style_val)
+                        color = "NO_COLOR"
+                        if bg_match:
+                            color = bg_match.group(1).strip().lower()
+                        else:
+                            cls = cell["attrs"].get("class", "") if "attrs" in cell else ""
+                            color = class_colors.get(cls, "NO_COLOR")
+                        self.grid[r][c] = {"text": txt, "color": color}
+
+    def parse_with_mapping(self, mapping):
+        import re
+        self._build_grid(self.path)
+        
+        year = 2026
+        match = re.search(r'\b(202\d)\b', self.path)
+        if match:
+            year = int(match.group(1))
+
+        month_row = int(mapping.get("month_row", 5))
+        day_of_week_row = int(mapping.get("day_of_week_row", 6))
+        date_row = int(mapping.get("date_row", 7))
+        ma_row = int(mapping.get("ma_row", 8))
+        session_row = int(mapping.get("session_row", 9))
+        
+        group_col = int(mapping.get("group_col", 0))
+        name_col = int(mapping.get("name_col", 2))
+        id_col = int(mapping.get("id_col", 3))
+        
+        start_col = int(mapping.get("start_col", 4))
+        start_row = int(mapping.get("start_row", 12))
+
+        self.timeline = []
+        months = []
+        curr_month = "4"
+        
+        if len(self.grid) > month_row:
+            row_len = len(self.grid[month_row])
+            for c in range(start_col, row_len):
+                cell = self.grid[month_row][c]
+                txt = ""
+                if cell:
+                    txt = cell.get("text", "").strip()
+                if txt:
+                    m_match = re.search(r'\d+', txt)
+                    curr_month = m_match.group(0) if m_match else txt
+                months.append(curr_month)
+
+        for c in range(start_col, len(self.grid[0])):
+            t_idx = c - start_col
+            month_val = months[t_idx] if t_idx < len(months) else "4"
+            
+            day_of_week = ""
+            if len(self.grid) > day_of_week_row and c < len(self.grid[day_of_week_row]):
+                cell_d = self.grid[day_of_week_row][c]
+                if cell_d:
+                    day_of_week = cell_d.get("text", "").strip()
+
+            day_val = ""
+            if len(self.grid) > date_row and c < len(self.grid[date_row]):
+                cell_dt = self.grid[date_row][c]
+                if cell_dt:
+                    day_val = cell_dt.get("text", "").strip()
+            if day_val.endswith('.0'):
+                day_val = day_val[:-2]
+
+            if not day_val or not day_val.isdigit():
+                self.timeline.append(None)
+                continue
+
+            ma_val = ""
+            if len(self.grid) > ma_row and c < len(self.grid[ma_row]):
+                cell_ma = self.grid[ma_row][c]
+                if cell_ma:
+                    ma_val = cell_ma.get("text", "").strip()
+            if ma_val.upper() == 'A':
+                ma_val = 'Afternoon'
+            elif ma_val.upper() == 'M':
+                ma_val = 'Morning'
+
+            session_val = ""
+            if len(self.grid) > session_row and c < len(self.grid[session_row]):
+                cell_s = self.grid[session_row][c]
+                if cell_s:
+                    session_val = cell_s.get("text", "").strip()
+            if session_val.endswith('.0'):
+                session_val = session_val[:-2]
+
+            try:
+                month_num = int(month_val) if month_val.isdigit() else 4
+                day_num = int(day_val)
+                date_str = f"{year:04d}-{month_num:02d}-{day_num:02d}"
+            except Exception:
+                date_str = f"2026-04-{int(day_val):02d}"
+
+            self.timeline.append({
+                "col": c,
+                "date": date_str,
+                "day": day_of_week,
+                "ma": ma_val,
+                "session": session_val
+            })
+
+        self.students = []
+        for r in range(start_row, len(self.grid)):
+            row = self.grid[r]
+            if len(row) <= max(group_col, name_col, id_col):
+                continue
+                
+            group_cell = row[group_col]
+            name_cell = row[name_col]
+            id_cell = row[id_col]
+            
+            group_nr = group_cell.get("text", "").strip() if group_cell else ""
+            name = name_cell.get("text", "").strip() if name_cell else ""
+            std_id = id_cell.get("text", "").strip() if id_cell else ""
+                
+            if not name and not std_id:
+                continue
+                
+            if name in ["Name ↓", "Họ và Tên", "MSSV", "STT"] or group_nr == "Group Nr.":
+                continue
+                
+            if group_nr.endswith('.0'):
+                group_nr = group_nr[:-2]
+            if std_id.endswith('.0'):
+                std_id = std_id[:-2]
+
+            self.students.append({
+                "row": r,
+                "group": group_nr,
+                "nr": "",
+                "name": name,
+                "id": std_id
+            })
+
+        def is_color_active(color_str):
+            if not color_str:
+                return False
+            color_str = color_str.strip().lower()
+            if color_str in ("no_color", "white", "#ffffff", "#fff", "ffffffff", "00000000", "00ffffff", "rgb(255,255,255)", "rgb(255, 255, 255)", "none", ""):
+                return False
+            return True
+
+        self.parsed_records = []
+        for std in self.students:
+            r = std["row"]
+            group_nr = std["group"]
+            name = std["name"]
+            std_id = std["id"]
+            row = self.grid[r]
+            
+            for c in range(start_col, len(row)):
+                t_idx = c - start_col
+                if t_idx >= len(self.timeline) or self.timeline[t_idx] is None:
+                    continue
+                    
+                t_info = self.timeline[t_idx]
+                cell = row[c]
+                if not cell:
+                    continue
+                    
+                cell_text = cell.get("text", "").strip()
+                color = cell.get("color", "NO_COLOR")
+
+                if is_color_active(color):
+                    exp = cell_text
+                    if not exp:
+                        exp = "Lab Session"
+                        
+                    self.parsed_records.append({
+                        "student_id": std_id,
+                        "student_name": name,
+                        "group_nr": group_nr,
+                        "student_nr": "",
+                        "date": t_info["date"],
+                        "day_of_week": t_info["day"],
+                        "ma": t_info["ma"],
+                        "session_num": t_info["session"],
+                        "experiment": exp
+                    })
+        return self.parsed_records
 
 def print_menu():
     print("\n" + "="*50)

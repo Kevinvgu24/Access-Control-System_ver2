@@ -36,6 +36,31 @@ export function SchedulesPage() {
   const [templateType, setTemplateType] = useState<string>('type1')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Interactive mapping states
+  const [showMappingModal, setShowMappingModal] = useState(false)
+  const [previewData, setPreviewData] = useState<{
+    grid: { text: string; color: string }[][]
+    file_token: string
+    filename: string
+  } | null>(null)
+  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null)
+
+  // Row Mapping states (0-indexed default values)
+  const [monthRow, setMonthRow] = useState<number>(5)
+  const [dayOfWeekRow, setDayOfWeekRow] = useState<number>(6)
+  const [dateRow, setDateRow] = useState<number>(7)
+  const [maRow, setMaRow] = useState<number>(8)
+  const [sessionRow, setSessionRow] = useState<number>(9)
+
+  // Column Mapping states
+  const [groupCol, setGroupCol] = useState<number>(0)
+  const [nameCol, setNameCol] = useState<number>(2)
+  const [idCol, setIdCol] = useState<number>(3)
+
+  // Start Boundaries
+  const [startCol, setStartCol] = useState<number>(4)
+  const [startRow, setStartRow] = useState<number>(12)
+
   // Fetch unique schedule files
   const loadScheduleFiles = async () => {
     try {
@@ -96,19 +121,68 @@ export function SchedulesPage() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('template_type', templateType)
 
     setImporting(true)
     try {
-      const response = await fetch(`/api/labs/${selectedLabId}/schedules/import`, {
+      const response = await fetch(`/api/schedules/preview`, {
         method: 'POST',
         body: formData
       })
       const result = await response.json()
       if (response.ok) {
+        setPreviewData(result)
+        // Reset mapping states to defaults
+        setMonthRow(5)
+        setDayOfWeekRow(6)
+        setDateRow(7)
+        setMaRow(8)
+        setSessionRow(9)
+        setGroupCol(0)
+        setNameCol(2)
+        setIdCol(3)
+        setStartCol(4)
+        setStartRow(12)
+        setSelectedCell(null)
+        setShowMappingModal(true)
+      } else {
+        alert(result.error || 'Failed to build file preview')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to build file preview')
+    } finally {
+      setImporting(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleConfirmMappingImport = async () => {
+    if (!previewData || !selectedLabId) return
+
+    setImporting(true)
+    try {
+      const response = await fetch(`/api/labs/${selectedLabId}/schedules/import_mapped`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_token: previewData.file_token,
+          filename: previewData.filename,
+          month_row: monthRow,
+          day_of_week_row: dayOfWeekRow,
+          date_row: dateRow,
+          ma_row: maRow,
+          session_row: sessionRow,
+          group_col: groupCol,
+          name_col: nameCol,
+          id_col: idCol,
+          start_col: startCol,
+          start_row: startRow
+        })
+      })
+      const result = await response.json()
+      if (response.ok) {
         alert(`Successfully imported: ${result.count} schedule records parsed from "${result.filename}"!`)
+        setShowMappingModal(false)
         const nextFiles = await loadScheduleFiles()
-        // Auto-select the newly uploaded file list
         const newKey = `${result.filename}|${selectedLabId}`
         setSelectedFileKey(newKey)
       } else {
@@ -118,7 +192,6 @@ export function SchedulesPage() {
       alert(err instanceof Error ? err.message : 'Failed to import schedule file')
     } finally {
       setImporting(false)
-      if (e.target) e.target.value = ''
     }
   }
 
@@ -338,6 +411,283 @@ export function SchedulesPage() {
           </Panel>
         </>
       )}
+
+      {/* Interactive Mapping Modal */}
+      {showMappingModal && previewData && (() => {
+        const getColLetter = (idx: number) => {
+          return String.fromCharCode(65 + idx);
+        };
+
+        const getCellRole = (r: number, c: number) => {
+          if (r === monthRow && c >= startCol) return { name: 'Tháng', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === dayOfWeekRow && c >= startCol) return { name: 'Thứ', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === dateRow && c >= startCol) return { name: 'Ngày', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === maRow && c >= startCol) return { name: 'Buổi (M/A)', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          if (r === sessionRow && c >= startCol) return { name: 'Ca/Tiết', bg: 'bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32]' };
+          
+          if (c === groupCol && r >= startRow) return { name: 'Nhóm học', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          if (c === nameCol && r >= startRow) return { name: 'Họ và Tên', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          if (c === idCol && r >= startRow) return { name: 'MSSV (ID)', bg: 'bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1]' };
+          
+          return null;
+        };
+
+        const updateMapping = (key: string, val: number) => {
+          if (key === 'month_row') setMonthRow(val);
+          else if (key === 'day_of_week_row') setDayOfWeekRow(val);
+          else if (key === 'date_row') setDateRow(val);
+          else if (key === 'ma_row') setMaRow(val);
+          else if (key === 'session_row') setSessionRow(val);
+          else if (key === 'group_col') setGroupCol(val);
+          else if (key === 'name_col') setNameCol(val);
+          else if (key === 'id_col') setIdCol(val);
+        };
+
+        const rowMappings = [
+          { key: 'month_row', label: 'Hàng chứa Tháng', value: monthRow },
+          { key: 'day_of_week_row', label: 'Hàng chứa Thứ', value: dayOfWeekRow },
+          { key: 'date_row', label: 'Hàng chứa Ngày', value: dateRow },
+          { key: 'ma_row', label: 'Hàng chứa Ca/Buổi (M/A)', value: maRow },
+          { key: 'session_row', label: 'Hàng chứa Tiết/Ca số', value: sessionRow },
+        ];
+
+        const colMappings = [
+          { key: 'group_col', label: 'Cột chứa Nhóm học', value: groupCol },
+          { key: 'name_col', label: 'Cột chứa Họ Tên', value: nameCol },
+          { key: 'id_col', label: 'Cột chứa MSSV', value: idCol },
+        ];
+
+        return (
+          <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-surface border border-line rounded-xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-line flex justify-between items-center bg-raised">
+                <div>
+                  <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                    🗺️ Giao diện Ánh xạ Lịch trình Trực quan (Interactive Excel Mapping)
+                  </h2>
+                  <p className="text-xs text-[#475569] mt-1">
+                    Đang nạp file: <span className="font-mono font-bold text-green">{previewData.filename}</span>. Nhấp vào các ô trong bảng để thiết lập vị trí các hàng và cột tương ứng.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowMappingModal(false)}
+                  className="text-[#94a3b8] hover:text-[#0f172a] text-2xl font-semibold outline-none"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 flex overflow-hidden">
+                {/* Left Side: Interactive Table Grid Preview */}
+                <div className="flex-1 p-6 overflow-auto bg-surface border-r border-line">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[#0f172a]">Bản xem trước dữ liệu (First 25 Rows / 20 Columns):</span>
+                    {selectedCell && (
+                      <div className="text-xs bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32] px-3 py-1 rounded-full font-medium">
+                        Đang chọn: Hàng {selectedCell.row + 1}, Cột {getColLetter(selectedCell.col)} (Cột {selectedCell.col + 1}) = &ldquo;{previewData.grid[selectedCell.row]?.[selectedCell.col]?.text || ''}&rdquo;
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="border border-line rounded-lg overflow-auto shadow-sm max-w-full max-h-[60vh]">
+                    <table className="border-collapse text-left w-full text-xs font-medium min-w-[1200px]">
+                      <thead>
+                        <tr className="bg-raised border-b border-line">
+                          <th className="p-2 border-r border-line text-center text-[#94a3b8] font-mono bg-raised sticky left-0 z-20 w-12">#</th>
+                          {previewData.grid[0]?.map((_, colIdx) => (
+                            <th key={colIdx} className="p-2 border-r border-line text-center text-[#475569] font-mono sticky top-0 bg-raised">
+                              {getColLetter(colIdx)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.grid.map((row, rowIdx) => (
+                          <tr key={rowIdx} className="border-b border-line hover:bg-raised/50">
+                            <td className="p-2 border-r border-line text-center text-[#94a3b8] font-mono bg-raised sticky left-0 z-10 w-12">
+                              {rowIdx + 1}
+                            </td>
+                            {row.map((cell, colIdx) => {
+                              const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === colIdx;
+                              const cellRole = getCellRole(rowIdx, colIdx);
+                              let cellClass = "p-2 border-r border-line cursor-pointer select-none truncate max-w-[150px] transition-all ";
+                              
+                              if (isSelected) {
+                                cellClass += "bg-[#fff3e0] ring-2 ring-[#ffb74d] font-bold z-10 ";
+                              } else if (cellRole) {
+                                cellClass += cellRole.bg + " font-semibold ";
+                              } else if (cell.color && cell.color !== 'NO_COLOR') {
+                                cellClass += "bg-[#f1f5f9] ";
+                              }
+                              
+                              return (
+                                <td 
+                                  key={colIdx} 
+                                  className={cellClass}
+                                  onClick={() => setSelectedCell({ row: rowIdx, col: colIdx })}
+                                  title={`Row ${rowIdx+1}, Col ${getColLetter(colIdx)}: ${cell.text}`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-[#0f172a]">{cell.text}</span>
+                                    {cellRole && (
+                                      <span className="text-[9px] text-gray-500 font-mono tracking-tighter uppercase mt-0.5">
+                                        {cellRole.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4 p-4 bg-raised border border-line rounded-lg text-xs text-[#475569] flex flex-col gap-1">
+                    <p className="font-semibold text-[#0f172a] mb-1">💡 Hướng dẫn nhanh:</p>
+                    <p>1. <strong>Chọn ô:</strong> Click vào bất kỳ ô nào trên bảng xem trước.</p>
+                    <p>2. <strong>Gán hàng:</strong> Chọn một ô ở dòng mong muốn bên trái, rồi bấm nút &ldquo;Gán&rdquo; cạnh hàng tương ứng ở cột cấu hình bên phải.</p>
+                    <p>3. <strong>Gán cột:</strong> Chọn một ô ở cột mong muốn bên trái, rồi bấm nút &ldquo;Gán&rdquo; cạnh cột tương ứng ở cột cấu hình bên phải.</p>
+                  </div>
+                </div>
+
+                {/* Right Side: Configuration Sidebar */}
+                <div className="w-96 bg-raised p-6 overflow-auto flex flex-col gap-5 border-l border-line">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider mb-1">Cấu hình Ánh xạ</h3>
+                    <p className="text-xs text-[#475569]">Chọn ô bên bảng trái và nhấn nút gán tương ứng.</p>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    {/* Rows Config */}
+                    <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
+                      <h4 className="text-xs font-bold text-green uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
+                        📅 Chỉ định Hàng Lịch trình
+                      </h4>
+                      
+                      {rowMappings.map(mapping => {
+                        const isCurrentRow = selectedCell?.row !== undefined;
+                        return (
+                          <div key={mapping.key} className="flex justify-between items-center gap-2 text-xs">
+                            <span className="text-[#475569] font-medium">{mapping.label}:</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
+                                Hàng {mapping.value + 1}
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="xs" 
+                                disabled={!isCurrentRow}
+                                onClick={() => updateMapping(mapping.key, selectedCell!.row)}
+                                className="py-0.5 px-1.5 text-[10px] hover:bg-green/10 hover:text-green"
+                              >
+                                Gán
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Columns Config */}
+                    <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
+                      <h4 className="text-xs font-bold text-blue uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
+                        👤 Chỉ định Cột Sinh viên
+                      </h4>
+                      
+                      {colMappings.map(mapping => {
+                        const isCurrentCol = selectedCell?.col !== undefined;
+                        return (
+                          <div key={mapping.key} className="flex justify-between items-center gap-2 text-xs">
+                            <span className="text-[#475569] font-medium">{mapping.label}:</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
+                                Cột {getColLetter(mapping.value)}
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="xs" 
+                                disabled={!isCurrentCol}
+                                onClick={() => updateMapping(mapping.key, selectedCell!.col)}
+                                className="py-0.5 px-1.5 text-[10px] hover:bg-blue/10 hover:text-blue"
+                              >
+                                Gán
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Boundaries Config */}
+                    <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
+                      <h4 className="text-xs font-bold text-[#ffab00] uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
+                        🏁 Điểm Bắt đầu Dữ liệu
+                      </h4>
+                      
+                      <div className="flex justify-between items-center gap-2 text-xs">
+                        <span className="text-[#475569] font-medium">Cột Bắt đầu Lịch trình:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
+                            Cột {getColLetter(startCol)}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="xs" 
+                            disabled={selectedCell?.col === undefined}
+                            onClick={() => setStartCol(selectedCell!.col)}
+                            className="py-0.5 px-1.5 text-[10px] hover:bg-amber/10 hover:text-amber"
+                          >
+                            Gán
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center gap-2 text-xs">
+                        <span className="text-[#475569] font-medium">Hàng SV đầu tiên:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono bg-raised border border-line px-2 py-0.5 rounded text-[#0f172a]">
+                            Hàng {startRow + 1}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="xs" 
+                            disabled={selectedCell?.row === undefined}
+                            onClick={() => setStartRow(selectedCell!.row)}
+                            className="py-0.5 px-1.5 text-[10px] hover:bg-amber/10 hover:text-amber"
+                          >
+                            Gán
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-line flex flex-col gap-2">
+                    <Button 
+                      variant="primary" 
+                      className="w-full justify-center py-2.5 font-bold" 
+                      onClick={handleConfirmMappingImport}
+                      disabled={importing}
+                    >
+                      {importing ? 'Đang nhập...' : '🚀 Xác nhận & Nhập lịch'}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-center" 
+                      onClick={() => setShowMappingModal(false)}
+                    >
+                      Hủy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   )
 }
