@@ -80,7 +80,10 @@ export function SchedulesPage() {
 
   useEffect(() => {
     loadScheduleFiles()
-  }, [])
+    // Reset selected file when lab changes to avoid showing data from another lab
+    setSelectedFileKey('')
+    setSchedules([])
+  }, [selectedLabId])
 
   const fetchSchedules = async (fileKey: string) => {
     if (!fileKey) {
@@ -265,9 +268,11 @@ export function SchedulesPage() {
             className="bg-surface border border-line rounded px-4 py-2 text-sm text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium max-w-md truncate"
           >
             <option value="">-- Choose Schedule List --</option>
-            {scheduleFiles.map(f => (
+            {scheduleFiles
+              .filter(f => f.labId === selectedLabId)
+              .map(f => (
               <option key={`${f.filename}|${f.labId}`} value={`${f.filename}|${f.labId}`}>
-                [{f.labName}] {f.filename}
+                {f.filename}
               </option>
             ))}
           </select>

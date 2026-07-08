@@ -123,6 +123,11 @@ export function LabSelectorPage() {
     if (confirm(`Are you sure you want to permanently delete "${labName}"?\nWARNING: This will permanently delete the lab room and all its configurations, schedules, clusters, nodes, and event logs.`)) {
       try {
         await archiveLab(labId)
+        // If the deleted lab was the currently selected one, clear the selection
+        const { selectedLabId, clearLab } = useLabStore.getState()
+        if (selectedLabId === labId) {
+          clearLab()
+        }
         alert(`Lab room "${labName}" and all associated data have been permanently deleted.`)
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to delete lab room')

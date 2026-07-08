@@ -1324,6 +1324,15 @@ def archive_lab(lab_id):
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         
+        # Collect node IDs that belong to this lab so we can clean up node_config
+        c.execute("SELECT id FROM nodes WHERE labId = ?", (lab_id,))
+        node_ids = [r[0] for r in c.fetchall()]
+        
+        # Delete node configs for those nodes
+        if node_ids:
+            placeholders = ",".join("?" * len(node_ids))
+            c.execute(f"DELETE FROM node_config WHERE nodeId IN ({placeholders})", node_ids)
+        
         # Delete lab record
         c.execute("DELETE FROM labs WHERE id = ?", (lab_id,))
         
