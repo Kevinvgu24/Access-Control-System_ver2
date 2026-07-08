@@ -403,6 +403,11 @@ CMakeFiles/face_align.dir/face_align.cpp.o: /home/kevinvgu/Access-Control-System
   /usr/include/glib-2.0/gobject/gvalue.h \
   /usr/include/glib-2.0/gobject/gvaluearray.h \
   /usr/include/glib-2.0/gobject/gvaluetypes.h \
+  /usr/include/gstreamer-1.0/gst/base/base-prelude.h \
+  /usr/include/gstreamer-1.0/gst/base/gstadapter.h \
+  /usr/include/gstreamer-1.0/gst/base/gstaggregator.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasesink.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasetransform.h \
   /usr/include/gstreamer-1.0/gst/glib-compat.h \
   /usr/include/gstreamer-1.0/gst/gst.h \
   /usr/include/gstreamer-1.0/gst/gstallocator.h \
@@ -481,8 +486,47 @@ CMakeFiles/face_align.dir/face_align.cpp.o: /home/kevinvgu/Access-Control-System
   /usr/include/gstreamer-1.0/gst/gstvalue.h \
   /usr/include/gstreamer-1.0/gst/gstvecdeque.h \
   /usr/include/gstreamer-1.0/gst/gstversion.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalance.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideofilter.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideometa.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideopool.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideosink.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoutils.h \
+  /usr/include/gstreamer-1.0/gst/video/navigation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-anc.h \
+  /usr/include/gstreamer-1.0/gst/video/video-blend.h \
+  /usr/include/gstreamer-1.0/gst/video/video-chroma.h \
+  /usr/include/gstreamer-1.0/gst/video/video-color.h \
+  /usr/include/gstreamer-1.0/gst/video/video-converter.h \
+  /usr/include/gstreamer-1.0/gst/video/video-dither.h \
+  /usr/include/gstreamer-1.0/gst/video/video-enumtypes.h \
+  /usr/include/gstreamer-1.0/gst/video/video-event.h \
+  /usr/include/gstreamer-1.0/gst/video/video-format.h \
+  /usr/include/gstreamer-1.0/gst/video/video-frame.h \
+  /usr/include/gstreamer-1.0/gst/video/video-hdr.h \
+  /usr/include/gstreamer-1.0/gst/video/video-info-dma.h \
+  /usr/include/gstreamer-1.0/gst/video/video-info.h \
+  /usr/include/gstreamer-1.0/gst/video/video-multiview.h \
+  /usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h \
+  /usr/include/gstreamer-1.0/gst/video/video-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-resampler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-scaler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-sei.h \
+  /usr/include/gstreamer-1.0/gst/video/video-tile.h \
+  /usr/include/gstreamer-1.0/gst/video/video.h \
+  /usr/include/gstreamer-1.0/gst/video/videodirection.h \
+  /usr/include/gstreamer-1.0/gst/video/videoorientation.h \
+  /usr/include/gstreamer-1.0/gst/video/videooverlay.h \
   /usr/include/hailo/hailo_gst_tensor_metadata.hpp \
   /usr/include/hailo/platform.h \
+  /usr/include/hailo/tappas/gst_hailo_meta.hpp \
   /usr/include/hailo/tappas/hailo_common.hpp \
   /usr/include/hailo/tappas/hailo_objects.hpp \
   /usr/include/hailo/tappas/hailo_tensors.hpp \
@@ -572,6 +616,7 @@ libface_align.so: /lib/aarch64-linux-gnu/libc.so.6 \
   /lib/aarch64-linux-gnu/libmvec.so.1 \
   /lib/ld-linux-aarch64.so.1 \
   /usr/lib/aarch64-linux-gnu/libc_nonshared.a \
+  /usr/lib/aarch64-linux-gnu/libgsthailometa.so \
   /usr/lib/aarch64-linux-gnu/libopencv_calib3d.so.4.10.0 \
   /usr/lib/aarch64-linux-gnu/libopencv_core.so.4.10.0 \
   /usr/lib/aarch64-linux-gnu/libopencv_features2d.so.4.10.0 \
@@ -665,13 +710,59 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/string.h:
 
-/usr/include/gstreamer-1.0/gst/gstinfo.h:
+/lib/aarch64-linux-gnu/libc.so.6:
 
-/usr/include/c++/14/cstdlib:
+/usr/include/stdlib.h:
+
+/usr/include/stdint.h:
+
+/usr/include/stdc-predef.h:
+
+/usr/include/signal.h:
+
+/usr/include/pthread.h:
+
+/usr/include/opencv4/opencv2/imgproc/segmentation.hpp:
+
+/usr/include/opencv4/opencv2/imgproc.hpp:
+
+/usr/include/opencv4/opencv2/flann/miniflann.hpp:
+
+/usr/include/opencv4/opencv2/core/utils/logger.hpp:
+
+/usr/include/opencv4/opencv2/core/types.hpp:
+
+/usr/include/opencv4/opencv2/core/traits.hpp:
+
+/usr/include/opencv4/opencv2/core/persistence.hpp:
+
+/usr/include/opencv4/opencv2/core/ovx.hpp:
+
+/usr/include/opencv4/opencv2/core/optim.hpp:
+
+/usr/include/opencv4/opencv2/core/neon_utils.hpp:
+
+/usr/include/opencv4/opencv2/core/mat.inl.hpp:
+
+/usr/include/opencv4/opencv2/core/mat.hpp:
+
+/usr/include/opencv4/opencv2/core/hal/interface.h:
+
+/usr/include/opencv4/opencv2/core/cvstd_wrapper.hpp:
+
+/usr/include/opencv4/opencv2/core/cvstd.inl.hpp:
+
+/usr/include/opencv4/opencv2/core/check.hpp:
+
+/usr/include/opencv4/opencv2/core/base.hpp:
+
+/usr/include/opencv4/opencv2/core/affine.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstinfo.h:
 
 /usr/include/c++/14/cstdint:
 
-/usr/include/c++/14/cstddef:
+/usr/include/gstreamer-1.0/gst/base/gstbasesink.h:
 
 /usr/include/glib-2.0/glib/gtestutils.h:
 
@@ -713,9 +804,11 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/c++/14/memory:
 
-/usr/include/opencv4/opencv2/core/cvstd.inl.hpp:
-
 /usr/include/aarch64-linux-gnu/bits/libm-simd-decl-stubs.h:
+
+/usr/include/opencv4/opencv2/core/operations.hpp:
+
+/usr/include/c++/14/bits/stl_bvector.h:
 
 /usr/include/c++/14/sstream:
 
@@ -751,6 +844,10 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/c++/14/bits/memoryfwd.h:
 
+/usr/include/stdio.h:
+
+/usr/include/aarch64-linux-gnu/bits/types/clockid_t.h:
+
 /usr/include/c++/14/bits/locale_facets.h:
 
 /usr/include/c++/14/bits/basic_string.h:
@@ -773,8 +870,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/c++/14/bits/erase_if.h:
 
-/usr/include/aarch64-linux-gnu/sys/socket.h:
-
 /usr/include/gstreamer-1.0/gst/gstchildproxy.h:
 
 /usr/include/c++/14/cwchar:
@@ -787,11 +882,19 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/c++/14/bits/hash_bytes.h:
 
+/usr/include/opencv4/opencv2/core/vsx_utils.hpp:
+
+/usr/include/glib-2.0/glib/glist.h:
+
 /usr/include/c++/14/bits/char_traits.h:
 
 /usr/include/aarch64-linux-gnu/bits/siginfo-consts.h:
 
 /usr/include/c++/14/bits/allocator.h:
+
+/usr/include/opencv4/opencv2/core/saturate.hpp:
+
+/usr/include/c++/14/bits/allocated_ptr.h:
 
 /usr/include/glib-2.0/glib/gkeyfile.h:
 
@@ -827,13 +930,15 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/asm-generic/socket.h:
 
-/usr/include/asm-generic/posix_types.h:
-
 /usr/lib/gcc/aarch64-linux-gnu/14/include/arm_neon.h:
 
 /usr/include/c++/14/bits/basic_ios.h:
 
 /usr/include/c++/14/utility:
+
+/usr/include/c++/14/cstdlib:
+
+/usr/include/gstreamer-1.0/gst/video/video-scaler.h:
 
 /usr/include/c++/14/bits/stl_tree.h:
 
@@ -846,6 +951,8 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/aarch64-linux-gnu/sys/types.h:
 
 /usr/include/glib-2.0/glib/gchecksum.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideofilter.h:
 
 /usr/include/c++/14/bits/ostream_insert.h:
 
@@ -873,11 +980,9 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstmeta.h:
 
-/usr/include/c++/14/compare:
+/usr/lib/aarch64-linux-gnu/libgsthailometa.so:
 
 /usr/include/glib-2.0/gobject/gbindinggroup.h:
-
-/usr/include/opencv4/opencv2/core/ovx.hpp:
 
 /usr/include/aarch64-linux-gnu/sys/cdefs.h:
 
@@ -903,9 +1008,13 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/locale.h:
 
-/usr/include/aarch64-linux-gnu/bits/posix2_lim.h:
+/usr/include/opencv4/opencv2/core/matx.inl.hpp:
 
-/usr/include/aarch64-linux-gnu/bits/types/__locale_t.h:
+/usr/include/opencv4/opencv2/core/cv_cpu_dispatch.h:
+
+/usr/include/c++/14/bits/exception_defines.h:
+
+/usr/include/aarch64-linux-gnu/bits/posix2_lim.h:
 
 /usr/include/gstreamer-1.0/gst/gstdatetime.h:
 
@@ -932,6 +1041,12 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/c++/14/bits/stl_algobase.h:
 
 /usr/include/asm-generic/errno-base.h:
+
+/usr/include/opencv4/opencv2/core/utility.hpp:
+
+/usr/include/aarch64-linux-gnu/gnu/stubs-lp64.h:
+
+/usr/include/aarch64-linux-gnu/bits/wordsize.h:
 
 /usr/include/c++/14/bits/stl_tempbuf.h:
 
@@ -991,8 +1106,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/c++/14/bits/cpp_type_traits.h:
 
-/usr/include/glib-2.0/glib/grefcount.h:
-
 /usr/include/c++/14/bits/stl_multimap.h:
 
 /usr/include/glib-2.0/gobject/genums.h:
@@ -1031,8 +1144,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/long-double.h:
 
-/usr/include/opencv4/opencv2/flann/miniflann.hpp:
-
 /usr/include/aarch64-linux-gnu/bits/mathcalls.h:
 
 /usr/include/aarch64-linux-gnu/bits/floatn.h:
@@ -1040,6 +1151,12 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/aarch64-linux-gnu/bits/libc-header-start.h:
 
 /usr/include/aarch64-linux-gnu/bits/in.h:
+
+/usr/include/asm-generic/posix_types.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideometa.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-prelude.h:
 
 /usr/include/glib-2.0/gobject/gmarshal.h:
 
@@ -1059,11 +1176,11 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/glib/gvarianttype.h:
 
-/usr/include/opencv4/opencv2/core/persistence.hpp:
-
-/usr/include/aarch64-linux-gnu/bits/unistd_ext.h:
+/usr/include/gstreamer-1.0/gst/video/video-event.h:
 
 /usr/include/aarch64-linux-gnu/bits/byteswap.h:
+
+/usr/include/hailo/tappas/gst_hailo_meta.hpp:
 
 /usr/include/aarch64-linux-gnu/bits/types/struct_itimerspec.h:
 
@@ -1081,13 +1198,13 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstcontrolbinding.h:
 
+/usr/include/gstreamer-1.0/gst/video/video-blend.h:
+
 /usr/include/aarch64-linux-gnu/bits/socket.h:
 
 /usr/include/glib-2.0/glib/gdate.h:
 
 /usr/include/c++/14/bits/atomic_base.h:
-
-/usr/include/opencv4/opencv2/core/check.hpp:
 
 /usr/include/aarch64-linux-gnu/bits/endian.h:
 
@@ -1096,8 +1213,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/aarch64-linux-gnu/bits/atomic_wide_counter.h:
 
 /usr/include/aarch64-linux-gnu/c++/14/bits/gthr-default.h:
-
-/usr/include/opencv4/opencv2/imgproc/segmentation.hpp:
 
 /usr/include/c++/14/concepts:
 
@@ -1125,9 +1240,15 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/gobject/gvalue.h:
 
-/usr/include/opencv4/opencv2/core/fast_math.hpp:
+/usr/include/gstreamer-1.0/gst/base/base-prelude.h:
 
-/usr/include/locale.h:
+/usr/include/opencv4/opencv2/core/utils/logger.defines.hpp:
+
+/usr/include/opencv4/opencv2/core/cvdef.h:
+
+/usr/include/aarch64-linux-gnu/bits/thread-shared-types.h:
+
+/usr/include/aarch64-linux-gnu/bits/endianness.h:
 
 /usr/include/gstreamer-1.0/gst/gsterror.h:
 
@@ -1143,11 +1264,11 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/getopt_core.h:
 
+/usr/include/aarch64-linux-gnu/bits/unistd_ext.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-chroma.h:
+
 /usr/include/glib-2.0/glib/grefstring.h:
-
-/usr/include/c++/14/bits/requires_hosted.h:
-
-/usr/include/glib-2.0/glib/guri.h:
 
 /usr/include/aarch64-linux-gnu/bits/mathcalls-helper-functions.h:
 
@@ -1163,9 +1284,17 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/setjmp.h:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideoutils.h:
+
 /usr/include/aarch64-linux-gnu/bits/struct_mutex.h:
 
 /usr/include/c++/14/streambuf:
+
+/usr/include/opencv4/opencv2/core/utils/logtag.hpp:
+
+/usr/include/aarch64-linux-gnu/bits/types/__fpos64_t.h:
+
+/usr/include/glib-2.0/glib/gpattern.h:
 
 /usr/include/glib-2.0/glib/gstrfuncs.h:
 
@@ -1199,6 +1328,10 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/gobject/gclosure.h:
 
+/usr/include/c++/14/compare:
+
+/usr/include/gstreamer-1.0/gst/video/videoorientation.h:
+
 /usr/include/c++/14/bits/cxxabi_forced.h:
 
 /usr/include/aarch64-linux-gnu/bits/types/cookie_io_functions_t.h:
@@ -1213,9 +1346,11 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/types/sigevent_t.h:
 
+/usr/include/gstreamer-1.0/gst/video/videodirection.h:
+
 /usr/include/aarch64-linux-gnu/bits/types/struct_iovec.h:
 
-/usr/include/opencv4/opencv2/core/mat.inl.hpp:
+/usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h:
 
 /usr/include/glib-2.0/glib/grcbox.h:
 
@@ -1226,6 +1361,10 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /home/kevinvgu/Access-Control-System_ver2/src/Native_Tappas_CPP/face_align.cpp:
 
 /usr/include/c++/14/istream:
+
+/usr/include/aarch64-linux-gnu/bits/types/__locale_t.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h:
 
 /usr/include/aarch64-linux-gnu/bits/stdint-uintn.h:
 
@@ -1243,9 +1382,9 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/aarch64-linux-gnu/bits/types/struct_tm.h:
 
-/usr/include/aarch64-linux-gnu/bits/typesizes.h:
+/usr/include/gstreamer-1.0/gst/base/gstbasetransform.h:
 
-/usr/include/aarch64-linux-gnu/bits/waitflags.h:
+/usr/include/aarch64-linux-gnu/bits/typesizes.h:
 
 /usr/include/aarch64-linux-gnu/bits/wchar.h:
 
@@ -1254,8 +1393,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/glib-2.0/glib/ghash.h:
 
 /usr/include/gstreamer-1.0/gst/gsttoc.h:
-
-/usr/include/opencv4/opencv2/imgproc.hpp:
 
 /usr/include/c++/14/bits/exception.h:
 
@@ -1267,7 +1404,7 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gsttaskpool.h:
 
-/usr/include/aarch64-linux-gnu/bits/wctype-wchar.h:
+/usr/include/gstreamer-1.0/gst/video/video-hdr.h:
 
 /usr/include/gstreamer-1.0/gst/gstmacros.h:
 
@@ -1276,6 +1413,8 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/aarch64-linux-gnu/c++/14/bits/c++config.h:
 
 /usr/include/aarch64-linux-gnu/c++/14/bits/c++allocator.h:
+
+/usr/include/gstreamer-1.0/gst/video/navigation.h:
 
 /usr/include/c++/14/bits/parse_numbers.h:
 
@@ -1343,9 +1482,9 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstsystemclock.h:
 
-/usr/include/aarch64-linux-gnu/bits/stdlib-bsearch.h:
-
 /usr/include/opencv4/opencv2/flann/config.h:
+
+/usr/include/aarch64-linux-gnu/bits/stdlib-bsearch.h:
 
 /usr/include/c++/14/system_error:
 
@@ -1365,8 +1504,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/endian.h:
 
-/usr/include/stdint.h:
-
 /usr/include/errno.h:
 
 /usr/include/aarch64-linux-gnu/bits/procfs-prregset.h:
@@ -1374,6 +1511,8 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/gstreamer-1.0/gst/gstdeviceprovider.h:
 
 /usr/include/features-time64.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h:
 
 /usr/include/features.h:
 
@@ -1393,19 +1532,29 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstconfig.h:
 
+/usr/include/gstreamer-1.0/gst/video/video-info.h:
+
 /usr/include/glib-2.0/glib/gbase64.h:
 
 /usr/include/glib-2.0/glib/deprecated/gmain.h:
+
+/usr/include/opencv4/opencv2/opencv_modules.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h:
 
 /usr/include/glib-2.0/glib/deprecated/grel.h:
 
 /usr/include/glib-2.0/glib/deprecated/gthread.h:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h:
+
 /usr/include/glib-2.0/glib/galloca.h:
 
-/usr/include/c++/14/bits/stl_bvector.h:
+/usr/include/sched.h:
 
-/usr/include/opencv4/opencv2/core/operations.hpp:
+/usr/include/c++/14/bits/new_allocator.h:
+
+/usr/include/gstreamer-1.0/gst/gstminiobject.h:
 
 /usr/include/glib-2.0/glib/gasyncqueue.h:
 
@@ -1425,12 +1574,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstvecdeque.h:
 
-/usr/include/aarch64-linux-gnu/gnu/stubs-lp64.h:
-
-/usr/include/aarch64-linux-gnu/bits/wordsize.h:
-
-/usr/include/opencv4/opencv2/core/utility.hpp:
-
 /usr/lib/linux/uapi/arm64/asm/errno.h:
 
 /usr/include/glib-2.0/glib/gconvert.h:
@@ -1449,6 +1592,8 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/glib/gerror.h:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideosink.h:
+
 /usr/include/glib-2.0/glib/gmain.h:
 
 /usr/include/glib-2.0/glib/gmem.h:
@@ -1462,8 +1607,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/glib-2.0/glib/glib-autocleanups.h:
 
 /usr/include/glib-2.0/glib/glib-visibility.h:
-
-/usr/include/opencv4/opencv2/core/hal/interface.h:
 
 /usr/include/c++/14/bits/cxxabi_init_exception.h:
 
@@ -1493,15 +1636,19 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/glib/gquark.h:
 
+/usr/include/gstreamer-1.0/gst/video/colorbalance.h:
+
 /usr/include/glib-2.0/glib/grand.h:
+
+/usr/include/c++/14/cstddef:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h:
 
 /usr/include/glib-2.0/glib/gscanner.h:
 
 /usr/include/netinet/in.h:
 
 /usr/include/glib-2.0/glib/gsequence.h:
-
-/usr/include/pthread.h:
 
 /usr/include/glib-2.0/glib/gslice.h:
 
@@ -1521,6 +1668,10 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstbytearrayinterface.h:
 
+/usr/include/aarch64-linux-gnu/sys/socket.h:
+
+/usr/include/gstreamer-1.0/gst/video/videooverlay.h:
+
 /usr/include/hailo/tappas/hailo_common.hpp:
 
 /usr/include/glib-2.0/glib/gtimezone.h:
@@ -1537,9 +1688,9 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/glib/gunicode.h:
 
-/lib/aarch64-linux-gnu/libc.so.6:
+/usr/include/opencv4/opencv2/core.hpp:
 
-/usr/include/stdlib.h:
+/usr/include/glib-2.0/glib/guuid.h:
 
 /usr/include/glib-2.0/glib/gversion.h:
 
@@ -1589,6 +1740,14 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/glib-2.0/gobject/gtypeplugin.h:
 
+/usr/include/opencv4/opencv2/core/matx.hpp:
+
+/usr/include/glib-2.0/gobject/gvaluearray.h:
+
+/usr/include/aarch64-linux-gnu/bits/wctype-wchar.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstaggregator.h:
+
 /usr/include/c++/14/type_traits:
 
 /usr/include/gstreamer-1.0/gst/gstbin.h:
@@ -1597,17 +1756,23 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstcaps.h:
 
+/usr/include/glib-2.0/glib/grefcount.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h:
+
 /usr/include/gstreamer-1.0/gst/gstcapsfeatures.h:
 
-/usr/include/gstreamer-1.0/gst/gstclock.h:
-
 /usr/include/opencv4/opencv2/core/bufferpool.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstclock.h:
 
 /usr/include/c++/14/bits/functional_hash.h:
 
 /usr/include/gstreamer-1.0/gst/gstdevicemonitor.h:
 
 /usr/include/gstreamer-1.0/gst/gstdeviceproviderfactory.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstadapter.h:
 
 /usr/include/gstreamer-1.0/gst/gstelementfactory.h:
 
@@ -1633,8 +1798,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstpoll.h:
 
-/usr/include/gstreamer-1.0/gst/gstpreset.h:
-
 /usr/include/gstreamer-1.0/gst/gstpromise.h:
 
 /usr/include/linux/close_range.h:
@@ -1642,8 +1805,6 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/c++/14/bits/stringfwd.h:
 
 /usr/include/gstreamer-1.0/gst/gstprotection.h:
-
-/usr/include/opencv4/opencv2/core/mat.hpp:
 
 /usr/lib/gcc/aarch64-linux-gnu/14/libstdc++.so:
 
@@ -1658,6 +1819,8 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/gstreamer-1.0/gst/gsttaglist.h:
 
 /usr/include/gstreamer-1.0/gst/gsttask.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-resampler.h:
 
 /usr/include/gstreamer-1.0/gst/gstenumtypes.h:
 
@@ -1697,6 +1860,50 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/include/gstreamer-1.0/gst/gstversion.h:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideopool.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-info-dma.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-anc.h:
+
+/usr/include/linux/types.h:
+
+/usr/include/gstreamer-1.0/gst/gstpreset.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-color.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-converter.h:
+
+/usr/include/aarch64-linux-gnu/bits/waitflags.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-dither.h:
+
+/usr/include/c++/14/bits/requires_hosted.h:
+
+/usr/include/glib-2.0/glib/guri.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-enumtypes.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-format.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-frame.h:
+
+/usr/include/opencv4/opencv2/core/fast_math.hpp:
+
+/usr/include/locale.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-multiview.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-sei.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-tile.h:
+
+/usr/include/math.h:
+
+/usr/include/gstreamer-1.0/gst/video/video.h:
+
 /usr/include/hailo/platform.h:
 
 /usr/include/gstreamer-1.0/gst/gstmessage.h:
@@ -1704,75 +1911,3 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 /usr/include/hailo/tappas/hailo_objects.hpp:
 
 /usr/include/linux/posix_types.h:
-
-/usr/include/linux/types.h:
-
-/usr/include/math.h:
-
-/usr/include/glib-2.0/glib/guuid.h:
-
-/usr/include/opencv4/opencv2/core.hpp:
-
-/usr/include/opencv4/opencv2/core/affine.hpp:
-
-/usr/include/opencv4/opencv2/core/base.hpp:
-
-/usr/include/c++/14/bits/exception_defines.h:
-
-/usr/include/opencv4/opencv2/core/matx.inl.hpp:
-
-/usr/include/opencv4/opencv2/core/cv_cpu_dispatch.h:
-
-/usr/include/opencv4/opencv2/core/cvstd_wrapper.hpp:
-
-/usr/include/glib-2.0/gobject/gvaluearray.h:
-
-/usr/include/opencv4/opencv2/core/matx.hpp:
-
-/usr/include/opencv4/opencv2/core/neon_utils.hpp:
-
-/usr/include/opencv4/opencv2/core/optim.hpp:
-
-/usr/include/c++/14/bits/allocated_ptr.h:
-
-/usr/include/opencv4/opencv2/core/saturate.hpp:
-
-/usr/include/opencv4/opencv2/core/traits.hpp:
-
-/usr/include/opencv4/opencv2/core/types.hpp:
-
-/usr/include/aarch64-linux-gnu/bits/thread-shared-types.h:
-
-/usr/include/aarch64-linux-gnu/bits/endianness.h:
-
-/usr/include/opencv4/opencv2/core/cvdef.h:
-
-/usr/include/opencv4/opencv2/core/utils/logger.defines.hpp:
-
-/usr/include/opencv4/opencv2/core/utils/logger.hpp:
-
-/usr/include/aarch64-linux-gnu/bits/types/__fpos64_t.h:
-
-/usr/include/glib-2.0/glib/gpattern.h:
-
-/usr/include/opencv4/opencv2/core/utils/logtag.hpp:
-
-/usr/include/glib-2.0/glib/glist.h:
-
-/usr/include/opencv4/opencv2/core/vsx_utils.hpp:
-
-/usr/include/opencv4/opencv2/opencv_modules.hpp:
-
-/usr/include/c++/14/bits/new_allocator.h:
-
-/usr/include/gstreamer-1.0/gst/gstminiobject.h:
-
-/usr/include/sched.h:
-
-/usr/include/signal.h:
-
-/usr/include/stdc-predef.h:
-
-/usr/include/aarch64-linux-gnu/bits/types/clockid_t.h:
-
-/usr/include/stdio.h:

@@ -49,6 +49,7 @@ target_link_libraries(face_align
     ${GST_LIBRARIES}
     ${GST_VIDEO_LIBRARIES}
     ${OpenCV_LIBS}
+    /usr/lib/aarch64-linux-gnu/libgsthailometa.so
 )
 
 # C++ Anti-Spoofing Shared Library for Python ctypes integration

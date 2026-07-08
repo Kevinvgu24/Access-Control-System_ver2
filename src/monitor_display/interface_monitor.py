@@ -689,7 +689,8 @@ class InterfaceMonitorApp(QMainWindow):
                 return True, "", "Unknown User profile"
                 
             role, university_id = row
-            if role == 'lecturer':
+            # Bypasses check if the user is a lecturer (case-insensitive and supports legacy 'faculty' role)
+            if role and role.strip().lower() in ('lecturer', 'faculty'):
                 conn.close()
                 return True, university_id, f"Allowed bypass ({role})"
                 

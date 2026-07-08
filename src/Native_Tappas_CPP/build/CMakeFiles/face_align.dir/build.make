@@ -97,6 +97,8 @@ libface_align.so: CMakeFiles/face_align.dir/face_align.cpp.o
 libface_align.so: CMakeFiles/face_align.dir/build.make
 libface_align.so: CMakeFiles/face_align.dir/compiler_depend.ts
 libface_align.so: /usr/lib/aarch64-linux-gnu/libopencv_calib3d.so.4.10.0
+libface_align.so: /usr/lib/aarch64-linux-gnu/libgsthailometa.so
+libface_align.so: /usr/lib/aarch64-linux-gnu/libgsthailometa.so
 libface_align.so: /usr/lib/aarch64-linux-gnu/libopencv_features2d.so.4.10.0
 libface_align.so: /usr/lib/aarch64-linux-gnu/libopencv_imgproc.so.4.10.0
 libface_align.so: /usr/lib/aarch64-linux-gnu/libopencv_flann.so.4.10.0

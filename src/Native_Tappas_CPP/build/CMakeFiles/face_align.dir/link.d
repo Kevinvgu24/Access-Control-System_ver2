@@ -11,8 +11,10 @@ libface_align.so: \
   /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libgobject-2.0.so \
   /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libglib-2.0.so \
   /usr/lib/aarch64-linux-gnu/libopencv_calib3d.so.4.10.0 \
+  /usr/lib/aarch64-linux-gnu/libgsthailometa.so \
   /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libgstvideo-1.0.so \
   /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libgstbase-1.0.so \
+  /usr/lib/aarch64-linux-gnu/libgsthailometa.so \
   /usr/lib/aarch64-linux-gnu/libopencv_features2d.so.4.10.0 \
   /usr/lib/aarch64-linux-gnu/libopencv_imgproc.so.4.10.0 \
   /usr/lib/aarch64-linux-gnu/libopencv_flann.so.4.10.0 \
@@ -66,9 +68,13 @@ CMakeFiles/face_align.dir/face_align.cpp.o:
 
 /usr/lib/aarch64-linux-gnu/libopencv_calib3d.so.4.10.0:
 
+/usr/lib/aarch64-linux-gnu/libgsthailometa.so:
+
 /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libgstvideo-1.0.so:
 
 /usr/lib/gcc/aarch64-linux-gnu/14/../../../aarch64-linux-gnu/libgstbase-1.0.so:
+
+/usr/lib/aarch64-linux-gnu/libgsthailometa.so:
 
 /usr/lib/aarch64-linux-gnu/libopencv_features2d.so.4.10.0:
 

@@ -215,6 +215,12 @@ class FaceDatabase:
         except sqlite3.OperationalError:
             pass
 
+        # Migrate old 'faculty' roles to 'lecturer' (case-insensitive)
+        try:
+            c.execute("UPDATE users SET role = 'lecturer' WHERE LOWER(role) = 'faculty'")
+        except sqlite3.OperationalError:
+            pass
+
         conn.commit()
 
         # Bootstrap dữ liệu mặc định nếu các bảng trống

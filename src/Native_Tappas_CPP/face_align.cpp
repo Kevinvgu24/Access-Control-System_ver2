@@ -36,11 +36,11 @@
 #include <opencv2/calib3d.hpp>
 
 #include <gst/gst.h>
-// gst/video.h không cần thiết: GstVideoInfo.width/height = 0 với sub-buffer của hailocropper
-// Thay bằng gst_buffer_get_size() để kiểm tra kích thước buffer trực tiếp
+#include <gst/video/video-frame.h>
 
 #include "hailo_objects.hpp"
 #include "hailo_common.hpp"
+#include "gst_hailo_meta.hpp"
 
 // ============================================================================
 // Tọa độ 5 điểm tham chiếu chuẩn của ArcFace MobileFaceNet (112×112)
@@ -73,19 +73,47 @@ static void on_load() {
     std::cout.flush();
 }
 
-// ============================================================================
-// Hàm entry point được gọi bởi hailofilter với use-gst-buffer=true
-//
-// Chữ ký bắt buộc theo Hailo Tappas filter API:
-//   void filter(HailoROIPtr roi, void* udata, GstVideoInfo* info, GstBuffer* buffer)
-// ============================================================================
-extern "C" {
-    // Chữ ký 4-tham số — Hailo Tappas có thể gọi với thứ tự khác nhau tuỳ phiên bản.
-    // Hàm sẽ tự phát hiện tham số nào là GstBuffer thực sự bằng GST_IS_BUFFER().
-    void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3);
+// Helper to robustly extract GstBuffer* from any of the void* parameters
+static GstBuffer* try_get_buffer(void* p)
+{
+    if (!p) return nullptr;
+
+    // 1. Direct GstBuffer* check
+    if (GST_IS_BUFFER(p)) {
+        return reinterpret_cast<GstBuffer*>(p);
+    }
+
+    // 2. Dereference check (GstBuffer** or GstBuffer*&)
+    uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+    if (addr % sizeof(void*) == 0 && addr > 0x1000) {
+        void* deref = *reinterpret_cast<void**>(p);
+        if (deref && GST_IS_BUFFER(deref)) {
+            return reinterpret_cast<GstBuffer*>(deref);
+        }
+    }
+
+    // 3. GstVideoFrame* check (video frame contains ->buffer at offset)
+    if (addr % sizeof(void*) == 0 && addr > 0x1000) {
+        GstVideoFrame* frame = reinterpret_cast<GstVideoFrame*>(p);
+        uintptr_t buf_addr = reinterpret_cast<uintptr_t>(frame->buffer);
+        if (buf_addr % sizeof(void*) == 0 && buf_addr > 0x1000) {
+            if (GST_IS_BUFFER(frame->buffer)) {
+                return frame->buffer;
+            }
+        }
+    }
+
+    return nullptr;
 }
 
-void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3)
+// ============================================================================
+// Hàm entry point được gọi bởi hailofilter với use-gst-buffer=true
+// ============================================================================
+extern "C" {
+    void filter(void* p1, void* p2, void* p3, void* p4);
+}
+
+void filter(void* p1, void* p2, void* p3, void* p4)
 {
     g_call_count++;
 
@@ -104,28 +132,39 @@ void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3)
         g_last_log_time = now;
     }
 
-    // ─── 1. Tự động phát hiện tham số GstBuffer ───────────────────────────────
-    //
-    // Hailo Tappas có thể gọi filter với nhiều thứ tự tham số khác nhau tuỳ phiên bản:
-    //   - (roi, buffer)              → arg1 = buffer
-    //   - (roi, buffer, info)        → arg1 = buffer
-    //   - (roi, udata, info, buffer) → arg3 = buffer
-    // Dùng GST_IS_BUFFER() để kiểm tra từng tham số một cách an toàn.
-    // ───────────────────────────────────────────────────────────────────
-    if (!roi) return;
-    GstBuffer* real_buf = nullptr;
-    if      (arg3 && GST_IS_BUFFER(arg3)) real_buf = reinterpret_cast<GstBuffer*>(arg3);
-    else if (arg2 && GST_IS_BUFFER(arg2)) real_buf = reinterpret_cast<GstBuffer*>(arg2);
-    else if (arg1 && GST_IS_BUFFER(arg1)) real_buf = reinterpret_cast<GstBuffer*>(arg1);
+    GstBuffer* buffer = nullptr;
+    buffer = try_get_buffer(p1);
+    if (!buffer) buffer = try_get_buffer(p2);
+    if (!buffer) buffer = try_get_buffer(p3);
+    if (!buffer) buffer = try_get_buffer(p4);
 
-    if (!real_buf) {
+    static int buf_debug_count = 0;
+    if (buf_debug_count < 10) {
+        buf_debug_count++;
+        std::cout << "[face_align debug] p1=" << p1 << " (try_get_buffer=" << try_get_buffer(p1) << ")"
+                  << ", p2=" << p2 << " (try_get_buffer=" << try_get_buffer(p2) << ")"
+                  << ", p3=" << p3 << " (try_get_buffer=" << try_get_buffer(p3) << ")"
+                  << ", p4=" << p4 << " (try_get_buffer=" << try_get_buffer(p4) << ")"
+                  << ", detected_buffer=" << buffer
+                  << std::endl;
+        std::cout.flush();
+    }
+
+    if (!buffer) {
         g_fallback_count++;
-        return;  // Không tìm thấy buffer hợp lệ → bỏ qua
+        return;
+    }
+
+    // Lấy HailoROIPtr từ buffer bằng API chính thức của Tappas
+    HailoROIPtr roi = get_hailo_main_roi(buffer);
+    if (!roi) {
+        g_fallback_count++;
+        return;
     }
 
     // Kiểm tra kích thước buffer (112×112×3 = 37,632 bytes)
     constexpr gsize EXPECTED_BYTES = static_cast<gsize>(FACE_W) * FACE_H * 3;
-    gsize actual_size = gst_buffer_get_size(real_buf);
+    gsize actual_size = gst_buffer_get_size(buffer);
     if (actual_size != EXPECTED_BYTES) {
         static int size_warn = 0;
         if (size_warn++ < 3) {
@@ -146,6 +185,25 @@ void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3)
     // libyolo26_landmark_post.so (dòng 192-197 trong yolo26_landmark_post.cpp).
     // ─────────────────────────────────────────────────────────────────────────
     std::vector<HailoPoint> hailo_pts;
+
+    static int debug_print_count = 0;
+    if (debug_print_count < 10) {
+        debug_print_count++;
+        std::cout << "[face_align debug] roi has " << roi->get_objects().size() << " objects." << std::endl;
+        for (auto& obj : roi->get_objects()) {
+            std::cout << "[face_align debug] object type: " << obj->get_type() << std::endl;
+            if (obj->get_type() == HAILO_DETECTION) {
+                auto det = std::dynamic_pointer_cast<HailoDetection>(obj);
+                if (det) {
+                    std::cout << "[face_align debug] detection has " << det->get_objects().size() << " sub-objects." << std::endl;
+                    for (auto& sub : det->get_objects()) {
+                        std::cout << "[face_align debug]   sub-object type: " << sub->get_type() << std::endl;
+                    }
+                }
+            }
+        }
+        std::cout.flush();
+    }
 
     // Tìm HailoLandmarks trực tiếp trong ROI (nếu đây là detection root)
     for (auto& obj : roi->get_objects()) {
@@ -226,10 +284,13 @@ void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3)
 
     // ─── 5. Áp dụng Affine warp in-place lên GStreamer buffer ─────────────────
     GstMapInfo map_info;
-    if (!gst_buffer_map(real_buf, &map_info, GST_MAP_READWRITE)) return;
+    if (!gst_buffer_map(buffer, &map_info, GST_MAP_READ)) {
+        g_fallback_count++;
+        return;
+    }
 
     // Bọc vùng nhớ GStreamer thành cv::Mat (zero-copy view)
-    cv::Mat frame(FACE_H, FACE_W, CV_8UC3, map_info.data);
+    cv::Mat frame(FACE_H, FACE_W, CV_8UC3, const_cast<guint8*>(map_info.data));
 
     // Sao chép frame gốc vào buffer tạm để warpAffine đọc trong khi ghi đè
     // (cần thiết vì src và dst overlap khi in-place)
@@ -247,7 +308,7 @@ void filter(HailoROIPtr roi, void* arg1, void* arg2, void* arg3)
         cv::Scalar(0, 0, 0)
     );
 
-    gst_buffer_unmap(real_buf, &map_info);
+    gst_buffer_unmap(buffer, &map_info);
 
     // ─── [DEBUG] Ghi nhận đã căn chỉnh thành công ───────────────────────────
     g_aligned_count++;

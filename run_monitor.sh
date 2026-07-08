@@ -17,6 +17,10 @@ export HAILORT_CONSOLE_LOGGER_LEVEL=critical
 # Set default SERVER_URL if not set
 export SERVER_URL=${SERVER_URL:-"http://192.168.1.244:5000"}
 
+export DB_PATH="/home/kevinvgu/Access-Control-System_ver2/database/smart_door.db"
+export LAB_ID=${LAB_ID:-"default-lab"}
+export NODE_ID=${NODE_ID:-"default-node"}
+
 echo "========================================================="
 echo "   STARTING ACCESS CONTROL MONITOR & SYNC CLIENT         "
 echo "   Server URL: $SERVER_URL"
@@ -24,7 +28,7 @@ echo "========================================================="
 
 # 1. Start the local sync client in the background, redirect logs to sync_client.log
 echo "[*] Starting Sync Client in background..."
-python3 -u src/Newest_Version/local_sync_client.py > sync_client.log 2>&1 &
+./src/Native_Tappas_CPP/build/local_sync_client > sync_client.log 2>&1 &
 SYNC_PID=$!
 echo "[+] Sync Client started with PID: $SYNC_PID (Logs saved to sync_client.log)"
 

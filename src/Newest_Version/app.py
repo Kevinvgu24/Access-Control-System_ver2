@@ -761,7 +761,7 @@ class ProfessionalSmartDoor:
             f"video/x-raw, width=112, height=112, format=RGB ! "
 
             # [C++] Căn chỉnh khuôn mặt bằng 5 điểm landmark của YOLO (Affine Partial 2D)
-            f"hailofilter so-path={face_align_so} ! "
+            f"hailofilter so-path={face_align_so} use-gst-buffer=true ! "
             f"queue name=queue_align max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! "
 
             # [NPU] Chạy mô hình trích xuất đặc trưng ArcFace (512 chiều) trên NPU
