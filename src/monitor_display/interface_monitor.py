@@ -681,6 +681,18 @@ class InterfaceMonitorApp(QMainWindow):
             conn = sqlite3.connect(db_path)
             c = conn.cursor()
             
+            # Write users table dump to scratch/db_dump.txt for debugging
+            try:
+                c.execute("SELECT id, name, university_id, role, status FROM users")
+                rows = c.fetchall()
+                with open("/home/kevinvgu/Access-Control-System_ver2/scratch/db_dump.txt", "w") as f:
+                    f.write("id | name | university_id | role | status\n")
+                    f.write("-----------------------------------------\n")
+                    for r in rows:
+                        f.write(f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]}\n")
+            except Exception as dump_err:
+                pass
+
             # Fetch role and university_id
             c.execute("SELECT role, university_id FROM users WHERE name = ?", (name,))
             row = c.fetchone()
