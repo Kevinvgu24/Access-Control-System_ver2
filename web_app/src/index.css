@@ -37,3 +37,14 @@ html, body, #root {
   to   { opacity: 1; transform: translateX(0); }
 }
 .slide-in { animation: slide-in 0.18s ease; }
+
+/* Enhance readability: Override light grey text styles to be bold and dark slate */
+.text-\[\#94a3b8\] {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+.text-\[\#475569\] {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
