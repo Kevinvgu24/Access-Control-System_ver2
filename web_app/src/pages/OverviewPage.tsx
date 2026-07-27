@@ -1,4 +1,5 @@
 import { useAdminStore } from '@/store/adminStore'
+import { useLabStore } from '@/store/labStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -8,13 +9,14 @@ import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidge
 
 export function OverviewPage() {
   const { systemStatus, events, incidents, todayEntries, failedAttempts, averageConfidence, loading } = useAdminStore()
+  const { selectedLabName } = useLabStore()
   const navigate = useNavigate()
 
   const sysStatusColor = systemStatus.overall === 'online' ? 'text-green' : systemStatus.overall === 'grace_period' ? 'text-amber' : 'text-red'
   const sysTopColor    = systemStatus.overall === 'online' ? 'bg-green'  : systemStatus.overall === 'grace_period' ? 'bg-amber'  : 'bg-red'
 
   const kpis = [
-    { label: 'System Status',   value: systemStatus.overall.replace('_', ' '), sub: systemStatus.nodeLabel, color: sysStatusColor, top: sysTopColor },
+    { label: 'System Status',   value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
     { label: "Today's Entries", value: String(todayEntries),  sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
     { label: 'Failed Attempts', value: String(failedAttempts),sub: 'Denied + liveness + PIN',  color: 'text-red',       top: 'bg-red'      },
     { label: 'Avg Confidence',  value: fmtConf(averageConfidence), sub: 'Rolling face avg',   color: 'text-blue',      top: 'bg-blue'     },

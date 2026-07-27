@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useAdminStore } from '@/store/adminStore'
 
 interface LiveCameraProps {
   labId: string
@@ -9,6 +10,13 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
   const [error, setError] = useState<string | null>(null)
   const [hasLoadedAtLeastOnce, setHasLoadedAtLeastOnce] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
+  const cameraState = useAdminStore(s => s.systemStatus.cameraState)
+
+  useEffect(() => {
+    if (cameraState !== 'connected') {
+      setHasLoadedAtLeastOnce(false)
+    }
+  }, [cameraState])
 
   useEffect(() => {
     // Start IR stream request
@@ -70,23 +78,25 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
           </div>
         ) : (
           <>
-            <img
-              ref={imgRef}
-              src={`/api/labs/${labId}/nodes/${nodeId}/ir-stream`}
-              alt="IR Live Feed"
-              className={`w-full h-full object-cover grayscale transition-opacity duration-300 ${
-                hasLoadedAtLeastOnce ? 'opacity-100' : 'opacity-0'
-              }`}
-              onLoad={() => setHasLoadedAtLeastOnce(true)}
-              onError={() => {
-                // Fail silently before the first frame is uploaded
-              }}
-            />
-            {!hasLoadedAtLeastOnce && (
+            {cameraState === 'connected' && (
+              <img
+                ref={imgRef}
+                src={`/api/labs/${labId}/nodes/${nodeId}/ir-stream`}
+                alt="IR Live Feed"
+                className={`w-full h-full object-cover grayscale transition-opacity duration-300 ${
+                  hasLoadedAtLeastOnce ? 'opacity-100' : 'opacity-0'
+                }`}
+                onLoad={() => setHasLoadedAtLeastOnce(true)}
+                onError={() => {
+                  // Fail silently before the first frame is uploaded
+                }}
+              />
+            )}
+            {(!hasLoadedAtLeastOnce || cameraState !== 'connected') && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/90">
                 <span className="blink w-2.5 h-2.5 rounded-full bg-green" />
                 <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
-                  Awaiting Edge Feed…
+                  {cameraState === 'connected' ? 'Awaiting Edge Feed…' : 'Connecting to Node…'}
                 </span>
               </div>
             )}

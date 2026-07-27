@@ -1,7 +1,9 @@
 import { useAdminStore } from '@/store/adminStore'
+import { useLabStore } from '@/store/labStore'
 
 export function TopBar() {
   const { systemStatus } = useAdminStore()
+  const { selectedLabName } = useLabStore()
   const sys  = systemStatus.overall
   const cam  = systemStatus.cameraState
   const sync = systemStatus.syncState
@@ -15,8 +17,8 @@ export function TopBar() {
   return (
     <div className="h-14 flex items-center px-8 gap-8 bg-surface border-b border-line shrink-0 shadow-sm z-10 relative">
       <div className="flex items-center gap-2.5">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">Node</span>
-        <span className="font-sans text-xs font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 uppercase tracking-wider">{systemStatus.nodeLabel || 'UNKNOWN'}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">Lab</span>
+        <span className="font-sans text-xs font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 uppercase tracking-wider">{selectedLabName || 'UNKNOWN'}</span>
       </div>
       
       <div className="w-px h-6 bg-slate-200" />
