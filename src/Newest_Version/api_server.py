@@ -956,42 +956,52 @@ def get_ir_stream(lab_id, node_id):
             logger.info(f"Client disconnected from IR stream of node {node_id}")
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# 15c. Sensor Telemetry Endpoints (DHT11 & GPS)
+# 15c. Sensor Telemetry Endpoints (DHT11 & GPS Subnodes)
 @app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
-    data = latest_sensor_data.copy()
+    from mqtt_service import subnodes_registry
     now_dt = datetime.now()
-    
+
+    # Update freshness for each subnode in registry
+    subnodes_list = []
+    any_online = False
+    for node_id, node_info in list(subnodes_registry.items()):
+        node_copy = node_info.copy()
+        if node_copy.get("last_updated"):
+            try:
+                last_dt = datetime.fromisoformat(node_copy["last_updated"])
+                if (now_dt - last_dt).total_seconds() > 7.0:
+                    node_copy["online"] = False
+                    node_copy["sensor_ok"] = False
+                    node_copy["error_msg"] = "Connection Timeout (>7s)"
+            except Exception:
+                node_copy["online"] = False
+        else:
+            node_copy["online"] = False
+            node_copy["sensor_ok"] = False
+            node_copy["error_msg"] = "Never Connected"
+
+        if node_copy["online"]:
+            any_online = True
+
+        subnodes_list.append(node_copy)
+
+    data = latest_sensor_data.copy()
+    data["subnodes"] = subnodes_list
+
     if data.get("last_updated"):
         try:
             last_dt = datetime.fromisoformat(data["last_updated"])
-            diff_sec = (now_dt - last_dt).total_seconds()
-            if diff_sec > 7.0:
+            if (now_dt - last_dt).total_seconds() > 7.0:
                 data["online"] = False
                 data["dht_ok"] = False
                 data["gnss_ok"] = False
+            else:
+                data["online"] = any_online
         except Exception:
-            pass
-    else:
-        db_data = db.get_latest_sensor_telemetry()
-        if db_data:
-            data = {
-                "temperature": db_data.get("temperature", 0.0),
-                "humidity": db_data.get("humidity", 0.0),
-                "latitude": db_data.get("latitude", 0.0),
-                "longitude": db_data.get("longitude", 0.0),
-                "altitude": db_data.get("altitude", 0.0),
-                "speed": db_data.get("speed", 0.0),
-                "satellites": db_data.get("satellites", 0),
-                "dht_ok": False,
-                "gnss_ok": False,
-                "last_updated": db_data.get("receivedAt"),
-                "online": False
-            }
-        else:
             data["online"] = False
-            data["dht_ok"] = False
-            data["gnss_ok"] = False
+    else:
+        data["online"] = False
 
     return jsonify(data)
 

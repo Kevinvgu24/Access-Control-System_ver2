@@ -102,25 +102,30 @@ export function SystemPage() {
     if (!selectedLabId) return
     setTriggering(true)
     try {
-      const mockPayload = {
-        dht11: {
+      // Subnode 1 - Environment Payload
+      await fetch(`/api/labs/${selectedLabId}/sensors/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: 'subnode1',
           temperature_c: 28.5 + (Math.random() * 2 - 1),
           humidity_pct: 62.0 + (Math.random() * 4 - 2),
           sensor_ok: true
-        },
-        gnss: {
+        })
+      })
+      // Subnode 2 - GPS Tracker Payload
+      await fetch(`/api/labs/${selectedLabId}/sensors/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: 'subnode2',
           latitude: 10.762622 + (Math.random() * 0.0004 - 0.0002),
           longitude: 106.660172 + (Math.random() * 0.0004 - 0.0002),
           altitude_m: 15.0 + (Math.random() * 2 - 1),
           speed_kmph: Math.random() * 2.5,
           satellites: 8 + Math.floor(Math.random() * 3),
-          location_valid: true
-        }
-      }
-      await fetch(`/api/labs/${selectedLabId}/sensors/telemetry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mockPayload)
+          sensor_ok: true
+        })
       })
       await fetchHistory()
     } catch (e) {
@@ -179,36 +184,6 @@ export function SystemPage() {
 
       {/* Embedded Full ESP32 Sensor & GPS Telemetry Widget */}
       <SensorTelemetryWidget compact={false} />
-
-      {/* Architecture Topology Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-white shadow-sm">
-        <h3 className="font-mono text-xs uppercase font-bold text-indigo-400 tracking-wider mb-3">
-          IoT Communication Topology & Protocols
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-mono text-xs text-center">
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-lg p-3">
-            <span className="text-xl block mb-1">🌡️</span>
-            <p className="font-bold text-emerald-400">ESP32 #1 Node</p>
-            <p className="text-[10px] text-slate-400 mt-1">DHT11 Temp & Humidity</p>
-          </div>
-          <div className="flex items-center justify-center text-slate-500 font-bold text-base">
-            ESP-NOW ➔
-          </div>
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-lg p-3">
-            <span className="text-xl block mb-1">🛰️</span>
-            <p className="font-bold text-indigo-400">ESP32 #2 Gateway</p>
-            <p className="text-[10px] text-slate-400 mt-1">LC76G GNSS + MQTT</p>
-          </div>
-          <div className="flex items-center justify-center text-slate-500 font-bold text-base">
-            MQTT (1883) ➔
-          </div>
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-lg p-3">
-            <span className="text-xl block mb-1">🍓</span>
-            <p className="font-bold text-rose-400">Raspberry Pi 5 Server</p>
-            <p className="text-[10px] text-slate-400 mt-1">Python Listener & Web UI</p>
-          </div>
-        </div>
-      </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>

@@ -6,7 +6,39 @@ from logger import get_logger
 
 logger = get_logger("mqtt_service")
 
-# Global in-memory cache for latest telemetry data
+# Global in-memory cache for Subnodes registry and overall combined telemetry
+subnodes_registry = {
+    "subnode1": {
+        "id": "subnode1",
+        "name": "Subnode 1 - Environment",
+        "sensors": "DHT11 Temp & Humidity",
+        "online": False,
+        "sensor_ok": False,
+        "error_msg": "No connection established",
+        "last_updated": None,
+        "data": {
+            "temperature": 0.0,
+            "humidity": 0.0
+        }
+    },
+    "subnode2": {
+        "id": "subnode2",
+        "name": "Subnode 2 - GPS Tracker",
+        "sensors": "LC76G GNSS Module",
+        "online": False,
+        "sensor_ok": False,
+        "error_msg": "No connection established",
+        "last_updated": None,
+        "data": {
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "altitude": 0.0,
+            "speed": 0.0,
+            "satellites": 0
+        }
+    }
+}
+
 latest_sensor_data = {
     "temperature": 0.0,
     "humidity": 0.0,
@@ -18,7 +50,8 @@ latest_sensor_data = {
     "dht_ok": False,
     "gnss_ok": False,
     "last_updated": None,
-    "online": False
+    "online": False,
+    "subnodes": list(subnodes_registry.values())
 }
 
 class MQTTTelemetryService:
@@ -27,9 +60,10 @@ class MQTTTelemetryService:
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.topics = topics or [
+            "smartdoor/subnodes/+/telemetry",
+            "smartdoor/subnodes/subnode1/telemetry",
+            "smartdoor/subnodes/subnode2/telemetry",
             "smartdoor/sensors/telemetry",
-            "smartdoor/sensors/dht11",
-            "smartdoor/sensors/gps",
             "esp32/sensors/data"
         ]
         self.client = None
@@ -46,7 +80,7 @@ class MQTTTelemetryService:
         try:
             import paho.mqtt.client as mqtt
         except ImportError:
-            logger.warning("paho-mqtt library is not installed. MQTT listener will run in mock/poll fallback mode.")
+            logger.warning("paho-mqtt library is not installed. MQTT listener in mock mode.")
             return
 
         def on_connect(client, userdata, flags, rc):
@@ -68,7 +102,6 @@ class MQTTTelemetryService:
 
         while self.running:
             try:
-                # Support both older and newer paho-mqtt Client API initialization
                 try:
                     self.client = mqtt.Client(client_id="SmartLab_RPi5_Server", clean_session=True)
                 except Exception:
@@ -85,74 +118,89 @@ class MQTTTelemetryService:
                 time.sleep(10)
 
     def process_telemetry_payload(self, topic, data):
-        global latest_sensor_data
+        global latest_sensor_data, subnodes_registry
         now_iso = datetime.now().isoformat()
 
-        temp = latest_sensor_data.get("temperature", 0.0)
-        hum = latest_sensor_data.get("humidity", 0.0)
-        lat = latest_sensor_data.get("latitude", 0.0)
-        lng = latest_sensor_data.get("longitude", 0.0)
-        alt = latest_sensor_data.get("altitude", 0.0)
-        spd = latest_sensor_data.get("speed", 0.0)
-        sats = latest_sensor_data.get("satellites", 0)
-        dht_ok = latest_sensor_data.get("dht_ok", False)
-        gnss_ok = latest_sensor_data.get("gnss_ok", False)
+        # Determine subnode_id from payload or topic
+        subnode_id = data.get("node_id", data.get("subnode_id"))
+        if not subnode_id:
+            if "subnode1" in topic or "dht11" in topic or "temperature_c" in data:
+                subnode_id = "subnode1"
+            elif "subnode2" in topic or "gnss" in topic or "latitude" in data:
+                subnode_id = "subnode2"
+            else:
+                subnode_id = "subnode1"
 
-        # Combined telemetry topic format
-        if "dht11" in data or "gnss" in data or "temperature_c" in data or "dht11" in topic:
-            if "dht11" in data:
-                dht = data["dht11"]
-                temp = float(dht.get("temperature_c", dht.get("temperature", temp)))
-                hum = float(dht.get("humidity_pct", dht.get("humidity", hum)))
-                dht_ok = bool(dht.get("sensor_ok", True))
-            elif "temperature_c" in data or "temperature" in data:
-                temp = float(data.get("temperature_c", data.get("temperature", temp)))
-                hum = float(data.get("humidity_pct", data.get("humidity", hum)))
-                dht_ok = bool(data.get("sensor_ok", True))
+        # Update specific subnode record
+        if subnode_id not in subnodes_registry:
+            subnodes_registry[subnode_id] = {
+                "id": subnode_id,
+                "name": f"Subnode {len(subnodes_registry) + 1}",
+                "sensors": "Generic Sensor Node",
+                "online": True,
+                "sensor_ok": True,
+                "error_msg": None,
+                "last_updated": now_iso,
+                "data": {}
+            }
 
-            if "gnss" in data:
-                gnss = data["gnss"]
-                lat = float(gnss.get("latitude", lat))
-                lng = float(gnss.get("longitude", lng))
-                alt = float(gnss.get("altitude_m", gnss.get("altitude", alt)))
-                spd = float(gnss.get("speed_kmph", gnss.get("speed", spd)))
-                sats = int(gnss.get("satellites", sats))
-                gnss_ok = bool(gnss.get("location_valid", True))
-            elif "latitude" in data or "lat" in data:
-                lat = float(data.get("latitude", data.get("lat", lat)))
-                lng = float(data.get("longitude", data.get("lng", lng)))
-                alt = float(data.get("altitude_m", data.get("alt", alt)))
-                spd = float(data.get("speed_kmph", data.get("speed", spd)))
-                sats = int(data.get("satellites", data.get("sats", sats)))
-                gnss_ok = bool(data.get("location_valid", data.get("valid", True)))
+        target_node = subnodes_registry[subnode_id]
+        target_node["online"] = True
+        target_node["last_updated"] = now_iso
+        target_node["sensor_ok"] = bool(data.get("sensor_ok", data.get("status_ok", True)))
+        target_node["error_msg"] = data.get("error", data.get("error_msg", None if target_node["sensor_ok"] else "Sensor anomaly detected"))
 
-        latest_sensor_data = {
-            "temperature": temp,
-            "humidity": hum,
-            "latitude": lat,
-            "longitude": lng,
-            "altitude": alt,
-            "speed": spd,
-            "satellites": sats,
-            "dht_ok": dht_ok,
-            "gnss_ok": gnss_ok,
-            "last_updated": now_iso,
-            "online": True
-        }
+        # Extract sensor metrics
+        if "temperature_c" in data or "temperature" in data or "dht11" in data:
+            dht = data.get("dht11", data)
+            temp = float(dht.get("temperature_c", dht.get("temperature", latest_sensor_data["temperature"])))
+            hum = float(dht.get("humidity_pct", dht.get("humidity", latest_sensor_data["humidity"])))
+            latest_sensor_data["temperature"] = temp
+            latest_sensor_data["humidity"] = hum
+            latest_sensor_data["dht_ok"] = target_node["sensor_ok"]
+            target_node["data"]["temperature"] = temp
+            target_node["data"]["humidity"] = hum
+            target_node["sensors"] = "DHT11 Temp & Humidity"
+            target_node["name"] = "Subnode 1 - Environment"
 
-        # Save to database
+        if "latitude" in data or "lat" in data or "gnss" in data:
+            gnss = data.get("gnss", data)
+            lat = float(gnss.get("latitude", gnss.get("lat", latest_sensor_data["latitude"])))
+            lng = float(gnss.get("longitude", gnss.get("lng", latest_sensor_data["longitude"])))
+            alt = float(gnss.get("altitude_m", gnss.get("alt", latest_sensor_data["altitude"])))
+            spd = float(gnss.get("speed_kmph", gnss.get("speed", latest_sensor_data["speed"])))
+            sats = int(gnss.get("satellites", gnss.get("sats", latest_sensor_data["satellites"])))
+            latest_sensor_data["latitude"] = lat
+            latest_sensor_data["longitude"] = lng
+            latest_sensor_data["altitude"] = alt
+            latest_sensor_data["speed"] = spd
+            latest_sensor_data["satellites"] = sats
+            latest_sensor_data["gnss_ok"] = target_node["sensor_ok"]
+            target_node["data"]["latitude"] = lat
+            target_node["data"]["longitude"] = lng
+            target_node["data"]["altitude"] = alt
+            target_node["data"]["speed"] = spd
+            target_node["data"]["satellites"] = sats
+            target_node["sensors"] = "LC76G GNSS Module"
+            target_node["name"] = "Subnode 2 - GPS Tracker"
+
+        latest_sensor_data["last_updated"] = now_iso
+        latest_sensor_data["online"] = True
+        latest_sensor_data["subnodes"] = list(subnodes_registry.values())
+
+        # Save telemetry event to database
         if self.db:
             self.db.save_sensor_telemetry(
-                temperature=temp,
-                humidity=hum,
-                latitude=lat,
-                longitude=lng,
-                altitude=alt,
-                speed=spd,
-                satellites=sats,
-                dht_ok=dht_ok,
-                gnss_ok=gnss_ok,
+                temperature=latest_sensor_data["temperature"],
+                humidity=latest_sensor_data["humidity"],
+                latitude=latest_sensor_data["latitude"],
+                longitude=latest_sensor_data["longitude"],
+                altitude=latest_sensor_data["altitude"],
+                speed=latest_sensor_data["speed"],
+                satellites=latest_sensor_data["satellites"],
+                dht_ok=latest_sensor_data["dht_ok"],
+                gnss_ok=latest_sensor_data["gnss_ok"],
                 raw_payload=json.dumps(data)
             )
 
-        logger.info(f"Updated sensor telemetry from MQTT: Temp={temp}°C, Hum={hum}%, Lat={lat}, Lng={lng}, Sats={sats}")
+        logger.info(f"Processed subnode '{subnode_id}' telemetry via MQTT: {data}")
