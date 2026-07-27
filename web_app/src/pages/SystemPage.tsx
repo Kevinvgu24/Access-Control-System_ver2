@@ -95,7 +95,6 @@ export function SystemPage() {
             Monitor real-time ESP32 sensors (DHT11 & LC76G GPS), camera stream, recognition thresholds, and core hardware metrics.
           </p>
         </div>
-        </div>
       </div>
 
       {/* Embedded Full ESP32 Sensor & GPS Telemetry Widget */}
