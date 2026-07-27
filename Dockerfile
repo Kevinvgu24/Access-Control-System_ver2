@@ -6,7 +6,7 @@ WORKDIR /build
 
 # Copy npm configuration files first to cache dependencies layer
 COPY web_app/package.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the web app files and build it
 COPY web_app/ ./
