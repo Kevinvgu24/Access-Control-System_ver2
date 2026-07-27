@@ -102,28 +102,37 @@ export function SystemPage() {
     if (!selectedLabId) return
     setTriggering(true)
     try {
-      // Subnode 1 - Environment Payload
+      // Subnode 1 - Environment & Air Quality Payload (DHT11 + SDS011 PM2.5 + CO2)
       await fetch(`/api/labs/${selectedLabId}/sensors/telemetry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           node_id: 'subnode1',
-          temperature_c: 28.5 + (Math.random() * 2 - 1),
-          humidity_pct: 62.0 + (Math.random() * 4 - 2),
+          device_name: 'Subnode 1 - Environment & Air Quality',
+          metrics: {
+            temperature_c: 28.5 + (Math.random() * 2 - 1),
+            humidity_pct: 62.0 + (Math.random() * 4 - 2),
+            pm25_ugm3: 15.0 + Math.random() * 8,
+            co2_ppm: 415 + Math.floor(Math.random() * 30),
+            light_lux: 320 + Math.floor(Math.random() * 50)
+          },
           sensor_ok: true
         })
       })
-      // Subnode 2 - GPS Tracker Payload
+      // Subnode 2 - GPS Tracker Payload (LC76G GNSS)
       await fetch(`/api/labs/${selectedLabId}/sensors/telemetry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           node_id: 'subnode2',
-          latitude: 10.762622 + (Math.random() * 0.0004 - 0.0002),
-          longitude: 106.660172 + (Math.random() * 0.0004 - 0.0002),
-          altitude_m: 15.0 + (Math.random() * 2 - 1),
-          speed_kmph: Math.random() * 2.5,
-          satellites: 8 + Math.floor(Math.random() * 3),
+          device_name: 'Subnode 2 - GPS Tracker',
+          metrics: {
+            latitude: 10.762622 + (Math.random() * 0.0004 - 0.0002),
+            longitude: 106.660172 + (Math.random() * 0.0004 - 0.0002),
+            altitude_m: 15.0 + (Math.random() * 2 - 1),
+            speed_kmph: Math.random() * 2.5,
+            satellites: 8 + Math.floor(Math.random() * 3)
+          },
           sensor_ok: true
         })
       })

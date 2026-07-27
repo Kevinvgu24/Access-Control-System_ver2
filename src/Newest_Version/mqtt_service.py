@@ -16,9 +16,13 @@ subnodes_registry = {
         "sensor_ok": False,
         "error_msg": "No connection established",
         "last_updated": None,
+        "capabilities": [
+            {"name": "Temperature", "key": "temperature_c", "unit": "°C"},
+            {"name": "Humidity", "key": "humidity_pct", "unit": "% RH"}
+        ],
         "data": {
-            "temperature": 0.0,
-            "humidity": 0.0
+            "temperature_c": 0.0,
+            "humidity_pct": 0.0
         }
     },
     "subnode2": {
@@ -29,11 +33,17 @@ subnodes_registry = {
         "sensor_ok": False,
         "error_msg": "No connection established",
         "last_updated": None,
+        "capabilities": [
+            {"name": "Latitude", "key": "latitude", "unit": "°"},
+            {"name": "Longitude", "key": "longitude", "unit": "°"},
+            {"name": "Altitude", "key": "altitude_m", "unit": "m"},
+            {"name": "Satellites", "key": "satellites", "unit": "Sats"}
+        ],
         "data": {
             "latitude": 0.0,
             "longitude": 0.0,
-            "altitude": 0.0,
-            "speed": 0.0,
+            "altitude_m": 0.0,
+            "speed_kmph": 0.0,
             "satellites": 0
         }
     }
@@ -47,6 +57,9 @@ latest_sensor_data = {
     "altitude": 0.0,
     "speed": 0.0,
     "satellites": 0,
+    "pm25": 0.0,
+    "co2": 0.0,
+    "light": 0.0,
     "dht_ok": False,
     "gnss_ok": False,
     "last_updated": None,
@@ -60,6 +73,7 @@ class MQTTTelemetryService:
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.topics = topics or [
+            "smartdoor/subnodes/+/manifest",
             "smartdoor/subnodes/+/telemetry",
             "smartdoor/subnodes/subnode1/telemetry",
             "smartdoor/subnodes/subnode2/telemetry",
@@ -96,7 +110,10 @@ class MQTTTelemetryService:
             try:
                 payload_str = msg.payload.decode("utf-8")
                 data = json.loads(payload_str)
-                self.process_telemetry_payload(msg.topic, data)
+                if "manifest" in msg.topic:
+                    self.process_manifest_payload(msg.topic, data)
+                else:
+                    self.process_telemetry_payload(msg.topic, data)
             except Exception as e:
                 logger.error(f"Error parsing MQTT message from {msg.topic}: {e}")
 
@@ -117,6 +134,34 @@ class MQTTTelemetryService:
                 logger.warning(f"MQTT connection lost or broker unreachable: {e}. Retrying in 10 seconds...")
                 time.sleep(10)
 
+    def process_manifest_payload(self, topic, data):
+        global subnodes_registry
+        node_id = data.get("node_id", "subnode_unknown")
+        device_name = data.get("device_name", f"ESP32 Subnode ({node_id})")
+        capabilities = data.get("capabilities", [])
+
+        sensor_names = [cap.get("name", cap.get("id")) for cap in capabilities]
+        sensors_str = ", ".join(sensor_names) if sensor_names else "Dynamic Sensor Cluster"
+
+        if node_id not in subnodes_registry:
+            subnodes_registry[node_id] = {
+                "id": node_id,
+                "name": device_name,
+                "sensors": sensors_str,
+                "online": True,
+                "sensor_ok": True,
+                "error_msg": None,
+                "last_updated": datetime.now().isoformat(),
+                "capabilities": capabilities,
+                "data": {}
+            }
+        else:
+            subnodes_registry[node_id]["name"] = device_name
+            subnodes_registry[node_id]["sensors"] = sensors_str
+            subnodes_registry[node_id]["capabilities"] = capabilities
+
+        logger.info(f"Registered ESP32 Manifest for '{node_id}': {sensors_str}")
+
     def process_telemetry_payload(self, topic, data):
         global latest_sensor_data, subnodes_registry
         now_iso = datetime.now().isoformat()
@@ -135,54 +180,70 @@ class MQTTTelemetryService:
         if subnode_id not in subnodes_registry:
             subnodes_registry[subnode_id] = {
                 "id": subnode_id,
-                "name": f"Subnode {len(subnodes_registry) + 1}",
-                "sensors": "Generic Sensor Node",
+                "name": data.get("device_name", f"Subnode ({subnode_id})"),
+                "sensors": "Dynamic Sensor Cluster",
                 "online": True,
                 "sensor_ok": True,
                 "error_msg": None,
                 "last_updated": now_iso,
+                "capabilities": [],
                 "data": {}
             }
 
         target_node = subnodes_registry[subnode_id]
         target_node["online"] = True
         target_node["last_updated"] = now_iso
-        target_node["sensor_ok"] = bool(data.get("sensor_ok", data.get("status_ok", True)))
-        target_node["error_msg"] = data.get("error", data.get("error_msg", None if target_node["sensor_ok"] else "Sensor anomaly detected"))
+        target_node["sensor_ok"] = bool(data.get("status_ok", data.get("sensor_ok", True)))
+        target_node["error_msg"] = data.get("error", data.get("error_msg", None if target_node["sensor_ok"] else "Sensor anomaly reported"))
 
-        # Extract sensor metrics
-        if "temperature_c" in data or "temperature" in data or "dht11" in data:
-            dht = data.get("dht11", data)
-            temp = float(dht.get("temperature_c", dht.get("temperature", latest_sensor_data["temperature"])))
-            hum = float(dht.get("humidity_pct", dht.get("humidity", latest_sensor_data["humidity"])))
-            latest_sensor_data["temperature"] = temp
-            latest_sensor_data["humidity"] = hum
+        # Extract dynamic metrics dictionary or flat root attributes
+        metrics = data.get("metrics", data)
+
+        # Merge dynamic metric key-values into subnode data
+        for k, v in metrics.items():
+            if k in ["node_id", "status_ok", "sensor_status", "error_msg", "device_name", "subnode_id"]:
+                continue
+            target_node["data"][k] = v
+
+        # Dynamic sensor name generator if not already registered via manifest
+        metric_keys = list(target_node["data"].keys())
+        if metric_keys:
+            readable_sensors = []
+            if "temperature_c" in metric_keys or "temperature" in metric_keys:
+                readable_sensors.append("DHT11 Temp & Hum")
+            if "latitude" in metric_keys or "gnss" in metric_keys:
+                readable_sensors.append("LC76G GNSS GPS")
+            if "pm25_ugm3" in metric_keys or "pm25" in metric_keys:
+                readable_sensors.append("PM2.5 Fine Dust")
+            if "co2_ppm" in metric_keys or "co2" in metric_keys:
+                readable_sensors.append("CO2 Sensor")
+            if "light_lux" in metric_keys or "lux" in metric_keys:
+                readable_sensors.append("Ambient Light Lux")
+            if readable_sensors:
+                target_node["sensors"] = " + ".join(readable_sensors)
+
+        # Update global combined summary metrics
+        if "temperature_c" in target_node["data"] or "temperature" in target_node["data"]:
+            latest_sensor_data["temperature"] = float(target_node["data"].get("temperature_c", target_node["data"].get("temperature", 0.0)))
+            latest_sensor_data["humidity"] = float(target_node["data"].get("humidity_pct", target_node["data"].get("humidity", 0.0)))
             latest_sensor_data["dht_ok"] = target_node["sensor_ok"]
-            target_node["data"]["temperature"] = temp
-            target_node["data"]["humidity"] = hum
-            target_node["sensors"] = "DHT11 Temp & Humidity"
-            target_node["name"] = "Subnode 1 - Environment"
 
-        if "latitude" in data or "lat" in data or "gnss" in data:
-            gnss = data.get("gnss", data)
-            lat = float(gnss.get("latitude", gnss.get("lat", latest_sensor_data["latitude"])))
-            lng = float(gnss.get("longitude", gnss.get("lng", latest_sensor_data["longitude"])))
-            alt = float(gnss.get("altitude_m", gnss.get("alt", latest_sensor_data["altitude"])))
-            spd = float(gnss.get("speed_kmph", gnss.get("speed", latest_sensor_data["speed"])))
-            sats = int(gnss.get("satellites", gnss.get("sats", latest_sensor_data["satellites"])))
-            latest_sensor_data["latitude"] = lat
-            latest_sensor_data["longitude"] = lng
-            latest_sensor_data["altitude"] = alt
-            latest_sensor_data["speed"] = spd
-            latest_sensor_data["satellites"] = sats
+        if "latitude" in target_node["data"] or "lat" in target_node["data"]:
+            latest_sensor_data["latitude"] = float(target_node["data"].get("latitude", target_node["data"].get("lat", 0.0)))
+            latest_sensor_data["longitude"] = float(target_node["data"].get("longitude", target_node["data"].get("lng", 0.0)))
+            latest_sensor_data["altitude"] = float(target_node["data"].get("altitude_m", target_node["data"].get("altitude", 0.0)))
+            latest_sensor_data["speed"] = float(target_node["data"].get("speed_kmph", target_node["data"].get("speed", 0.0)))
+            latest_sensor_data["satellites"] = int(target_node["data"].get("satellites", target_node["data"].get("sats", 0)))
             latest_sensor_data["gnss_ok"] = target_node["sensor_ok"]
-            target_node["data"]["latitude"] = lat
-            target_node["data"]["longitude"] = lng
-            target_node["data"]["altitude"] = alt
-            target_node["data"]["speed"] = spd
-            target_node["data"]["satellites"] = sats
-            target_node["sensors"] = "LC76G GNSS Module"
-            target_node["name"] = "Subnode 2 - GPS Tracker"
+
+        if "pm25_ugm3" in target_node["data"] or "pm25" in target_node["data"]:
+            latest_sensor_data["pm25"] = float(target_node["data"].get("pm25_ugm3", target_node["data"].get("pm25", 0.0)))
+
+        if "co2_ppm" in target_node["data"] or "co2" in target_node["data"]:
+            latest_sensor_data["co2"] = float(target_node["data"].get("co2_ppm", target_node["data"].get("co2", 0.0)))
+
+        if "light_lux" in target_node["data"] or "lux" in target_node["data"]:
+            latest_sensor_data["light"] = float(target_node["data"].get("light_lux", target_node["data"].get("lux", 0.0)))
 
         latest_sensor_data["last_updated"] = now_iso
         latest_sensor_data["online"] = True
@@ -203,4 +264,4 @@ class MQTTTelemetryService:
                 raw_payload=json.dumps(data)
             )
 
-        logger.info(f"Processed subnode '{subnode_id}' telemetry via MQTT: {data}")
+        logger.info(f"Ingested dynamic subnode '{subnode_id}' metrics: {target_node['data']}")
