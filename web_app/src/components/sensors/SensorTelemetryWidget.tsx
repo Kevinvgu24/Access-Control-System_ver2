@@ -99,20 +99,10 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }, [selectedLabId])
 
   const tempColor = !telemetry.online 
-    ? 'text-red-600 font-black' 
-    : telemetry.temperature > 35 
-    ? 'text-red-600' 
-    : telemetry.temperature > 28 
-    ? 'text-amber-600' 
-    : 'text-emerald-600'
+    ? 'text-[#b91c1c] font-black' 
+    : 'text-orange-600 font-black'
 
-  const tempBg = !telemetry.online 
-    ? 'bg-red-50 border-red-300' 
-    : telemetry.temperature > 35 
-    ? 'bg-red-50 border-red-200' 
-    : telemetry.temperature > 28 
-    ? 'bg-amber-50 border-amber-200' 
-    : 'bg-emerald-50 border-emerald-200'
+  const tempBg = 'bg-white border-slate-200'
 
   const mapsUrl = telemetry.latitude && telemetry.longitude 
     ? `https://www.google.com/maps?q=${telemetry.latitude},${telemetry.longitude}` 
@@ -126,11 +116,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-[#fffbeb] border-[#fde047] text-[#dc2626]'
+            : 'bg-[#fffbeb] border-[#fde047] text-[#b91c1c]'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
-            <span className={telemetry.online ? 'text-slate-900' : 'text-[#dc2626] font-extrabold'}>
+            <span className={telemetry.online ? 'text-slate-900' : 'text-[#b91c1c] font-extrabold'}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!'}
@@ -154,7 +144,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-[#fffbeb] border-[#fde047] text-[#dc2626]'
+          : 'bg-[#fffbeb] border-[#fde047] text-[#b91c1c]'
       }`}>
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
@@ -164,14 +154,14 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           </div>
           <div>
             <h4 className={`font-sans font-extrabold text-sm uppercase tracking-wide ${
-              telemetry.online ? 'text-slate-900' : 'text-[#dc2626] font-black'
+              telemetry.online ? 'text-slate-900' : 'text-[#b91c1c] font-black'
             }`}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: DYNAMIC SENSOR TELEMETRY ACTIVE' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE'}
             </h4>
             <p className={`text-xs mt-0.5 font-sans font-bold ${
-              telemetry.online ? 'text-slate-700' : 'text-[#dc2626]'
+              telemetry.online ? 'text-slate-700' : 'text-[#b91c1c]'
             }`}>
               {telemetry.online 
                 ? 'Raspberry Pi 5 is receiving telemetry data directly from ESP32 sensors via MQTT.' 
@@ -298,26 +288,26 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
                 {/* Humidity Card */}
                 <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
-                  telemetry.online ? 'bg-blue-50/50 border-blue-100' : 'bg-red-50 border-red-300'
+                  telemetry.online ? 'bg-white border-slate-200' : 'bg-[#fffbeb] border-[#fde047]'
                 }`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Humidity</span>
                     <span className="text-xl">{telemetry.online ? '💧' : '🚨'}</span>
                   </div>
-                  <p className="text-3xl font-black text-blue-700 mt-3">
+                  <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online ? `${telemetry.humidity.toFixed(1)}%` : '--'}
                   </p>
                 </div>
 
                 {/* PM2.5 Fine Dust */}
                 <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
-                  telemetry.online ? 'bg-slate-50 border-slate-200' : 'bg-red-50 border-red-300'
+                  telemetry.online ? 'bg-white border-slate-200' : 'bg-[#fffbeb] border-[#fde047]'
                 }`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">PM2.5 Dust</span>
                     <span className="text-xl">{telemetry.online ? '🌫️' : '🚨'}</span>
                   </div>
-                  <p className="text-3xl font-black text-slate-800 mt-3">
+                  <p className="text-3xl font-black text-slate-900 mt-3">
                     {telemetry.online && telemetry.pm25 ? `${telemetry.pm25.toFixed(1)}` : '--'}
                     <span className="text-xs font-normal text-slate-500 ml-1">µg/m³</span>
                   </p>
@@ -325,13 +315,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
                 {/* CO2 Concentration */}
                 <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
-                  telemetry.online ? 'bg-emerald-50/40 border-emerald-200' : 'bg-red-50 border-red-300'
+                  telemetry.online ? 'bg-white border-slate-200' : 'bg-[#fffbeb] border-[#fde047]'
                 }`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">CO2 Level</span>
                     <span className="text-xl">{telemetry.online ? '🍃' : '🚨'}</span>
                   </div>
-                  <p className="text-3xl font-black text-emerald-700 mt-3">
+                  <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.co2 ? `${telemetry.co2}` : '--'}
                     <span className="text-xs font-normal text-slate-500 ml-1">ppm</span>
                   </p>
@@ -339,13 +329,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
                 {/* Light Lux */}
                 <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
-                  telemetry.online ? 'bg-amber-50/40 border-amber-200' : 'bg-red-50 border-red-300'
+                  telemetry.online ? 'bg-white border-slate-200' : 'bg-[#fffbeb] border-[#fde047]'
                 }`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Light Lux</span>
                     <span className="text-xl">{telemetry.online ? '☀️' : '🚨'}</span>
                   </div>
-                  <p className="text-3xl font-black text-amber-700 mt-3">
+                  <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.light ? `${telemetry.light}` : '--'}
                     <span className="text-xs font-normal text-slate-500 ml-1">Lux</span>
                   </p>
@@ -353,7 +343,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
                 {/* GPS Location Card */}
                 <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
-                  telemetry.online ? 'bg-indigo-50/50 border-indigo-100' : 'bg-red-50 border-red-300'
+                  telemetry.online ? 'bg-white border-slate-200' : 'bg-[#fffbeb] border-[#fde047]'
                 }`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">GNSS GPS</span>
@@ -362,11 +352,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   <div className="mt-2">
                     {telemetry.online && telemetry.latitude ? (
                       <div>
-                        <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.latitude.toFixed(4)}°N</p>
-                        <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.longitude.toFixed(4)}°E</p>
+                        <p className="text-xs font-bold text-slate-900 truncate">{telemetry.latitude.toFixed(4)}°N</p>
+                        <p className="text-xs font-bold text-slate-900 truncate">{telemetry.longitude.toFixed(4)}°E</p>
                       </div>
                     ) : (
-                      <p className="text-xs font-bold text-red-600 mt-1">No Fix / Offline</p>
+                      <p className="text-xs font-bold text-[#b91c1c] mt-1">No Fix / Offline</p>
                     )}
                   </div>
                 </div>
