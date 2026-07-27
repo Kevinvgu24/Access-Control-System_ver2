@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        green:   '#ff6d00', // vivid orange highlight
-        red:     '#ff5252',
-        amber:   '#ffab00',
+        green:   '#10b981', // true emerald green
+        red:     '#dc2626', // vivid alert red
+        amber:   '#f59e0b', // warning amber
         blue:    '#0284c7', // slate-blue
         surface: '#ffffff', // panel background
         raised:  '#f8fafc', // inner-panel background / inputs
@@ -15,8 +15,8 @@ export default {
         line:    '#e2e8f0', // borders / separators
       },
       fontFamily: {
-        sans: ['Syne', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'monospace'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'Menlo', 'monospace'],
       },
     },
   },

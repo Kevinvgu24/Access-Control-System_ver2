@@ -279,8 +279,14 @@ export function SystemPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <span className={`px-2 py-0.5 rounded font-bold ${row.dht_ok && row.gnss_ok ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {row.dht_ok && row.gnss_ok ? 'OK' : row.dht_ok ? 'GPS SEARCH' : 'DHT WARN'}
+                        <span className={`px-2 py-0.5 rounded font-extrabold font-mono text-[11px] ${
+                          row.dht_ok && row.gnss_ok 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                            : row.dht_ok 
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+                            : 'bg-red-600 text-white border border-red-700 animate-pulse'
+                        }`}>
+                          {row.dht_ok && row.gnss_ok ? 'ONLINE (OK)' : row.dht_ok ? 'GPS SEARCH' : 'OFFLINE (WARN)'}
                         </span>
                       </td>
                     </tr>
