@@ -126,7 +126,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-[#fef3c7] border-[#f59e0b] text-[#dc2626]'
+            : 'bg-[#fffbeb] border-[#fde047] text-[#dc2626]'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
@@ -154,11 +154,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-[#fef3c7] border-[#f59e0b] text-[#dc2626]'
+          : 'bg-[#fffbeb] border-[#fde047] text-[#dc2626]'
       }`}>
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
-            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-[#fde68a] border border-[#f59e0b]'
+            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-[#fef9c3] border border-[#fde047]'
           }`}>
             {telemetry.online ? '🟢' : '🚨'}
           </div>
@@ -409,7 +409,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
                   className={`border rounded-xl p-3.5 cursor-pointer transition-all flex items-center justify-between shadow-sm ${
                     isSelected 
-                      ? 'bg-orange-500 text-white border-orange-500 shadow-md font-bold' 
+                      ? 'bg-orange-500 text-white border-transparent shadow-md font-bold' 
                       : node.online && node.sensor_ok
                       ? 'bg-white text-slate-900 border-slate-200 hover:bg-slate-100 hover:border-slate-300' 
                       : node.online
