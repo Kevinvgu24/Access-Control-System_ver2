@@ -69,13 +69,13 @@ function AuthenticatedApp() {
         <TopBar />
         
         {systemStatus.overall === 'offline' ? (
-          <div className="bg-red-50 border-b border-red-300 px-8 py-3 flex items-center justify-between text-red-800 shrink-0">
+          <div className="bg-[#fce8e8] border-b border-[#e06666]/30 px-8 py-3 flex items-center justify-between text-[#e06666] shrink-0">
             <div className="flex items-center gap-2.5">
               <span className="text-base">🚨</span>
-              <span className="text-xs font-extrabold uppercase tracking-wider font-mono text-red-700">System Alert:</span>
-              <span className="text-xs font-bold text-red-700">Device is currently offline. Please check power source or network connection.</span>
+              <span className="text-xs font-extrabold uppercase tracking-wider font-mono text-[#e06666]">System Alert:</span>
+              <span className="text-xs font-bold text-[#e06666]">Device is currently offline. Please check power source or network connection.</span>
             </div>
-            <div className="text-[10px] font-mono uppercase px-2.5 py-1 bg-red-600 text-white rounded font-black border border-red-700 shadow-sm animate-pulse">
+            <div className="text-[10px] font-mono uppercase px-2.5 py-1 bg-[#e06666] text-[#fce8e8] rounded font-black border border-[#e06666] shadow-sm animate-pulse">
               SYSTEM OFFLINE
             </div>
           </div>
