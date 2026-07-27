@@ -7,9 +7,9 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const v = {
-  primary: 'bg-green text-white border-transparent hover:bg-green/95 active:scale-[0.98] transition-transform',
-  ghost:   'bg-transparent border-line text-[#475569] hover:text-[#334155] hover:bg-slate-50',
-  danger:  'bg-red text-white border-transparent hover:bg-red/95 active:scale-[0.98] transition-transform',
+  primary: 'bg-orange text-white border-transparent hover:bg-orange/90 active:scale-[0.98] transition-all font-bold shadow-sm',
+  ghost:   'bg-transparent border-line text-[#475569] hover:text-[#334155] hover:bg-slate-50 font-semibold',
+  danger:  'bg-red text-white border-transparent hover:bg-red/90 active:scale-[0.98] transition-all font-bold shadow-sm',
 }
 const sz = {
   sm: 'px-3 py-1.5 text-xs',

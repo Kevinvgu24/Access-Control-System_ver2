@@ -4,7 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
+        orange:  '#ff6d00', // primary button orange
         green:   '#10b981', // true emerald green
+        emerald: '#10b981', // true emerald green
         red:     '#dc2626', // vivid alert red
         amber:   '#f59e0b', // warning amber
         blue:    '#0284c7', // slate-blue

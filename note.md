@@ -1,18 +1,26 @@
-Server:
-# 1. Sao lưu database hiện tại sang thư mục tạm để tránh mất dữ liệu người dùng
-cp database/smart_door.db /tmp/smart_door.db.bak
+Server Deployment Script:
 
-# 2. Xóa thay đổi tạm thời của file database để Git cho phép cập nhật
-git checkout -- database/smart_door.db
+# 1. Di chuyển vào thư mục dự án trên Server
+cd /opt/smart-door
 
-# 3. Kéo toàn bộ code và cấu hình Qdrant mới từ Github về
+# 2. Sao lưu database hiện tại sang thư mục tạm để tránh mất dữ liệu người dùng
+cp database/smart_door.db /tmp/smart_door.db.bak 2>/dev/null || true
+
+# 3. Phục hồi tạm thời file database để Git cho phép pull mà không bị xung đột
+git checkout -- database/smart_door.db 2>/dev/null || true
+
+# 4. Kéo toàn bộ code mới từ GitHub về
 git pull origin main
 
-# 4. Khôi phục lại file database cũ từ thư mục tạm
-cp /tmp/smart_door.db.bak database/smart_door.db
+# 5. Khôi phục lại file database người dùng từ thư mục tạm
+cp /tmp/smart_door.db.bak database/smart_door.db 2>/dev/null || true
 
-# 5. Tắt Docker cũ
+# 6. Tắt Docker containers cũ
 docker compose down
 
-# 6. Khởi động lại Docker bằng cấu hình mới (sẽ tải qdrant-client và chạy Qdrant)
+# 7. Khởi chạy lại Docker bằng cấu hình và mã nguồn mới nhất
 docker compose up --build -d
+
+# 8. Xóa triệt để các Image cũ, Layer thừa và Cache build Docker để tránh gây đầy dung lượng ổ cứng
+docker image prune -af
+docker builder prune -af
