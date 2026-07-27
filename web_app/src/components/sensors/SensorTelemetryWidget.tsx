@@ -116,11 +116,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-orange-50 border-orange-300 text-amber-800'
+            : 'bg-orange-50 border-orange-300 text-[#e06666]'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
-            <span className={telemetry.online ? 'text-slate-900' : 'text-amber-800 font-extrabold'}>
+            <span className={telemetry.online ? 'text-slate-900' : 'text-[#e06666] font-extrabold'}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!'}
@@ -129,7 +129,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           <span className={`px-2.5 py-1 text-[10px] font-mono font-black rounded uppercase tracking-wider ${
             telemetry.online 
               ? 'bg-emerald-600 text-white border border-emerald-700' 
-              : 'bg-red-600 text-white border border-red-700 shadow-md shadow-red-500/30 animate-pulse'
+              : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-md shadow-red-500/30 animate-pulse'
           }`}>
             {telemetry.online ? 'ONLINE' : 'OFFLINE'}
           </span>
@@ -144,7 +144,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-orange-50 border-orange-300 text-amber-800'
+          : 'bg-orange-50 border-orange-300 text-[#e06666]'
       }`}>
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
@@ -154,14 +154,14 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           </div>
           <div>
             <h4 className={`font-sans font-extrabold text-sm uppercase tracking-wide ${
-              telemetry.online ? 'text-slate-900' : 'text-amber-800 font-black'
+              telemetry.online ? 'text-slate-900' : 'text-[#e06666] font-black'
             }`}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: DYNAMIC SENSOR TELEMETRY ACTIVE' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE'}
             </h4>
             <p className={`text-xs mt-0.5 font-sans font-bold ${
-              telemetry.online ? 'text-slate-700' : 'text-amber-800'
+              telemetry.online ? 'text-slate-700' : 'text-[#e06666]'
             }`}>
               {telemetry.online 
                 ? 'Raspberry Pi 5 is receiving telemetry data directly from ESP32 sensors via MQTT.' 
@@ -172,7 +172,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <span className={`px-3.5 py-1.5 font-mono text-xs font-black rounded-lg shadow-md uppercase tracking-wider shrink-0 transition-all ${
           telemetry.online 
             ? 'bg-emerald-600 text-white border border-emerald-700 shadow-emerald-500/20' 
-            : 'bg-red-600 text-white border border-red-700 shadow-red-500/30 animate-pulse'
+            : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-red-500/30 animate-pulse'
         }`}>
           {telemetry.online ? 'ONLINE' : 'OFFLINE'}
         </span>
