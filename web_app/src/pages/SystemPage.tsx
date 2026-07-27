@@ -104,12 +104,18 @@ export function SystemPage() {
       <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>
         {/* Left Column - Live View, Hardware Metrics & Telemetry Log Table */}
         <div className="flex flex-col gap-5">
-          {selectedLabId && selectedNodeId && (
-            <Panel>
-              <PanelHeader eyebrow="Camera Monitoring" title="IR Live View Stream" />
+          <Panel>
+            <PanelHeader eyebrow="Camera Monitoring" title="IR Live View Stream" />
+            {selectedLabId && selectedNodeId ? (
               <LiveCamera labId={selectedLabId} nodeId={selectedNodeId} />
-            </Panel>
-          )}
+            ) : (
+              <div className="aspect-video bg-slate-950 rounded-lg border border-line flex flex-col items-center justify-center gap-3">
+                <span className="text-2xl">📷</span>
+                <p className="font-mono text-xs text-slate-500 uppercase tracking-widest">No Node Selected</p>
+                <p className="font-sans text-xs text-slate-600 max-w-xs text-center">Please select an active node to view the camera stream.</p>
+              </div>
+            )}
+          </Panel>
 
           <Panel>
             <PanelHeader eyebrow="Hardware Metrics" title="Raspberry Pi 5 Performance" />
