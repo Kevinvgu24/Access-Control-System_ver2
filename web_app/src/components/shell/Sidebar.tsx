@@ -28,7 +28,7 @@ export function Sidebar() {
     ? 'bg-amber' : 'bg-red'
 
   return (
-    <aside className="w-[200px] shrink-0 flex flex-col h-screen sticky top-0 bg-darker border-r border-line">
+    <aside className="w-[220px] shrink-0 flex flex-col h-screen sticky top-0 bg-darker border-r border-line">
       <div className="px-6 py-7 border-b border-line">
         <div className="flex items-center gap-2 mb-1">
           <span className={`blink w-2 h-2 rounded-full shrink-0 ${statusDot}`} />
@@ -52,15 +52,15 @@ export function Sidebar() {
               }
             }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-extrabold border-2 transition-all shadow-sm ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans border-2 transition-all shadow-sm ${
                 isActive 
-                  ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-500/20 scale-[1.02]' 
-                  : 'bg-white text-slate-800 border-slate-200 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 hover:shadow-md'
+                  ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-500/30 scale-[1.02] font-black' 
+                  : 'bg-white text-slate-800 border-slate-200 hover:bg-orange-500 hover:text-white hover:border-orange-600 hover:shadow-md'
               }`
             }
           >
-            <span className="text-base leading-none">{icon}</span>
-            {label}
+            <span className="text-sm leading-none shrink-0">{icon}</span>
+            <span className="truncate">{label}</span>
           </NavLink>
         ))}
 

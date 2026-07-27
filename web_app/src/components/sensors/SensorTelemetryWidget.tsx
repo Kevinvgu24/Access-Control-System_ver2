@@ -407,24 +407,24 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div
                   key={node.id}
                   onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
-                  className={`border-2 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${
+                  className={`group border-2 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${
                     isSelected 
-                      ? 'border-orange-500 ring-4 ring-orange-500/20 bg-orange-50 text-orange-700 shadow-md scale-[1.02]' 
+                      ? 'bg-orange-500 text-white border-orange-600 ring-4 ring-orange-500/20 shadow-md scale-[1.02]' 
                       : node.online && node.sensor_ok
-                      ? 'bg-white border-slate-200 hover:border-orange-500 hover:bg-orange-50/40' 
+                      ? 'bg-white border-slate-200 hover:bg-orange-500 hover:border-orange-600' 
                       : node.online
-                      ? 'bg-amber-50/50 border-amber-300 hover:border-orange-500'
-                      : 'bg-red-50 border-red-300 hover:border-orange-500'
+                      ? 'bg-amber-50/50 border-amber-300 hover:bg-orange-500 hover:border-orange-600'
+                      : 'bg-red-50 border-red-300 hover:bg-orange-500 hover:border-orange-600'
                   }`}
                 >
                   <div className="min-w-0 flex flex-col gap-1">
                     <span className={`font-mono text-sm font-black truncate transition-colors ${
-                      isSelected ? 'text-orange-600' : 'text-slate-900 group-hover:text-orange-600'
+                      isSelected ? 'text-white' : 'text-slate-900 group-hover:text-white'
                     }`}>
                       {node.name}
                     </span>
                     <span className={`text-[11px] truncate font-mono transition-colors ${
-                      isSelected ? 'text-orange-600 font-bold' : 'text-slate-500'
+                      isSelected ? 'text-white/90 font-bold' : 'text-slate-500 group-hover:text-white/90'
                     }`}>
                       {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
                     </span>
