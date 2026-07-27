@@ -184,7 +184,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-amber-50 border-amber-400 text-red-700 animate-pulse'
+            : 'bg-red-50 border-red-400 text-red-700 animate-pulse'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
@@ -234,7 +234,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-amber-50 border-amber-400 text-red-700 animate-pulse'
+          : 'bg-red-50 border-red-400 text-red-800 animate-pulse'
       }`}>
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
@@ -250,8 +250,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 ? 'SYSTEM CONNECTED: DYNAMIC ESP32 SUBNODES ACTIVE' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE'}
             </h4>
-            <p className={`text-xs mt-0.5 font-sans font-semibold ${
-              telemetry.online ? 'text-slate-700' : 'text-red-600 font-bold'
+            <p className={`text-xs mt-0.5 font-sans ${
+              telemetry.online ? 'text-slate-700 font-semibold' : 'text-red-600 font-extrabold'
             }`}>
               {telemetry.online 
                 ? 'Raspberry Pi 5 is receiving dynamic sensor telemetry (DHT11, PM2.5 Dust, GNSS GPS, CO2) directly from ESP32 subnodes via MQTT.' 
@@ -477,11 +477,17 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-bold">Health Diagnostic</span>
                     <p className={`text-sm font-bold mt-2 ${
-                      activeSubnode.sensor_ok && activeSubnode.online ? 'text-emerald-400' : 'text-red-400 font-black'
+                      activeSubnode.sensor_ok && activeSubnode.online 
+                        ? 'text-emerald-400' 
+                        : activeSubnode.online 
+                        ? 'text-amber-300 font-bold' 
+                        : 'text-red-400 font-black'
                     }`}>
                       {activeSubnode.sensor_ok && activeSubnode.online 
-                        ? '✓ Dynamic Schema Transmitting OK' 
-                        : activeSubnode.error_msg || '⚠️ Subnode Fault Reported'}
+                        ? '✓ Dynamic Schema Transmitting OK (Connected)' 
+                        : activeSubnode.online 
+                        ? '⚠️ Warning: Sensor Fault Reported' 
+                        : '✖ Subnode Disconnected (Offline)'}
                     </p>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-2">
@@ -519,18 +525,22 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   className={`border-2 rounded-xl p-3 cursor-pointer transition-all flex flex-col items-center justify-center text-center aspect-square shadow-sm ${
                     isSelected 
                       ? 'border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/30' 
-                      : node.online 
+                      : node.online && node.sensor_ok
                       ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-400' 
+                      : node.online
+                      ? 'bg-amber-50 border-amber-300 hover:border-amber-400'
                       : 'bg-red-50 border-red-300 hover:border-red-400'
                   }`}
                 >
                   <span className="font-mono text-xs font-black text-slate-900 truncate w-full">{cleanName}</span>
                   <span className={`mt-2 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-wider ${
-                    node.online 
+                    node.online && node.sensor_ok
                       ? 'bg-emerald-600 text-white border border-emerald-700' 
+                      : node.online
+                      ? 'bg-amber-500 text-white border border-amber-600'
                       : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
                   }`}>
-                    {node.online ? 'ONLINE' : 'OFFLINE'}
+                    {node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
                   </span>
                 </div>
               )
