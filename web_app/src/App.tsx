@@ -99,7 +99,6 @@ function AuthenticatedApp() {
               <>
                 <Route path="/"           element={<Navigate to="/overview" replace />} />
                 <Route path="/overview"   element={<OverviewPage />} />
-                <Route path="/sensors"    element={<SensorsPage />} />
                 <Route path="/users"      element={<UsersPage />} />
                 <Route path="/enrollment" element={<EnrollmentPage />} />
                 <Route path="/schedules"  element={<SchedulesPage />} />

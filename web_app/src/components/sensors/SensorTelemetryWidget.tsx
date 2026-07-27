@@ -62,7 +62,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     : 'text-emerald-600'
 
   const tempBg = !sensor.online 
-    ? 'bg-red-50/80 border-red-300' 
+    ? 'bg-red-50/90 border-red-300' 
     : sensor.temperature > 35 
     ? 'bg-red-50 border-red-200' 
     : sensor.temperature > 28 
@@ -81,7 +81,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           <div className="bg-red-600 text-white border border-red-700 px-4 py-2.5 rounded-lg flex items-center justify-between shadow-md animate-pulse">
             <div className="flex items-center gap-2 text-xs font-bold font-mono">
               <span className="text-base">🚨</span>
-              <span>CẢNH BÁO MẤT KẾT NỐI: Raspberry Pi 5 không nhận được dữ liệu từ các node ESP32!</span>
+              <span>CONNECTION ALERT: Raspberry Pi 5 lost telemetry feed from ESP32 Nodes!</span>
             </div>
             <span className="px-2 py-0.5 bg-black/30 text-white text-[10px] font-mono font-bold rounded uppercase tracking-wider">
               DISCONNECTED
@@ -95,7 +95,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             !sensor.online ? 'bg-red-50/90 border-red-300' : 'bg-surface border-line'
           }`}>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase font-bold text-slate-600">Environmental (DHT11)</span>
+              <span className="font-mono text-[10px] uppercase font-bold text-slate-600">Environment (DHT11)</span>
               <span className={`w-2.5 h-2.5 rounded-full ${sensor.dht_ok && sensor.online ? 'bg-emerald-500 blink' : 'bg-red-600 blink'}`} />
             </div>
             <div className="flex items-baseline gap-4 mt-2">
@@ -112,8 +112,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 </>
               ) : (
                 <div>
-                  <span className="text-lg font-black text-red-600 font-mono uppercase tracking-wider">-- MẤT NỐI --</span>
-                  <p className="text-[10px] font-bold text-red-500">ESP32 #1 Offline</p>
+                  <span className="text-lg font-black text-red-600 font-mono uppercase tracking-wider">-- DISCONNECTED --</span>
+                  <p className="text-[10px] font-bold text-red-500">ESP32 #1 Sensor Offline</p>
                 </div>
               )}
             </div>
@@ -151,7 +151,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 </>
               ) : (
                 <div>
-                  <span className="text-lg font-black text-red-600 font-mono uppercase tracking-wider">-- MẤT NỐI --</span>
+                  <span className="text-lg font-black text-red-600 font-mono uppercase tracking-wider">-- DISCONNECTED --</span>
                   <p className="text-[10px] font-bold text-red-500">ESP32 #2 Gateway Offline</p>
                 </div>
               )}
@@ -173,10 +173,10 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             </div>
             <div>
               <h4 className="font-mono font-extrabold text-sm uppercase tracking-wider">
-                CẢNH BÁO MẤT KẾT NỐI VỚI THIẾT BỊ ESP32
+                HARDWARE DISCONNECTION ALERT: ESP32 NODES UNREACHABLE
               </h4>
               <p className="text-xs text-red-100 mt-0.5 font-sans font-medium">
-                Raspberry Pi 5 đã mất tín hiệu nhận dữ liệu MQTT từ trạm ESP32 #1 & ESP32 #2 (Timeout &gt; 7 giây). Kiểm tra nguồn điện và kết nối Wi-Fi!
+                Raspberry Pi 5 has not received MQTT telemetry data from ESP32 #1 & ESP32 #2 (Timeout &gt; 7 sec). Please verify node power and Wi-Fi connection!
               </p>
             </div>
           </div>
@@ -219,13 +219,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           <div className="flex items-center gap-4 bg-white/10 border border-white/15 px-4 py-2 rounded-lg font-mono text-xs text-slate-200">
             <div className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full ${sensor.online ? 'bg-emerald-400 blink' : 'bg-red-500 blink'}`} />
-              <span>Trạng Thái RPi 5: <strong className={sensor.online ? 'text-emerald-400' : 'text-red-400 font-bold'}>
-                {sensor.online ? 'Đang Nhận Dữ Liệu' : 'MẤT KẾT NỐI ESP32'}
+              <span>RPi 5 Status: <strong className={sensor.online ? 'text-emerald-400' : 'text-red-400 font-bold'}>
+                {sensor.online ? 'Receiving Live Data' : 'ESP32 DISCONNECTED'}
               </strong></span>
             </div>
             <span className="text-slate-500">|</span>
             <div>
-              Cập nhật: <strong className="text-white">{sensor.last_updated ? new Date(sensor.last_updated).toLocaleTimeString() : 'Không có dữ liệu'}</strong>
+              Updated: <strong className="text-white">{sensor.last_updated ? new Date(sensor.last_updated).toLocaleTimeString() : 'No Telemetry'}</strong>
             </div>
           </div>
         </div>
@@ -256,15 +256,15 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             ) : (
               <div className="py-2">
                 <span className="text-3xl font-black text-red-600 font-mono">OFFLINE</span>
-                <p className="text-xs font-bold text-red-500 mt-1">Không nhận được tín hiệu</p>
+                <p className="text-xs font-bold text-red-500 mt-1">Telemetry Signal Lost</p>
               </div>
             )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
-            <span className="text-slate-600 font-semibold">Trạng thái Node 1:</span>
+            <span className="text-slate-600 font-semibold">Node 1 Status:</span>
             <span className={`px-2 py-0.5 rounded font-bold ${sensor.dht_ok && sensor.online ? 'bg-emerald-100 text-emerald-800' : 'bg-red-600 text-white'}`}>
-              {sensor.dht_ok && sensor.online ? 'HOẠT ĐỘNG' : 'MẤT KẾT NỐI (RED ALERT)'}
+              {sensor.dht_ok && sensor.online ? 'ACTIVE / OK' : 'DISCONNECTED (RED ALERT)'}
             </span>
           </div>
         </div>
@@ -292,15 +292,15 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             ) : (
               <div className="py-2">
                 <span className="text-3xl font-black text-red-600 font-mono">OFFLINE</span>
-                <p className="text-xs font-bold text-red-500 mt-1">Không nhận được tín hiệu</p>
+                <p className="text-xs font-bold text-red-500 mt-1">Telemetry Signal Lost</p>
               </div>
             )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-blue-200/60 flex items-center justify-between font-mono text-xs">
-            <span className="text-slate-600 font-semibold">Cảm biến ẩm:</span>
-            <span className={`px-2 py-0.5 rounded font-bold ${sensor.online ? 'text-blue-900' : 'bg-red-600 text-white'}`}>
-              {sensor.online ? (sensor.humidity > 70 ? 'Độ ẩm cao' : 'Độ ẩm chuẩn') : 'MẤT KẾT NỐI'}
+            <span className="text-slate-600 font-semibold">Humidity Level:</span>
+            <span className={`px-2 py-0.5 rounded font-bold ${sensor.online ? 'text-blue-900 font-bold' : 'bg-red-600 text-white'}`}>
+              {sensor.online ? (sensor.humidity > 70 ? 'High Humidity' : 'Optimal Humidity') : 'DISCONNECTED'}
             </span>
           </div>
         </div>
@@ -336,7 +336,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               ) : (
                 <div className="py-2">
                   <span className="text-3xl font-black text-red-600 font-mono">OFFLINE</span>
-                  <p className="text-xs font-bold text-red-500 mt-1">ESP32 #2 Mất kết nối MQTT</p>
+                  <p className="text-xs font-bold text-red-500 mt-1">ESP32 #2 Gateway Unreachable</p>
                 </div>
               )}
             </div>

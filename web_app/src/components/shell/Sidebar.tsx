@@ -5,7 +5,6 @@ import { useAdminStore } from '@/store/adminStore'
 
 const NAV = [
   { href: '/overview',   icon: '▣', label: 'Dashboard'  },
-  { href: '/sensors',    icon: '🛰️', label: 'Sensors & GPS' },
   { href: '/users',      icon: '◈', label: 'Administrator' },
   { href: '/enrollment', icon: '⊕', label: 'Enrollment' },
   { href: '/schedules',  icon: '📅', label: 'Schedules'  },
