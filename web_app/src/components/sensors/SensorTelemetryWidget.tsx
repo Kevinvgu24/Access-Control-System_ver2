@@ -116,7 +116,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-orange-50 border-orange-300 text-[#e06666]'
+            : 'bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
@@ -144,11 +144,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-orange-50 border-orange-300 text-[#e06666]'
+          : 'bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]'
       }`}>
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
-            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-orange-100 border border-orange-300'
+            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-[#fce8e8] border border-[#e06666]/40'
           }`}>
             {telemetry.online ? '🟢' : '🚨'}
           </div>
