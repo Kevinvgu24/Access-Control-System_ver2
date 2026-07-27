@@ -196,6 +196,23 @@ class FaceDatabase:
             )
         ''')
 
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS environment_telemetry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                temperature REAL,
+                humidity REAL,
+                latitude REAL,
+                longitude REAL,
+                altitude REAL,
+                speed REAL,
+                satellites INTEGER,
+                dht_ok INTEGER DEFAULT 1,
+                gnss_ok INTEGER DEFAULT 1,
+                raw_payload TEXT,
+                receivedAt TEXT
+            )
+        ''')
+
         # Add synced column to access_events and incidents if they don't exist in existing database
         for col_name, table_name in [("synced", "access_events"), ("synced", "incidents")]:
             try:
@@ -489,6 +506,46 @@ class FaceDatabase:
             logger.error(f"Error marking incidents synced: {e}")
         finally:
             conn.close()
+
+    def save_sensor_telemetry(self, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok=True, gnss_ok=True, raw_payload=""):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            import datetime as dt
+            now_str = dt.datetime.now().isoformat()
+            c.execute("""
+                INSERT INTO environment_telemetry 
+                    (temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok, raw_payload, receivedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                temperature, humidity, latitude, longitude, altitude, speed, satellites,
+                1 if dht_ok else 0, 1 if gnss_ok else 0, str(raw_payload), now_str
+            ))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving sensor telemetry: {e}")
+        finally:
+            conn.close()
+
+    def get_latest_sensor_telemetry(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM environment_telemetry ORDER BY id DESC LIMIT 1")
+            row = c.fetchone()
+            if row:
+                res = dict(row)
+                res["dht_ok"] = bool(res["dht_ok"])
+                res["gnss_ok"] = bool(res["gnss_ok"])
+                return res
+            return None
+        except Exception as e:
+            logger.error(f"Error reading latest sensor telemetry: {e}")
+            return None
+        finally:
+            conn.close()
+
 
 
 

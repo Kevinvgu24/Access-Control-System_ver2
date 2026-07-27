@@ -10,6 +10,7 @@ import { EnrollmentPage }  from '@/pages/EnrollmentPage'
 import { SchedulesPage }   from '@/pages/SchedulesPage'
 import { LogsPage }        from '@/pages/LogsPage'
 import { SystemPage }      from '@/pages/SystemPage'
+import { SensorsPage }     from '@/pages/SensorsPage'
 import { useAuthStore }    from '@/store/authStore'
 import { useLabStore }     from '@/store/labStore'
 import { useAdminStore }   from '@/store/adminStore'
@@ -98,6 +99,7 @@ function AuthenticatedApp() {
               <>
                 <Route path="/"           element={<Navigate to="/overview" replace />} />
                 <Route path="/overview"   element={<OverviewPage />} />
+                <Route path="/sensors"    element={<SensorsPage />} />
                 <Route path="/users"      element={<UsersPage />} />
                 <Route path="/enrollment" element={<EnrollmentPage />} />
                 <Route path="/schedules"  element={<SchedulesPage />} />

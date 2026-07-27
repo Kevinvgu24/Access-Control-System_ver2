@@ -5,6 +5,7 @@ import { useAuthStore }  from '@/store/authStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
 import { LiveCamera } from '@/components/ui/LiveCamera'
+import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidget'
 import { updateNodeConfig, getFirstLabNode } from '@/lib/db'
 import { fmtTs } from '@/lib/format'
 
@@ -100,6 +101,12 @@ export function SystemPage() {
               <LiveCamera labId={selectedLabId} nodeId={selectedNodeId} />
             </Panel>
           )}
+
+          {/* ESP32 Sensor & GPS Telemetry Feedback Panel */}
+          <Panel>
+            <PanelHeader eyebrow="IoT Telemetry" title="ESP32 Environment & GPS Feedback" />
+            <SensorTelemetryWidget compact={true} />
+          </Panel>
 
           <Panel>
             <PanelHeader eyebrow="Hardware" title="Live Metrics" />

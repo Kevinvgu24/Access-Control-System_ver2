@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { fmtConf, fmtMethod, fmtTs, resultLabel, resultTone } from '@/lib/format'
 import { useNavigate } from 'react-router-dom'
+import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidget'
 
 export function OverviewPage() {
   const { systemStatus, events, incidents, todayEntries, failedAttempts, averageConfidence, loading } = useAdminStore()
@@ -33,6 +34,9 @@ export function OverviewPage() {
           <Button variant="ghost" onClick={() => navigate('/logs')}>Export Logs</Button>
         </div>
       </div>
+
+      {/* Sensor Telemetry Widget */}
+      <SensorTelemetryWidget compact={true} />
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">

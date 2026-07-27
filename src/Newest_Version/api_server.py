@@ -77,6 +77,7 @@ if project_root not in sys.path:
 from database import FaceDatabase
 from logger import get_logger
 from run_schedule_parser import UniversalScheduleParser
+from mqtt_service import MQTTTelemetryService, latest_sensor_data
 
 logger = get_logger("api_server")
 
@@ -91,6 +92,10 @@ db_path = os.path.join(db_dir, "smart_door.db")
 
 # Initialize database
 db = FaceDatabase(db_path)
+
+# Initialize MQTT Telemetry Service
+mqtt_service = MQTTTelemetryService(db)
+mqtt_service.start()
 
 # Initialize Qdrant Client
 qdrant_client = None
@@ -950,6 +955,70 @@ def get_ir_stream(lab_id, node_id):
             active_ir_streams.pop(node_id, None)
             logger.info(f"Client disconnected from IR stream of node {node_id}")
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# 15c. Sensor Telemetry Endpoints (DHT11 & GPS)
+@app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
+def get_latest_sensors(lab_id):
+    data = latest_sensor_data.copy()
+    now_dt = datetime.now()
+    
+    if data.get("last_updated"):
+        try:
+            last_dt = datetime.fromisoformat(data["last_updated"])
+            diff_sec = (now_dt - last_dt).total_seconds()
+            if diff_sec > 7.0:
+                data["online"] = False
+                data["dht_ok"] = False
+                data["gnss_ok"] = False
+        except Exception:
+            pass
+    else:
+        db_data = db.get_latest_sensor_telemetry()
+        if db_data:
+            data = {
+                "temperature": db_data.get("temperature", 0.0),
+                "humidity": db_data.get("humidity", 0.0),
+                "latitude": db_data.get("latitude", 0.0),
+                "longitude": db_data.get("longitude", 0.0),
+                "altitude": db_data.get("altitude", 0.0),
+                "speed": db_data.get("speed", 0.0),
+                "satellites": db_data.get("satellites", 0),
+                "dht_ok": False,
+                "gnss_ok": False,
+                "last_updated": db_data.get("receivedAt"),
+                "online": False
+            }
+        else:
+            data["online"] = False
+            data["dht_ok"] = False
+            data["gnss_ok"] = False
+
+    return jsonify(data)
+
+@app.route("/api/labs/<lab_id>/sensors/telemetry", methods=["POST"])
+def post_sensor_telemetry(lab_id):
+    data = request.get_json() or {}
+    mqtt_service.process_telemetry_payload("http/manual", data)
+    return jsonify({"success": True})
+
+@app.route("/api/labs/<lab_id>/sensors/history", methods=["GET"])
+def get_sensor_history(lab_id):
+    limit = request.args.get("limit", 50, type=int)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM environment_telemetry ORDER BY id DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    
+    records = []
+    for r in rows:
+        item = dict(r)
+        item["dht_ok"] = bool(item["dht_ok"])
+        item["gnss_ok"] = bool(item["gnss_ok"])
+        records.append(item)
+    return jsonify(records)
+
 
 
 # 16. Get node config directly
