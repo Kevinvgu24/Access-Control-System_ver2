@@ -126,11 +126,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
           telemetry.online 
             ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-red-50 border-red-400 text-red-700 animate-pulse'
+            : 'bg-amber-50 border-amber-300 text-red-600'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
-            <span className={telemetry.online ? 'text-slate-900' : 'text-red-700 font-extrabold'}>
+            <span className={telemetry.online ? 'text-slate-900' : 'text-red-600 font-extrabold'}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!'}
@@ -154,23 +154,23 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
         telemetry.online 
           ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-red-50 border-red-400 text-red-800 animate-pulse'
+          : 'bg-amber-50 border-amber-300 text-red-600 shadow-amber-500/10'
       }`}>
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
-            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-red-100 border border-red-300'
+            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-amber-100 border border-amber-300'
           }`}>
             {telemetry.online ? '🟢' : '🚨'}
           </div>
           <div>
             <h4 className={`font-sans font-extrabold text-sm uppercase tracking-wide ${
-              telemetry.online ? 'text-slate-900' : 'text-red-700'
+              telemetry.online ? 'text-slate-900' : 'text-red-600 font-black'
             }`}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: DYNAMIC SENSOR TELEMETRY ACTIVE' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE'}
             </h4>
-            <p className={`text-xs mt-0.5 font-sans font-semibold ${
+            <p className={`text-xs mt-0.5 font-sans font-bold ${
               telemetry.online ? 'text-slate-700' : 'text-red-600'
             }`}>
               {telemetry.online 
