@@ -42,7 +42,7 @@ export function Sidebar() {
         </p>
       </div>
 
-      <nav className="flex flex-col p-3 gap-0.5 flex-1">
+      <nav className="flex flex-col p-3 gap-2 flex-1">
         {NAV.map(({ href, icon, label }) => (
           <NavLink key={href} to={href}
             onClick={(e) => {
@@ -52,8 +52,11 @@ export function Sidebar() {
               }
             }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all
-               ${isActive ? 'bg-green/10 text-green' : 'text-[#475569] hover:text-[#334155] hover:bg-slate-100'}`
+              `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-extrabold border-2 transition-all shadow-sm ${
+                isActive 
+                  ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-500/20 scale-[1.02]' 
+                  : 'bg-white text-slate-800 border-slate-200 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 hover:shadow-md'
+              }`
             }
           >
             <span className="text-base leading-none">{icon}</span>

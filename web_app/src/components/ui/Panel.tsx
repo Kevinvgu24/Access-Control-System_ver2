@@ -14,8 +14,8 @@ export function PanelHeader({ eyebrow, title, action }: { eyebrow?: string; titl
   return (
     <div className="flex justify-between items-start mb-5">
       <div>
-        {eyebrow && <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] mb-1">{eyebrow}</p>}
-        <h2 className="text-[15px] font-semibold text-[#0f172a]">{title}</h2>
+        {eyebrow && <p className="font-mono text-[11px] uppercase tracking-widest text-orange-600 font-extrabold mb-1">{eyebrow}</p>}
+        <h2 className="text-base font-extrabold text-slate-900 tracking-tight">{title}</h2>
       </div>
       {action}
     </div>

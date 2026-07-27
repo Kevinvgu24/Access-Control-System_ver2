@@ -140,12 +140,12 @@ export function EnrollmentPage() {
           return (
             <button key={s.id} onClick={() => i <= idx && setStep(s.id)}
               className={`flex flex-col gap-2 p-4 rounded-lg border text-left transition-all ${
-                isActive ? 'border-green/25 bg-green/5'
+                isActive ? 'border-orange-300 bg-orange-50/80 shadow-sm'
                 : isDone  ? 'border-slate-200 bg-raised cursor-pointer'
                 : 'border-slate-100 bg-raised cursor-not-allowed opacity-40'
               }`}>
-              <span className={`font-mono text-[11px] ${isActive ? 'text-green' : 'text-[#94a3b8]'}`}>{isDone ? '✓ done' : s.num}</span>
-              <span className={`text-sm font-semibold ${isActive ? 'text-[#0f172a]' : 'text-[#475569]'}`}>{s.label}</span>
+              <span className={`font-mono text-[11px] ${isActive ? 'text-orange-600 font-extrabold' : 'text-slate-400 font-bold'}`}>{isDone ? '✓ done' : s.num}</span>
+              <span className={`text-sm font-semibold ${isActive ? 'text-slate-900 font-extrabold' : 'text-slate-600'}`}>{s.label}</span>
             </button>
           )
         })}

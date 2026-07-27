@@ -25,7 +25,7 @@ export function OverviewPage() {
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Command Center</p>
+          <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">Command Center</p>
           <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Global Dashboard</h1>
           <p className="text-sm text-[#475569] mt-2">Lab health, sync status, and live door activity.</p>
         </div>

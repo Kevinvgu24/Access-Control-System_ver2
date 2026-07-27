@@ -175,7 +175,7 @@ export function SystemPage() {
       {/* Page Header */}
       <div className="flex justify-between items-end">
         <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">System Control & IoT Center</p>
+          <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">System Control & IoT Center</p>
           <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">System Configuration & Telemetry</h1>
           <p className="text-sm text-[#475569] mt-2">
             Monitor real-time ESP32 sensors (DHT11 & LC76G GPS), camera stream, recognition thresholds, and core hardware metrics.

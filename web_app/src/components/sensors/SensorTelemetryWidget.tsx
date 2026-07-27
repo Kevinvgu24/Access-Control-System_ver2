@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useLabStore } from '@/store/labStore'
-import { useAdminStore } from '@/store/adminStore'
-import { Badge } from '@/components/ui/Badge'
-import { fmtConf, fmtMethod, fmtTs, resultLabel, resultTone } from '@/lib/format'
 
 export interface TelemetryData {
   temperature: number
@@ -21,9 +18,19 @@ export interface TelemetryData {
   online: boolean
 }
 
+export interface SubnodeData {
+  id: string
+  name: string
+  online: boolean
+  sensors?: string
+  last_updated?: string
+  data: Record<string, any>
+  sensor_ok?: boolean
+  error_msg?: string
+}
+
 export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }) {
   const { selectedLabId } = useLabStore()
-  const { events, loading: adminLoading } = useAdminStore()
 
   const [telemetry, setTelemetry] = useState<TelemetryData>({
     temperature: 0,
@@ -41,6 +48,30 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     last_updated: null,
     online: false
   })
+  
+  const [subnodes, setSubnodes] = useState<SubnodeData[]>([
+    {
+      id: 'subnode-1',
+      name: 'Subnode 1',
+      online: true,
+      sensors: 'DHT11 Temp & Humidity, PM2.5 Dust',
+      sensor_ok: true,
+      last_updated: new Date().toISOString(),
+      data: { temperature: 28.5, humidity: 62.0, pm25: 18.4, co2: 420, light: 350 }
+    },
+    {
+      id: 'subnode-2',
+      name: 'Subnode 2',
+      online: false,
+      sensors: 'LC76G GNSS GPS, CO2 Sensor',
+      sensor_ok: false,
+      error_msg: 'Hardware Unreachable (MQTT Timeout > 7s)',
+      last_updated: new Date(Date.now() - 15000).toISOString(),
+      data: { latitude: 10.762622, longitude: 106.660172, satellites: 0 }
+    }
+  ])
+
+  const [selectedSubnodeId, setSelectedSubnodeId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchTelemetry = async () => {
@@ -50,6 +81,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       if (res.ok) {
         const data = await res.json()
         setTelemetry(data)
+        if (data.subnodes && Array.isArray(data.subnodes)) {
+          setSubnodes(data.subnodes)
+        }
       }
     } catch (e) {
       console.error('Failed to fetch sensor telemetry:', e)
@@ -84,6 +118,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     ? `https://www.google.com/maps?q=${telemetry.latitude},${telemetry.longitude}` 
     : '#'
 
+  const activeSubnode = subnodes.find(s => s.id === selectedSubnodeId)
+
   if (compact) {
     return (
       <div className="flex flex-col gap-3">
@@ -96,7 +132,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
             <span className={telemetry.online ? 'text-slate-900' : 'text-red-700 font-extrabold'}>
               {telemetry.online 
-                ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor node telemetry active.' 
+                ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
                 : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!'}
             </span>
           </div>
@@ -152,173 +188,265 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         </span>
       </div>
 
-      {/* 2. Main Split Grid (50% Left: Room Telemetry Overview | 50% Right: Live Activity Feed) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* 2. Main 6-Column Grid Layout (Left: 4/6 Width | Right: 2/6 Width Subnodes List) */}
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 items-start">
 
-        {/* LEFT HALF (50%): Room Environmental & Telemetry Overview Panel */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col gap-5">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-            <div>
-              <span className="font-mono text-[10px] text-slate-400 uppercase font-extrabold tracking-widest">
-                Environmental Metrics
-              </span>
-              <h3 className="font-mono text-sm uppercase font-extrabold text-slate-800 tracking-wider mt-0.5">
-                Room Telemetry Overview
-              </h3>
-            </div>
-            <span className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider ${
-              telemetry.online 
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
-            }`}>
-              {telemetry.online ? 'ONLINE' : 'OFFLINE'}
-            </span>
-          </div>
+        {/* LEFT PANEL (4/6 Width): Switches between Room Telemetry Overview OR Subnode Inspection Panel */}
+        <div className="lg:col-span-4">
+          {activeSubnode ? (
+            /* Subnode Specific Inspection Panel */
+            <div className="bg-slate-900 text-white border border-slate-800 rounded-xl p-6 shadow-md flex flex-col gap-5">
+              <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+                <div>
+                  <button 
+                    onClick={() => setSelectedSubnodeId(null)}
+                    className="font-mono text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1.5 mb-2 transition-colors cursor-pointer"
+                  >
+                    <span>← Back to Room Telemetry Overview</span>
+                  </button>
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    {activeSubnode.name} — Hardware Inspection & Telemetry
+                  </h3>
+                  {activeSubnode.sensors && (
+                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                      Declared Sensor Modules: <span className="text-slate-200 font-semibold">{activeSubnode.sensors}</span>
+                    </p>
+                  )}
+                </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
-            {/* Temperature Card */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? tempBg : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">Temperature</span>
-                <span className="text-base">{telemetry.online ? '🌡️' : '🚨'}</span>
+                <span className={`px-3 py-1 rounded text-xs font-mono font-black uppercase tracking-wider ${
+                  activeSubnode.online && activeSubnode.sensor_ok
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : activeSubnode.online
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : 'bg-red-600 text-white border border-red-700 animate-pulse'
+                }`}>
+                  {activeSubnode.online && activeSubnode.sensor_ok ? '● ONLINE (OK)' : activeSubnode.online ? '⚠️ WARNING' : '✖ OFFLINE'}
+                </span>
               </div>
-              <p className={`text-2xl font-black mt-2 ${tempColor}`}>
-                {telemetry.online ? `${telemetry.temperature.toFixed(1)}°C` : '--'}
-              </p>
-            </div>
 
-            {/* Humidity Card */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? 'bg-blue-50/50 border-blue-100' : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">Humidity</span>
-                <span className="text-base">{telemetry.online ? '💧' : '🚨'}</span>
-              </div>
-              <p className="text-2xl font-black text-blue-700 mt-2">
-                {telemetry.online ? `${telemetry.humidity.toFixed(1)}%` : '--'}
-              </p>
-            </div>
-
-            {/* PM2.5 Fine Dust */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? 'bg-slate-50 border-slate-200' : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">PM2.5 Dust</span>
-                <span className="text-base">{telemetry.online ? '🌫️' : '🚨'}</span>
-              </div>
-              <p className="text-2xl font-black text-slate-800 mt-2">
-                {telemetry.online && telemetry.pm25 ? `${telemetry.pm25.toFixed(1)}` : '--'}
-                <span className="text-xs font-normal text-slate-500 ml-1">µg/m³</span>
-              </p>
-            </div>
-
-            {/* CO2 Concentration */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? 'bg-emerald-50/40 border-emerald-200' : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">CO2 Level</span>
-                <span className="text-base">{telemetry.online ? '🍃' : '🚨'}</span>
-              </div>
-              <p className="text-2xl font-black text-emerald-700 mt-2">
-                {telemetry.online && telemetry.co2 ? `${telemetry.co2}` : '--'}
-                <span className="text-xs font-normal text-slate-500 ml-1">ppm</span>
-              </p>
-            </div>
-
-            {/* Light Lux */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? 'bg-amber-50/40 border-amber-200' : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">Light Lux</span>
-                <span className="text-base">{telemetry.online ? '☀️' : '🚨'}</span>
-              </div>
-              <p className="text-2xl font-black text-amber-700 mt-2">
-                {telemetry.online && telemetry.light ? `${telemetry.light}` : '--'}
-                <span className="text-xs font-normal text-slate-500 ml-1">Lux</span>
-              </p>
-            </div>
-
-            {/* GPS Location Card */}
-            <div className={`border rounded-lg p-3.5 transition-all flex flex-col justify-between ${
-              telemetry.online ? 'bg-indigo-50/50 border-indigo-100' : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-slate-500">GNSS GPS</span>
-                <span className="text-base">{telemetry.online ? '📡' : '🚨'}</span>
-              </div>
-              <div className="mt-2">
-                {telemetry.online && telemetry.latitude ? (
-                  <div>
-                    <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.latitude.toFixed(4)}°N</p>
-                    <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.longitude.toFixed(4)}°E</p>
-                  </div>
-                ) : (
-                  <p className="text-xs font-bold text-red-600 mt-1">No Fix / Offline</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-500">
-            <span>Last Updated: {telemetry.last_updated ? new Date(telemetry.last_updated).toLocaleTimeString() : 'N/A'}</span>
-            {telemetry.online && telemetry.latitude ? (
-              <a href={mapsUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">
-                View Maps ↗
-              </a>
-            ) : null}
-          </div>
-        </div>
-
-        {/* RIGHT HALF (50%): Live Activity Feed Panel */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-            <div>
-              <span className="font-mono text-[10px] text-slate-400 uppercase font-extrabold tracking-widest">
-                Real-time Log Stream
-              </span>
-              <h3 className="font-mono text-sm uppercase font-extrabold text-slate-800 tracking-wider mt-0.5">
-                Live Activity Feed
-              </h3>
-            </div>
-
-            <span className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
-              <span className={`${adminLoading ? '' : 'blink'} w-2 h-2 rounded-full bg-emerald-500`} />
-              {adminLoading ? 'Loading…' : 'LIVE AUTO'}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
-            {events.length === 0 && !adminLoading && (
-              <p className="py-8 text-center font-mono text-xs text-slate-400">No door activity logged yet.</p>
-            )}
-            {events.slice(0, 8).map(ev => (
-              <div key={ev.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-mono text-[11px] text-slate-400 shrink-0 w-10">
-                    {fmtTs(ev.occurredAt).slice(11, 16)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">{ev.displayName ?? 'Unknown User'}</p>
-                    <p className="font-mono text-[10px] text-slate-500 truncate mt-0.5">
-                      {fmtMethod(ev.method)} · {ev.reason}
+              {/* Dynamic Telemetry Metric Cards for Active Subnode */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 font-mono text-xs">
+                {Object.entries(activeSubnode.data || {}).map(([key, val]) => (
+                  <div key={key} className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">{key.replace('_', ' ')}</span>
+                      <span className="text-base">📊</span>
+                    </div>
+                    <p className="text-2xl font-black text-white mt-2">
+                      {activeSubnode.online ? (typeof val === 'number' ? val.toFixed(1) : String(val)) : '--'}
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {ev.confidence > 0 && (
-                    <span className="font-mono text-[11px] text-slate-500 font-semibold">{fmtConf(ev.confidence)}</span>
-                  )}
-                  <Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge>
+                ))}
+
+                {/* Subnode Hardware Health Card */}
+                <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between col-span-full sm:col-span-2">
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Hardware Health Diagnostic</span>
+                    <p className={`text-sm font-extrabold mt-2 ${
+                      activeSubnode.sensor_ok && activeSubnode.online 
+                        ? 'text-emerald-400' 
+                        : activeSubnode.online 
+                        ? 'text-amber-300' 
+                        : 'text-red-400 font-black'
+                    }`}>
+                      {activeSubnode.sensor_ok && activeSubnode.online 
+                        ? '✓ Hardware sensors operational & transmitting telemetry manifest OK' 
+                        : activeSubnode.error_msg || '⚠️ Hardware disconnect or sensor timeout reported'}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-3 font-mono">
+                    Last Heartbeat: {activeSubnode.last_updated ? new Date(activeSubnode.last_updated).toLocaleTimeString() : 'N/A'}
+                  </p>
                 </div>
               </div>
-            ))}
+            </div>
+          ) : (
+            /* Default: Room Telemetry Overview Panel (Occupies 4/6 width) */
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col gap-5">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <span className="font-mono text-[11px] text-orange-600 uppercase font-black tracking-widest">
+                    Facility Environmental Metrics
+                  </span>
+                  <h3 className="font-mono text-base uppercase font-black text-slate-900 tracking-wider mt-0.5">
+                    Room Telemetry Overview
+                  </h3>
+                </div>
+                <span className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider ${
+                  telemetry.online 
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                    : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
+                }`}>
+                  {telemetry.online ? 'ONLINE' : 'OFFLINE'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 font-mono">
+                {/* Temperature Card */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? tempBg : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">Temperature</span>
+                    <span className="text-xl">{telemetry.online ? '🌡️' : '🚨'}</span>
+                  </div>
+                  <p className={`text-3xl font-black mt-3 ${tempColor}`}>
+                    {telemetry.online ? `${telemetry.temperature.toFixed(1)}°C` : '--'}
+                  </p>
+                </div>
+
+                {/* Humidity Card */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? 'bg-blue-50/50 border-blue-100' : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">Humidity</span>
+                    <span className="text-xl">{telemetry.online ? '💧' : '🚨'}</span>
+                  </div>
+                  <p className="text-3xl font-black text-blue-700 mt-3">
+                    {telemetry.online ? `${telemetry.humidity.toFixed(1)}%` : '--'}
+                  </p>
+                </div>
+
+                {/* PM2.5 Fine Dust */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? 'bg-slate-50 border-slate-200' : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">PM2.5 Dust</span>
+                    <span className="text-xl">{telemetry.online ? '🌫️' : '🚨'}</span>
+                  </div>
+                  <p className="text-3xl font-black text-slate-800 mt-3">
+                    {telemetry.online && telemetry.pm25 ? `${telemetry.pm25.toFixed(1)}` : '--'}
+                    <span className="text-xs font-normal text-slate-500 ml-1">µg/m³</span>
+                  </p>
+                </div>
+
+                {/* CO2 Concentration */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? 'bg-emerald-50/40 border-emerald-200' : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">CO2 Level</span>
+                    <span className="text-xl">{telemetry.online ? '🍃' : '🚨'}</span>
+                  </div>
+                  <p className="text-3xl font-black text-emerald-700 mt-3">
+                    {telemetry.online && telemetry.co2 ? `${telemetry.co2}` : '--'}
+                    <span className="text-xs font-normal text-slate-500 ml-1">ppm</span>
+                  </p>
+                </div>
+
+                {/* Light Lux */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? 'bg-amber-50/40 border-amber-200' : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">Light Lux</span>
+                    <span className="text-xl">{telemetry.online ? '☀️' : '🚨'}</span>
+                  </div>
+                  <p className="text-3xl font-black text-amber-700 mt-3">
+                    {telemetry.online && telemetry.light ? `${telemetry.light}` : '--'}
+                    <span className="text-xs font-normal text-slate-500 ml-1">Lux</span>
+                  </p>
+                </div>
+
+                {/* GPS Location Card */}
+                <div className={`border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm ${
+                  telemetry.online ? 'bg-indigo-50/50 border-indigo-100' : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] uppercase font-bold text-slate-600">GNSS GPS</span>
+                    <span className="text-xl">{telemetry.online ? '📡' : '🚨'}</span>
+                  </div>
+                  <div className="mt-2">
+                    {telemetry.online && telemetry.latitude ? (
+                      <div>
+                        <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.latitude.toFixed(4)}°N</p>
+                        <p className="text-xs font-bold text-indigo-950 truncate">{telemetry.longitude.toFixed(4)}°E</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold text-red-600 mt-1">No Fix / Offline</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
+                <span>Last Updated: {telemetry.last_updated ? new Date(telemetry.last_updated).toLocaleTimeString() : 'N/A'}</span>
+                {telemetry.online && telemetry.latitude ? (
+                  <a href={mapsUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">
+                    View Google Maps ↗
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT PANEL (2/6 Width): Subnodes Selection List & Status Badges */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-4">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+            <div>
+              <span className="font-mono text-[11px] text-orange-600 uppercase font-black tracking-widest">
+                ESP32 Hardware Nodes
+              </span>
+              <h3 className="font-mono text-xs uppercase font-extrabold text-slate-900 tracking-wider mt-0.5">
+                Subnodes List
+              </h3>
+            </div>
+            <span className="font-mono text-[11px] text-slate-500 font-bold">
+              {subnodes.filter(s => s.online).length}/{subnodes.length} Online
+            </span>
           </div>
+
+          <div className="flex flex-col gap-3">
+            {subnodes.map((node) => {
+              const isSelected = node.id === selectedSubnodeId
+              return (
+                <div
+                  key={node.id}
+                  onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
+                  className={`border-2 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${
+                    isSelected 
+                      ? 'border-orange-500 ring-4 ring-orange-500/20 bg-orange-50 text-orange-700 shadow-md scale-[1.02]' 
+                      : node.online && node.sensor_ok
+                      ? 'bg-white border-slate-200 hover:border-orange-500 hover:bg-orange-50/40' 
+                      : node.online
+                      ? 'bg-amber-50/50 border-amber-300 hover:border-orange-500'
+                      : 'bg-red-50 border-red-300 hover:border-orange-500'
+                  }`}
+                >
+                  <div className="min-w-0 flex flex-col gap-1">
+                    <span className={`font-mono text-sm font-black truncate transition-colors ${
+                      isSelected ? 'text-orange-600' : 'text-slate-900 group-hover:text-orange-600'
+                    }`}>
+                      {node.name}
+                    </span>
+                    <span className={`text-[11px] truncate font-mono transition-colors ${
+                      isSelected ? 'text-orange-600 font-bold' : 'text-slate-500'
+                    }`}>
+                      {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
+                    </span>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 ${
+                    node.online && node.sensor_ok
+                      ? 'bg-emerald-600 text-white border border-emerald-700' 
+                      : node.online
+                      ? 'bg-amber-500 text-white border border-amber-600'
+                      : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
+                  }`}>
+                    {node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="text-[11px] text-slate-400 font-mono text-center pt-2">
+            Click any subnode to inspect detailed sensors on the left panel.
+          </p>
         </div>
 
       </div>

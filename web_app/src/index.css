@@ -48,3 +48,14 @@ html, body, #root {
   font-weight: 600 !important;
 }
 
+::selection {
+  background-color: #ff6d00 !important;
+  color: #ffffff !important;
+}
+
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  border-color: #ff6d00 !important;
+  outline: 2px solid #ff6d00 !important;
+  outline-offset: 1px;
+}
+
