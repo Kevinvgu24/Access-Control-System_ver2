@@ -265,7 +265,7 @@ export function SchedulesPage() {
           <select 
             value={selectedFileKey} 
             onChange={e => setSelectedFileKey(e.target.value)}
-            className="bg-surface border border-line rounded px-4 py-2 text-sm text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium max-w-md truncate"
+            className="bg-surface border border-line rounded px-4 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer font-medium max-w-md truncate"
           >
             <option value="">-- Choose Schedule List --</option>
             {scheduleFiles
@@ -292,7 +292,7 @@ export function SchedulesPage() {
             <select
               value={templateType}
               onChange={e => setTemplateType(e.target.value)}
-              className="bg-surface border border-line rounded px-3 py-2 text-xs text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium w-full mb-3 shadow-sm"
+              className="bg-surface border border-line rounded px-3 py-2 text-xs text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer font-medium w-full mb-3 shadow-sm"
             >
               <option value="type1">Template 1 (By study group & calendar cell color)</option>
               <option value="original">Template 2 (Original dynamic design)</option>
@@ -330,7 +330,7 @@ export function SchedulesPage() {
                 <select
                   value={templateType}
                   onChange={e => setTemplateType(e.target.value)}
-                  className="bg-surface border border-line rounded px-2.5 py-1 text-xs text-[#0f172a] outline-none focus:border-green/30 cursor-pointer font-medium"
+                  className="bg-surface border border-line rounded px-2.5 py-1 text-xs text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer font-medium"
                 >
                   <option value="type1">Template 1 (New)</option>
                   <option value="original">Template 2 (Old)</option>
@@ -377,7 +377,7 @@ export function SchedulesPage() {
                 placeholder="Search by student, MSSV, date (YYYY-MM-DD), or experiment…" 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
+                className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
               />
             </div>
 

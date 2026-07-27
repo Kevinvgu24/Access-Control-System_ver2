@@ -248,7 +248,7 @@ export function LabSelectorPage() {
                   value={newLabName} 
                   onChange={e => setNewLabName(e.target.value)}
                   placeholder="e.g., IoT Lab C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -259,7 +259,7 @@ export function LabSelectorPage() {
                   value={newLabCode} 
                   onChange={e => setNewLabCode(e.target.value.toUpperCase())}
                   placeholder="e.g., IoT-C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -270,7 +270,7 @@ export function LabSelectorPage() {
                   value={newLabLocation} 
                   onChange={e => setNewLabLocation(e.target.value)}
                   placeholder="e.g., Building C, Room 205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -281,7 +281,7 @@ export function LabSelectorPage() {
                   value={newLabManager} 
                   onChange={e => setNewLabManager(e.target.value)}
                   placeholder="e.g., TS. Nguyen Van A"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -314,7 +314,7 @@ export function LabSelectorPage() {
                   value={editLabName} 
                   onChange={e => setEditLabName(e.target.value)} 
                   placeholder="e.g., IoT Lab C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                   disabled={updatingLab}
                   required
                 />
@@ -327,7 +327,7 @@ export function LabSelectorPage() {
                   value={editLabCode} 
                   onChange={e => setEditLabCode(e.target.value.toUpperCase())} 
                   placeholder="e.g., IoT-C205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                   disabled={updatingLab}
                 />
               </div>
@@ -339,7 +339,7 @@ export function LabSelectorPage() {
                   value={editLabLocation} 
                   onChange={e => setEditLabLocation(e.target.value)} 
                   placeholder="e.g., Building C, Room 205"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                   disabled={updatingLab}
                 />
               </div>
@@ -351,7 +351,7 @@ export function LabSelectorPage() {
                   value={editLabManager} 
                   onChange={e => setEditLabManager(e.target.value)} 
                   placeholder="e.g., TS. Nguyen Van A"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full"
                   disabled={updatingLab}
                 />
               </div>

@@ -166,14 +166,14 @@ export function EnrollmentPage() {
                 <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">{label}</label>
                 <input value={draft[key] as string}
                   onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} placeholder={ph}
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
                 />
               </div>
             ))}
             <div className="flex flex-col gap-2">
               <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Role</label>
               <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))}
-                className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30">
+                className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50">
                 <option value="student">Student</option>
                 <option value="lecturer">Lecturer</option>
                 <option value="teacher_assistant">Teacher Assistant</option>

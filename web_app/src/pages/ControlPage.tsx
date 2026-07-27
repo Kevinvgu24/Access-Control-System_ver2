@@ -38,7 +38,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-const inputCls = "bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
+const inputCls = "bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
 
 // ── Labs tab ──────────────────────────────────────────────────────────────────
 
@@ -271,7 +271,7 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">Lab</span>
           <select value={selectedLabId} onChange={e => setSelectedLabId(e.target.value)}
-            className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-green/30 cursor-pointer">
+            className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer">
             {activeLabs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             {activeLabs.length === 0 && <option value="">No labs — create one first</option>}
           </select>

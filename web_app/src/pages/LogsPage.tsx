@@ -74,14 +74,14 @@ export function LogsPage() {
           <div className="flex gap-3 items-center">
             <input type="text" placeholder="Search by name or university ID…" value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
+              className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
             />
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-green/30 [color-scheme:light]"
+              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
             <span className="font-mono text-xs text-[#94a3b8]">to</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-green/30 [color-scheme:light]"
+              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
           </div>
           <div className="flex gap-2 flex-wrap">

@@ -155,7 +155,7 @@ export function UsersPage() {
         <div className="flex gap-3 items-center p-5 border-b border-line flex-wrap">
           <input type="text" placeholder="Search name or university ID…" value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[160px] bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 transition-colors"
+            className="flex-1 min-w-[160px] bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
           />
           <div className="flex gap-1.5 flex-wrap">
             <button onClick={() => setRoleFilter('all')} className={chipClass(roleFilter === 'all')}>All</button>
@@ -262,7 +262,7 @@ export function UsersPage() {
                   type="text" 
                   value={editName} 
                   onChange={e => setEditName(e.target.value)}
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -272,7 +272,7 @@ export function UsersPage() {
                   type="text" 
                   value={editUniId} 
                   onChange={e => setEditUniId(e.target.value)}
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -282,7 +282,7 @@ export function UsersPage() {
                   type="email" 
                   value={editEmail} 
                   onChange={e => setEditEmail(e.target.value)}
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
                 />
               </div>
 
@@ -291,7 +291,7 @@ export function UsersPage() {
                 <select 
                   value={editRole}
                   onChange={e => setEditRole(e.target.value as UserRole)}
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-green/30 w-full cursor-pointer"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full cursor-pointer"
                 >
                   {ROLE_OPTS.map(role => (
                     <option key={role} value={role}>{ROLE_LABEL[role]}</option>
@@ -333,7 +333,7 @@ export function UsersPage() {
                   value={newPin} 
                   onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="e.g., 123456"
-                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-green/30 w-full tracking-widest font-mono text-center text-lg"
+                  className="bg-raised border border-line rounded px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full tracking-widest font-mono text-center text-lg"
                 />
               </div>
 
