@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Sidebar }         from '@/components/shell/Sidebar'
 import { TopBar }          from '@/components/shell/TopBar'
@@ -69,13 +70,13 @@ function AuthenticatedApp() {
         <TopBar />
         
         {systemStatus.overall === 'offline' ? (
-          <div className="bg-[#fce8e8] border-b border-[#e06666]/30 px-8 py-3 flex items-center justify-between text-[#e06666] shrink-0">
-            <div className="flex items-center gap-2.5">
-              <span className="text-base">🚨</span>
-              <span className="text-xs font-extrabold uppercase tracking-wider font-mono text-[#e06666]">System Alert:</span>
-              <span className="text-xs font-bold text-[#e06666]">Device is currently offline. Please check power source or network connection.</span>
+          <div className="bg-[#fce8e8] border-b border-[#e06666]/30 px-8 py-4 flex items-center justify-between text-[#e06666] shrink-0">
+            <div className="flex items-center gap-4">
+              <AlertTriangle className="w-[30px] h-[30px] text-[#e06666]" />
+              <span className="text-lg font-extrabold uppercase tracking-wider font-mono text-[#e06666]">System Alert:</span>
+              <span className="text-lg font-bold text-[#e06666]">Device is currently offline. Please check power source or network connection.</span>
             </div>
-            <div className="text-[10px] font-mono uppercase px-2.5 py-1 bg-[#e06666] text-[#fce8e8] rounded font-black border border-[#e06666] shadow-sm animate-pulse">
+            <div className="text-sm font-mono uppercase px-3.5 py-1.5 bg-[#e06666] text-[#fce8e8] rounded font-black border border-[#e06666] shadow-sm animate-pulse">
               SYSTEM OFFLINE
             </div>
           </div>

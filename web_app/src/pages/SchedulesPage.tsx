@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { FileSpreadsheet } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -282,9 +283,11 @@ export function SchedulesPage() {
       {/* Main Content Area */}
       {!selectedFileKey ? (
         <div className="bg-surface border border-line rounded-lg p-16 text-center shadow-sm flex flex-col items-center gap-5">
-          <div className="text-5xl">📅</div>
-          <h3 className="text-lg font-bold text-[#0f172a]">No Schedule List Selected</h3>
-          <p className="text-sm text-[#475569] max-w-md">
+          <div className="text-[#107c41] bg-[#107c41]/10 p-4 rounded-full mb-2">
+            <FileSpreadsheet className="w-16 h-16" strokeWidth={1.5} />
+          </div>
+          <h3 className="text-3xl font-bold text-[#0f172a]">No Schedule List Selected</h3>
+          <p className="text-2xl text-[#475569] max-w-2xl leading-relaxed">
             Please select an uploaded Excel schedule list from the dropdown menu in the upper-right corner.
           </p>
           <div className="mt-4 flex flex-col items-center gap-3 border-t border-line pt-6 w-full max-w-sm">

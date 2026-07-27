@@ -37,17 +37,26 @@ export function Sidebar() {
 
   return (
     <aside className="w-[220px] shrink-0 flex flex-col h-screen sticky top-0 bg-darker border-r border-line">
-      <div className="px-6 py-7 border-b border-line">
-        <div className="flex items-center gap-2 mb-1">
+      <div className="px-6 py-6 border-b border-line">
+        <div className="flex items-center gap-2 mb-4">
           <span className={`blink w-2 h-2 rounded-full shrink-0 ${statusDot}`} />
           <span className={`font-mono text-[10px] tracking-widest uppercase ${systemStatus.overall === 'online' ? 'text-green' : 'text-amber'}`}>
             {systemStatus.overall === 'online' ? 'Live' : systemStatus.overall}
           </span>
         </div>
-        <p className="text-[17px] font-bold tracking-tight text-[#0f172a] leading-tight mt-2">Smart Lab</p>
-        <p className="font-mono text-[11px] text-[#94a3b8] mt-1 truncate">
-          {selectedLabName ?? 'No lab selected'}
-        </p>
+        
+        <button 
+          onClick={() => navigate('/labs')}
+          className="flex items-center gap-3 text-left group hover:opacity-80 transition-all w-full cursor-pointer"
+          title="Return to Switch Lab page"
+        >
+          <div className="w-10 h-10 rounded-lg bg-[#ea580c] flex items-center justify-center text-white shadow-sm shrink-0 border-2 border-[#ffedd5]">
+            <span className="font-black text-[13px] tracking-widest">VGU</span>
+          </div>
+          <p className="text-[17px] font-bold tracking-tight text-[#0f172a] leading-tight group-hover:text-[#ea580c] transition-colors">
+            Smart Lab
+          </p>
+        </button>
       </div>
 
       <nav className="flex flex-col p-3 gap-2 flex-1">

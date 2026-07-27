@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -119,7 +120,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
             : 'bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]'
         }`}>
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
-            <span className="text-base">{telemetry.online ? '🟢' : '🚨'}</span>
+            <span className="text-base">{telemetry.online ? '🟢' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
             <span className={telemetry.online ? 'text-slate-900' : 'text-[#e06666] font-extrabold'}>
               {telemetry.online 
                 ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
@@ -150,7 +151,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
             telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-[#fce8e8] border border-[#e06666]/40'
           }`}>
-            {telemetry.online ? '🟢' : '🚨'}
+            {telemetry.online ? '🟢' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}
           </div>
           <div>
             <h4 className={`font-sans font-extrabold text-sm uppercase tracking-wide ${
@@ -277,7 +278,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Temperature</span>
-                    <span className="text-xl">{telemetry.online ? '🌡️' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '🌡️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <p className={`text-3xl font-black mt-3 ${tempColor}`}>
                     {telemetry.online ? `${telemetry.temperature.toFixed(1)}°C` : '--'}
@@ -288,7 +289,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Humidity</span>
-                    <span className="text-xl">{telemetry.online ? '💧' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '💧' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online ? `${telemetry.humidity.toFixed(1)}%` : '--'}
@@ -299,7 +300,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">PM2.5 Dust</span>
-                    <span className="text-xl">{telemetry.online ? '🌫️' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '🌫️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <p className="text-3xl font-black text-slate-900 mt-3">
                     {telemetry.online && telemetry.pm25 ? `${telemetry.pm25.toFixed(1)}` : '--'}
@@ -311,7 +312,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">CO2 Level</span>
-                    <span className="text-xl">{telemetry.online ? '🍃' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '🍃' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.co2 ? `${telemetry.co2}` : '--'}
@@ -323,7 +324,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Light Lux</span>
-                    <span className="text-xl">{telemetry.online ? '☀️' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '☀️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.light ? `${telemetry.light}` : '--'}
@@ -335,7 +336,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">GNSS GPS</span>
-                    <span className="text-xl">{telemetry.online ? '📡' : '🚨'}</span>
+                    <span className="text-xl">{telemetry.online ? '📡' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
                   </div>
                   <div className="mt-2">
                     {telemetry.online && telemetry.latitude ? (
