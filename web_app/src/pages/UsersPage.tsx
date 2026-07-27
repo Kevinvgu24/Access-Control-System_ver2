@@ -129,7 +129,7 @@ export function UsersPage() {
       <div className="flex justify-between items-end">
         <div>
           <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">Management</p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Administrators</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Administrators</h1>
           <p className="text-sm text-[#475569] mt-2">Administrators authorized to manage this lab.</p>
         </div>
         <div className="flex gap-2">

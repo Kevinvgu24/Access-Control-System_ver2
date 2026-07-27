@@ -254,8 +254,8 @@ export function SchedulesPage() {
       {/* Page Header */}
       <div className="flex justify-between items-end gap-4 flex-wrap">
         <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Lab Calendar</p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Lab Schedules</h1>
+          <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">Lab Calendar</p>
+          <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Lab Schedules</h1>
           <p className="text-sm text-[#475569] mt-2">Manage student lab attendance groups and experiment schedules by uploaded lists.</p>
         </div>
         

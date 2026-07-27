@@ -128,8 +128,8 @@ export function EnrollmentPage() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Add New Administrator</p>
-        <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Enrollment Wizard</h1>
+        <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">Add New Administrator</p>
+        <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Enrollment Wizard</h1>
         <p className="text-sm text-[#475569] mt-2">Step-by-step to prevent biometric data errors at the door.</p>
       </div>
 

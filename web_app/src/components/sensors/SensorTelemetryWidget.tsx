@@ -269,7 +269,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   <span className="font-mono text-[11px] text-orange-600 uppercase font-black tracking-widest">
                     Facility Environmental Metrics
                   </span>
-                  <h3 className="font-mono text-base uppercase font-black text-slate-900 tracking-wider mt-0.5">
+                  <h3 className="font-mono text-base uppercase font-black text-orange-600 tracking-wider mt-0.5">
                     Room Telemetry Overview
                   </h3>
                 </div>
@@ -391,7 +391,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               <span className="font-mono text-[11px] text-orange-600 uppercase font-black tracking-widest">
                 ESP32 Hardware Nodes
               </span>
-              <h3 className="font-mono text-xs uppercase font-extrabold text-slate-900 tracking-wider mt-0.5">
+              <h3 className="font-mono text-xs uppercase font-extrabold text-orange-600 tracking-wider mt-0.5">
                 Subnodes List
               </h3>
             </div>
@@ -407,25 +407,21 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div
                   key={node.id}
                   onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
-                  className={`group border-2 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${
+                  className={`border rounded-xl p-3.5 cursor-pointer transition-all flex items-center justify-between shadow-sm ${
                     isSelected 
-                      ? 'bg-orange-500 text-white border-orange-600 ring-4 ring-orange-500/20 shadow-md scale-[1.02]' 
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-md font-bold' 
                       : node.online && node.sensor_ok
-                      ? 'bg-white border-slate-200 hover:bg-orange-500 hover:border-orange-600' 
+                      ? 'bg-white text-slate-900 border-slate-200 hover:bg-slate-100 hover:border-slate-300' 
                       : node.online
-                      ? 'bg-amber-50/50 border-amber-300 hover:bg-orange-500 hover:border-orange-600'
-                      : 'bg-red-50 border-red-300 hover:bg-orange-500 hover:border-orange-600'
+                      ? 'bg-amber-50/50 text-slate-900 border-amber-300 hover:bg-amber-100'
+                      : 'bg-red-50 text-slate-900 border-red-300 hover:bg-red-100'
                   }`}
                 >
                   <div className="min-w-0 flex flex-col gap-1">
-                    <span className={`font-mono text-sm font-black truncate transition-colors ${
-                      isSelected ? 'text-white' : 'text-slate-900 group-hover:text-white'
-                    }`}>
+                    <span className={`font-mono text-sm font-black truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
                       {node.name}
                     </span>
-                    <span className={`text-[11px] truncate font-mono transition-colors ${
-                      isSelected ? 'text-white/90 font-bold' : 'text-slate-500 group-hover:text-white/90'
-                    }`}>
+                    <span className={`text-[11px] truncate font-mono ${isSelected ? 'text-white/90' : 'text-slate-500'}`}>
                       {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
                     </span>
                   </div>

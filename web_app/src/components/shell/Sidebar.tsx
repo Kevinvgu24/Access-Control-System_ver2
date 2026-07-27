@@ -52,10 +52,10 @@ export function Sidebar() {
               }
             }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans border-2 transition-all shadow-sm ${
+              `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer ${
                 isActive 
-                  ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-500/30 scale-[1.02] font-black' 
-                  : 'bg-white text-slate-800 border-slate-200 hover:bg-orange-500 hover:text-white hover:border-orange-600 hover:shadow-md'
+                  ? 'bg-orange-500 text-white shadow-sm font-black' 
+                  : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900 font-bold'
               }`
             }
           >
