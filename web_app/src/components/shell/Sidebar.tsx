@@ -4,12 +4,12 @@ import { useLabStore }  from '@/store/labStore'
 import { useAdminStore } from '@/store/adminStore'
 
 const NAV = [
-  { href: '/overview',   icon: '▣', label: 'Dashboard'  },
-  { href: '/users',      icon: '◈', label: 'Administrator' },
-  { href: '/enrollment', icon: '⊕', label: 'Enrollment' },
+  { href: '/overview',   icon: '📈', label: 'Dashboard'  },
+  { href: '/users',      icon: '👤', label: 'Administrator' },
+  { href: '/enrollment', icon: '➕', label: 'Enrollment' },
   { href: '/schedules',  icon: '📅', label: 'Schedules'  },
   { href: '/logs',       icon: '≡', label: 'Logs'       },
-  { href: '/system',     icon: '◎', label: 'System'     },
+  { href: '/system',     icon: '⚙️', label: 'System'     },
 ]
 
 export function Sidebar() {
@@ -52,14 +52,14 @@ export function Sidebar() {
               }
             }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer ${
+              `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[15px] font-bold font-sans transition-all cursor-pointer ${
                 isActive 
                   ? 'bg-orange-500 text-white shadow-sm font-black' 
                   : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900 font-bold'
               }`
             }
           >
-            <span className="text-sm leading-none shrink-0">{icon}</span>
+            <span className="text-[18px] leading-none shrink-0">{icon}</span>
             <span className="truncate">{label}</span>
           </NavLink>
         ))}
@@ -68,9 +68,9 @@ export function Sidebar() {
         {/* Switch lab */}
         <button
           onClick={() => { clearLab(); navigate('/labs') }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-all text-[#475569] hover:text-[#334155] hover:bg-slate-100 mt-1 cursor-pointer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded text-[17.5px] font-medium transition-all text-[#475569] hover:text-[#334155] hover:bg-slate-100 mt-1 cursor-pointer"
         >
-          <span className="text-base leading-none">⊞</span>
+          <span className="text-[20px] leading-none">⇄</span>
           Switch Lab
         </button>
       </nav>
