@@ -121,7 +121,7 @@ export function UsersPage() {
 
   const chipClass = (active: boolean) =>
     `px-3 py-1.5 rounded font-mono text-[11px] border cursor-pointer transition-colors ${
-      active ? 'bg-green/10 border-green/25 text-green' : 'bg-raised border-slate-200 text-[#475569] hover:text-[#334155]'
+      active ? 'bg-[#ffedd5] border-[#ea580c] text-[#ea580c]' : 'bg-raised border-slate-200 text-[#475569] hover:text-[#334155]'
     }`
 
   return (

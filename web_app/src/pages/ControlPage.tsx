@@ -543,7 +543,7 @@ export function ControlPage() {
 
   const tabCls = (t: Tab) =>
     `px-4 py-2 font-mono text-[11px] uppercase tracking-widest rounded transition-colors cursor-pointer ${
-      tab === t ? 'bg-green/10 text-green border border-green/25' : 'text-[#475569] hover:text-[#334155] border border-transparent'
+      tab === t ? 'bg-[#ffedd5] text-[#ea580c] border border-[#ea580c]' : 'text-[#475569] hover:text-[#334155] border border-transparent'
     }`
 
   return (
