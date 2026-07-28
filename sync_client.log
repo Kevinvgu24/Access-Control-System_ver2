@@ -6,6 +6,320 @@ Node ID:      default-node
 Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 =========================================================
 
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 2 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
@@ -40,6 +354,15 @@ Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [LOG SYNC] Pushing 1 unsynced access events...
   [+] Access events synced successfully.
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
@@ -48,6 +371,144 @@ Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [LOG SYNC] Pushing 1 unsynced access events...
   [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
@@ -68,6 +529,15 @@ Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [LOG SYNC] Pushing 1 unsynced access events...
   [+] Access events synced successfully.
 [+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
@@ -77,8 +547,6 @@ Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
-[*] [LOG SYNC] Pushing 1 unsynced access events...
-  [+] Access events synced successfully.
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
@@ -88,7 +556,267 @@ Database:     /home/kevinvgu/Access-Control-System_ver2/database/smart_door.db
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
 [*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
 [*] [LOG SYNC] Pushing 1 unsynced access events...
   [+] Access events synced successfully.
 [+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
-[*] [TELEMETRY] Pushed successfully. IR stream flag: 1
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[+] [SCHEDULE SYNC] Synced 0 schedules to edge database.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
+[*] [LOG SYNC] Pushing 1 unsynced access events...
+  [+] Access events synced successfully.
+[*] [TELEMETRY] Pushed successfully. IR stream flag: 0
