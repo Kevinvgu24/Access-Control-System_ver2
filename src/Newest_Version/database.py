@@ -213,6 +213,22 @@ class FaceDatabase:
             )
         ''')
 
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS subnodes (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                sensors TEXT,
+                maintenance_mode INTEGER DEFAULT 0,
+                createdAt TEXT
+            )
+        ''')
+
+        # Add maintenance_mode column to subnodes if it doesn't exist
+        try:
+            c.execute("ALTER TABLE subnodes ADD COLUMN maintenance_mode INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
         # Add synced column to access_events and incidents if they don't exist in existing database
         for col_name, table_name in [("synced", "access_events"), ("synced", "incidents")]:
             try:
@@ -543,6 +559,62 @@ class FaceDatabase:
         except Exception as e:
             logger.error(f"Error reading latest sensor telemetry: {e}")
             return None
+        finally:
+            conn.close()
+
+    def save_subnode(self, node_id, name, sensors, maintenance_mode=0):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            import datetime as dt
+            now_str = dt.datetime.now().isoformat()
+            c.execute("""
+                INSERT INTO subnodes (id, name, sensors, maintenance_mode, createdAt)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name,
+                    sensors=excluded.sensors,
+                    maintenance_mode=excluded.maintenance_mode
+            """, (node_id, name, sensors, maintenance_mode, now_str))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving subnode: {e}")
+        finally:
+            conn.close()
+
+    def get_all_subnodes(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes")
+            rows = c.fetchall()
+            return {row["id"]: dict(row) for row in rows}
+        except Exception as e:
+            logger.error(f"Error reading subnodes: {e}")
+            return {}
+        finally:
+            conn.close()
+
+    def delete_subnode(self, node_id):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            c.execute("DELETE FROM subnodes WHERE id = ?", (node_id,))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error deleting subnode: {e}")
+        finally:
+            conn.close()
+
+    def update_subnode_maintenance(self, node_id, maintenance_mode):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            c.execute("UPDATE subnodes SET maintenance_mode = ? WHERE id = ?", (1 if maintenance_mode else 0, node_id))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error updating subnode maintenance: {e}")
         finally:
             conn.close()
 

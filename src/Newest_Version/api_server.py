@@ -1057,9 +1057,13 @@ def approve_subnode(lab_id):
         "error_msg": None,
         "last_updated": datetime.now().astimezone().isoformat(),
         "last_updated_ts": time.time(),
+        "connected_at_ts": time.time(),
         "capabilities": [],
         "data": pending_node.get("sample_data", {}) if pending_node else {}
     }
+    
+    # Save to SQLite database so it persists across restarts
+    db.save_subnode(node_id, name, sensors)
 
     logger.info(f"Approved and paired new ESP32 Subnode '{node_id}' ({name}).")
     return jsonify({"success": True, "message": f"Subnode '{name}' paired successfully", "subnode": subnodes_registry[node_id]})
@@ -1078,27 +1082,27 @@ def reject_subnode(lab_id):
     return jsonify({"success": True, "message": "Pending subnode pairing rejected"})
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
-def toggle_subnode_maintenance(lab_id, node_id):
+def toggle_maintenance(lab_id, node_id):
     from mqtt_service import subnodes_registry
     if node_id not in subnodes_registry:
-        return jsonify({"success": False, "message": "Subnode not found"}), 404
+        return jsonify({"success": False, "message": "Node not found"}), 404
 
     target = subnodes_registry[node_id]
-    current_mode = target.get("maintenance_mode", False)
-    target["maintenance_mode"] = not current_mode
-
-    if target["maintenance_mode"]:
+    new_state = not target.get("maintenance_mode", False)
+    target["maintenance_mode"] = new_state
+    if new_state:
         target["online"] = False
         target["sensor_ok"] = False
-        target["error_msg"] = "Disconnected for Maintenance"
-        action = "disconnected for maintenance"
+        target["error_msg"] = "Disconnected for maintenance"
     else:
         target["online"] = True
         target["error_msg"] = None
-        action = "re-connected for normal operation"
 
-    logger.info(f"Subnode '{node_id}' maintenance mode updated: {action}")
-    return jsonify({"success": True, "maintenance_mode": target["maintenance_mode"], "subnode": target})
+    # Save to SQLite database so the new state persists
+    db.update_subnode_maintenance(node_id, new_state)
+
+    logger.info(f"Toggled maintenance mode for '{node_id}' to {new_state}")
+    return jsonify({"success": True, "maintenance_mode": new_state})
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>", methods=["DELETE"])
 def delete_subnode(lab_id, node_id):
@@ -1106,11 +1110,14 @@ def delete_subnode(lab_id, node_id):
     removed_registry = subnodes_registry.pop(node_id, None)
     removed_pending = pending_subnodes_queue.pop(node_id, None)
 
-    if not removed_registry and not removed_pending:
-        return jsonify({"success": False, "message": "Subnode not found"}), 404
+    # Delete from SQLite database
+    db.delete_subnode(node_id)
 
-    logger.info(f"Permanently wiped subnode '{node_id}' from system registry.")
-    return jsonify({"success": True, "message": f"Subnode '{node_id}' deleted permanently"})
+    if removed_registry or removed_pending:
+        logger.info(f"Deleted ESP32 Subnode '{node_id}' completely.")
+        return jsonify({"success": True, "message": f"Deleted subnode '{node_id}'"})
+    else:
+        return jsonify({"success": False, "message": "Node not found"}), 404
 
 @app.route("/api/labs/<lab_id>/sensors/telemetry", methods=["POST"])
 def post_sensor_telemetry(lab_id):
@@ -1135,6 +1142,25 @@ def get_sensor_history(lab_id):
         item["gnss_ok"] = bool(item["gnss_ok"])
         records.append(item)
     return jsonify(records)
+
+@app.route("/api/labs/<lab_id>/sensors/export", methods=["GET"])
+def export_sensor_history(lab_id):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry ORDER BY id DESC LIMIT 10000")
+    rows = c.fetchall()
+    conn.close()
+
+    import csv
+    from io import StringIO
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(["ID", "Time", "Temperature (C)", "Humidity (%)", "Latitude", "Longitude", "Altitude (m)", "Speed (km/h)", "Satellites", "DHT OK", "GNSS OK"])
+    cw.writerows(rows)
+    
+    response = Response(si.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=Sensor_Telemetry_Export.csv"
+    return response
 
 
 

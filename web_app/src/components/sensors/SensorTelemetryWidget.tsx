@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio, Activity } from 'lucide-react'
+import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio, Activity, Download } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -37,7 +37,20 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   const formatLocalTime = (isoStr?: string | number | null) => {
     if (!isoStr) return 'N/A'
     try {
-      const d = typeof isoStr === 'number' ? new Date(isoStr) : new Date(isoStr)
+      let d: Date
+      if (typeof isoStr === 'number') {
+        if (isoStr < 100000000000) {
+          const totalSec = Math.floor(isoStr / 1000)
+          const hrs = Math.floor(totalSec / 3600)
+          const mins = Math.floor((totalSec % 3600) / 60)
+          const secs = totalSec % 60
+          if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`
+          return `${mins}m ${secs}s`
+        }
+        d = new Date(isoStr)
+      } else {
+        d = new Date(isoStr)
+      }
       if (isNaN(d.getTime())) return 'N/A'
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -187,6 +200,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     }
   }
 
+  const handleExportExcel = () => {
+    if (!selectedLabId) return
+    window.location.href = `/api/labs/${selectedLabId}/sensors/export`
+  }
+
   useEffect(() => {
     fetchTelemetry()
     const interval = setInterval(fetchTelemetry, 2500)
@@ -325,16 +343,18 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 {Object.entries(activeSubnode.data || {}).map(([key, val]) => (
                   <div key={key} className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between overflow-hidden">
                     <div className="flex justify-between items-center gap-1 overflow-hidden">
-                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider truncate" title={key.replace('_', ' ')}>
-                        {key.replace('_', ' ')}
+                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider truncate" title={key.replace(/_/g, ' ')}>
+                        {key === 'sensor_active_duration' ? 'SENSOR ACTIVE DURATION' : key === 'date_time' ? 'REAL-TIME DATE & TIME' : key.replace(/_/g, ' ')}
                       </span>
                       <Activity className="w-4 h-4 text-orange-400 shrink-0" />
                     </div>
-                    <p className={`font-black text-white mt-2 truncate ${key.toLowerCase().includes('timestamp') ? 'text-sm font-mono text-orange-300' : 'text-2xl'}`}>
+                    <p className={`font-black text-white mt-2 truncate ${
+                      key.includes('date') || key.includes('duration') || key.includes('time')
+                        ? 'text-sm font-mono text-orange-300 font-bold' 
+                        : 'text-2xl'
+                    }`}>
                       {activeSubnode.online 
-                        ? (key.toLowerCase().includes('timestamp') 
-                            ? formatLocalTime(val as any) 
-                            : (typeof val === 'number' ? val.toFixed(1) : String(val))) 
+                        ? (typeof val === 'number' ? val.toFixed(1) : String(val)) 
                         : '--'}
                     </p>
                   </div>
@@ -374,18 +394,28 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                     Room Telemetry Overview
                   </h3>
                 </div>
-                <span
-                  className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider border ${
-                    !telemetry.online ? 'animate-pulse' : ''
-                  }`}
-                  style={
-                    telemetry.online
-                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
-                      : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
-                  }
-                >
-                  {telemetry.online ? 'ONLINE' : 'OFFLINE'}
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-200 hover:border-orange-600 transition-colors rounded text-xs font-mono font-bold"
+                    title="Export Data to Excel/CSV"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>EXPORT</span>
+                  </button>
+                  <span
+                    className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider border ${
+                      !telemetry.online ? 'animate-pulse' : ''
+                    }`}
+                    style={
+                      telemetry.online
+                        ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                        : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                    }
+                  >
+                    {telemetry.online ? 'ONLINE' : 'OFFLINE'}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 font-mono">

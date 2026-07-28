@@ -47,6 +47,28 @@ class MQTTTelemetryService:
         self.running = False
         self.thread = None
         self.watchdog_thread = None
+        
+        # Restore previously approved subnodes from Database to memory
+        if self.db:
+            global subnodes_registry
+            saved_nodes = self.db.get_all_subnodes()
+            for node_id, data in saved_nodes.items():
+                if node_id not in subnodes_registry:
+                    subnodes_registry[node_id] = {
+                        "id": node_id,
+                        "name": data.get("name", f"Subnode ({node_id})"),
+                        "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
+                        "online": False,
+                        "sensor_ok": False,
+                        "maintenance_mode": bool(data.get("maintenance_mode", 0)),
+                        "error_msg": "Disconnected for maintenance" if data.get("maintenance_mode", 0) else "Offline (Awaiting telemetry since reboot)",
+                        "last_updated": datetime.now().astimezone().isoformat(),
+                        "last_updated_ts": 0,
+                        "connected_at_ts": 0,
+                        "capabilities": [],
+                        "data": {}
+                    }
+            logger.info(f"Restored {len(saved_nodes)} approved subnodes from database.")
 
     def start(self):
         self.running = True
@@ -205,14 +227,36 @@ class MQTTTelemetryService:
         target_node["sensor_ok"] = bool(sensor_ok)
         target_node["error_msg"] = data.get("error", data.get("error_msg", None if target_node["sensor_ok"] else "Sensor anomaly reported"))
 
-        # Extract dynamic metrics dictionary or flat root attributes
-        metrics = data.get("metrics", data)
+        if not target_node.get("connected_at_ts"):
+            target_node["connected_at_ts"] = now_ts
 
         # Merge dynamic metric key-values into subnode data
+        esp_uptime_sec = 0
         for k, v in metrics.items():
             if k in ["node_id", "status_ok", "sensor_status", "error_msg", "device_name", "subnode_id"]:
                 continue
+            if k in ["timestamp_ms", "timestamp"]:
+                if isinstance(v, (int, float)) and v < 1e11:
+                    esp_uptime_sec = int(v / 1000.0)
+                    continue
             target_node["data"][k] = v
+
+        # Calculate sensor active duration (hours, minutes, seconds)
+        conn_sec = int(now_ts - target_node["connected_at_ts"])
+        total_active_sec = max(conn_sec, esp_uptime_sec)
+
+        hrs = total_active_sec // 3600
+        mins = (total_active_sec % 3600) // 60
+        secs = total_active_sec % 60
+        active_str = f"{hrs}h {mins}m {secs}s" if hrs > 0 else f"{mins}m {secs}s"
+
+        target_node["data"]["sensor_active_duration"] = active_str
+        target_node["data"]["date_time"] = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S")
+
+        # Cleanup raw confusing keys
+        target_node["data"].pop("timestamp_ms", None)
+        target_node["data"].pop("timestamp", None)
+        target_node["data"].pop("uptime_seconds", None)
 
         # Dynamic sensor name generator if not already registered via manifest
         metric_keys = list(target_node["data"].keys())
