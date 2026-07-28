@@ -698,22 +698,23 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                         />
                       </div>
 
-                      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200">
+                      <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-200">
                         <button
                           onClick={() => handleRejectNode(pNode.id)}
-                          className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1"
+                          className="px-3.5 py-2 font-mono text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 hover:opacity-90"
+                          style={{ backgroundColor: '#fce8e8', color: '#b91c1c', border: '1px solid #fca5a5' }}
                         >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Reject</span>
+                          <X className="w-4 h-4 stroke-[2.5]" />
+                          <span>Reject Device</span>
                         </button>
 
                         <button
                           onClick={() => handleApproveNode(pNode.id)}
-                          className="px-4 py-2 text-white text-xs font-mono font-black rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95 hover:opacity-90"
+                          className="px-3.5 py-2 font-mono text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 hover:opacity-90"
                           style={{ backgroundColor: '#16a34a', color: '#ffffff' }}
                         >
                           <Check className="w-4 h-4 stroke-[3]" />
-                          <span>Approve & Pair Node</span>
+                          <span>Approve & Pair</span>
                         </button>
                       </div>
                     </div>

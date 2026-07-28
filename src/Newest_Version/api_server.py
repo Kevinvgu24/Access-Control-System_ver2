@@ -990,6 +990,8 @@ def get_latest_sensors(lab_id):
         if node_copy["online"]:
             any_online = True
 
+        subnodes_list.append(node_copy)
+
     # Active Pending Nodes filter (Purge any node off for > 10 seconds)
     active_pending = []
     now_ts = time.time()
@@ -1047,6 +1049,7 @@ def approve_subnode(lab_id):
         "maintenance_mode": False,
         "error_msg": None,
         "last_updated": datetime.now().astimezone().isoformat(),
+        "last_updated_ts": time.time(),
         "capabilities": [],
         "data": pending_node.get("sample_data", {}) if pending_node else {}
     }
