@@ -140,11 +140,15 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id: nodeId, custom_name: customName })
       })
-      if (res.ok) {
+      const data = await res.json()
+      if (res.ok && data.success) {
         fetchTelemetry()
+      } else {
+        alert(data.message || 'Failed to approve subnode!')
       }
     } catch (e) {
       console.error('Failed to approve subnode:', e)
+      alert('Could not connect to server to approve subnode.')
     }
   }
 

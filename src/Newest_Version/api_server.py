@@ -133,7 +133,7 @@ def backfill_existing_embeddings():
     try:
         conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
-        c.execute("SELECT id, name, embedding FROM users WHERE embedding IS NOT NULL")
+        c.execute("SELECT id, labId, name, embedding FROM users WHERE embedding IS NOT NULL")
         rows = c.fetchall()
         conn.close()
         
@@ -146,13 +146,13 @@ def backfill_existing_embeddings():
         
         points = []
         for row in rows:
-            user_id, name, emb = row
+            user_id, lab_id, name, emb = row
             if isinstance(emb, np.ndarray):
                 points.append(
                     PointStruct(
                         id=user_id,
                         vector=emb.tolist(),
-                        payload={"name": name}
+                        payload={"name": name, "lab_id": lab_id}
                     )
                 )
                 
@@ -626,6 +626,7 @@ def enroll_user(lab_id):
     # calculate the embeddings on NPU in the background, update SQLite, and compile db.bin!
     try:
         db.save_full_user(
+            lab_id=lab_id,
             name=full_name,
             university_id=university_id,
             email=email,
@@ -791,8 +792,8 @@ def get_user_photo(full_name, filename):
     return send_from_directory(user_dir, filename)
 
 # 12. Upload computed biometric embedding
-@app.route("/api/users/<full_name>/embedding", methods=["POST"])
-def upload_user_embedding(full_name):
+@app.route("/api/labs/<lab_id>/users/<full_name>/embedding", methods=["POST"])
+def upload_user_embedding(lab_id, full_name):
     data = request.get_json() or {}
     emb = data.get("embedding")
     if not emb or not isinstance(emb, list):
@@ -800,12 +801,12 @@ def upload_user_embedding(full_name):
     
     try:
         arr = np.array(emb, dtype=np.float32)
-        db.save_user(full_name, arr)
+        db.save_user(lab_id, full_name, arr)
         
         # Get user's ID from database for stable Qdrant Point ID
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        c.execute("SELECT id FROM users WHERE name = ?", (full_name,))
+        c.execute("SELECT id FROM users WHERE name = ? AND labId = ?", (full_name, lab_id))
         row = c.fetchone()
         conn.close()
         
@@ -819,7 +820,7 @@ def upload_user_embedding(full_name):
                         PointStruct(
                             id=user_id,
                             vector=emb,
-                            payload={"name": full_name}
+                            payload={"name": full_name, "lab_id": lab_id}
                         )
                     ]
                 )
@@ -959,7 +960,12 @@ def get_ir_stream(lab_id, node_id):
 # 15c. Sensor Telemetry Endpoints (DHT11 & GPS Subnodes)
 @app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
-    from mqtt_service import subnodes_registry, pending_subnodes_queue
+    from mqtt_service import get_lab_state
+    state = get_lab_state(lab_id)
+    subnodes_registry = state["subnodes"]
+    pending_subnodes_queue = state["pending_subnodes"]
+    latest_sensor_data = state["latest_sensor_data"]
+
     now_dt = datetime.now().astimezone()
 
     # Update freshness for each subnode in registry
@@ -1025,7 +1031,11 @@ def get_latest_sensors(lab_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/approve", methods=["POST"])
 def approve_subnode(lab_id):
-    from mqtt_service import subnodes_registry, pending_subnodes_queue
+    from mqtt_service import get_lab_state
+    state = get_lab_state(lab_id)
+    subnodes_registry = state["subnodes"]
+    pending_subnodes_queue = state["pending_subnodes"]
+    
     req_data = request.json or {}
     node_id = req_data.get("node_id")
     custom_name = req_data.get("custom_name")
@@ -1045,6 +1055,14 @@ def approve_subnode(lab_id):
     else:
         existing_count = len(subnodes_registry) + 1
         name = f"Subnode {existing_count} ({node_id})"
+
+    # Check for name duplication
+    existing_names = [node["name"].lower().strip() for node in subnodes_registry.values() if node["id"] != node_id]
+    if name.lower().strip() in existing_names:
+        if pending_node:
+            # Restore to queue so it's not lost
+            pending_subnodes_queue[node_id] = pending_node
+        return jsonify({"success": False, "message": f"Subnode name '{name}' already exists! Please choose a different name."}), 400
     sensors = pending_node.get("sensors", "Dynamic MQTT Sensors") if pending_node else "Approved Dynamic Cluster"
 
     subnodes_registry[node_id] = {
@@ -1063,14 +1081,16 @@ def approve_subnode(lab_id):
     }
     
     # Save to SQLite database so it persists across restarts
-    db.save_subnode(node_id, name, sensors)
+    db.save_subnode(lab_id, node_id, name, sensors)
 
     logger.info(f"Approved and paired new ESP32 Subnode '{node_id}' ({name}).")
     return jsonify({"success": True, "message": f"Subnode '{name}' paired successfully", "subnode": subnodes_registry[node_id]})
 
 @app.route("/api/labs/<lab_id>/subnodes/reject", methods=["POST"])
 def reject_subnode(lab_id):
-    from mqtt_service import pending_subnodes_queue
+    from mqtt_service import get_lab_state
+    pending_subnodes_queue = get_lab_state(lab_id)["pending_subnodes"]
+    
     req_data = request.json or {}
     node_id = req_data.get("node_id")
 
@@ -1083,7 +1103,9 @@ def reject_subnode(lab_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
 def toggle_maintenance(lab_id, node_id):
-    from mqtt_service import subnodes_registry
+    from mqtt_service import get_lab_state
+    subnodes_registry = get_lab_state(lab_id)["subnodes"]
+    
     if node_id not in subnodes_registry:
         return jsonify({"success": False, "message": "Node not found"}), 404
 
@@ -1099,19 +1121,21 @@ def toggle_maintenance(lab_id, node_id):
         target["error_msg"] = None
 
     # Save to SQLite database so the new state persists
-    db.update_subnode_maintenance(node_id, new_state)
+    db.update_subnode_maintenance(lab_id, node_id, new_state)
 
     logger.info(f"Toggled maintenance mode for '{node_id}' to {new_state}")
     return jsonify({"success": True, "maintenance_mode": new_state})
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>", methods=["DELETE"])
 def delete_subnode(lab_id, node_id):
-    from mqtt_service import subnodes_registry, pending_subnodes_queue
-    removed_registry = subnodes_registry.pop(node_id, None)
-    removed_pending = pending_subnodes_queue.pop(node_id, None)
+    from mqtt_service import get_lab_state
+    state = get_lab_state(lab_id)
+    
+    removed_registry = state["subnodes"].pop(node_id, None)
+    removed_pending = state["pending_subnodes"].pop(node_id, None)
 
     # Delete from SQLite database
-    db.delete_subnode(node_id)
+    db.delete_subnode(lab_id, node_id)
 
     if removed_registry or removed_pending:
         logger.info(f"Deleted ESP32 Subnode '{node_id}' completely.")
@@ -1147,7 +1171,7 @@ def get_sensor_history(lab_id):
 def export_sensor_history(lab_id):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry ORDER BY id DESC LIMIT 10000")
+    c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry WHERE labId = ? ORDER BY id DESC LIMIT 10000", (lab_id,))
     rows = c.fetchall()
     conn.close()
 
@@ -1166,7 +1190,7 @@ def export_sensor_history(lab_id):
 def export_individual_node_history(lab_id, node_id):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE node_id = ? ORDER BY id DESC LIMIT 10000", (node_id,))
+    c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE node_id = ? AND labId = ? ORDER BY id DESC LIMIT 10000", (node_id, lab_id))
     rows = c.fetchall()
     conn.close()
 
@@ -1226,8 +1250,8 @@ def get_user_embedding(full_name):
     return jsonify({"embedding": emb_list})
 
 # 18. Identify Face from Embedding (Vector Search via Qdrant)
-@app.route("/api/users/identify", methods=["POST"])
-def identify_face():
+@app.route("/api/labs/<lab_id>/users/identify", methods=["POST"])
+def identify_face(lab_id):
     if qdrant_client is None:
         return jsonify({"error": "Qdrant vector search is not initialized"}), 503
         
@@ -1240,9 +1264,19 @@ def identify_face():
         return jsonify({"error": "Invalid embedding"}), 400
         
     try:
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        
         search_results = qdrant_client.search(
             collection_name=QDRANT_COLLECTION,
             query_vector=emb,
+            query_filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="lab_id",
+                        match=MatchValue(value=lab_id)
+                    )
+                ]
+            ),
             limit=limit
         )
         

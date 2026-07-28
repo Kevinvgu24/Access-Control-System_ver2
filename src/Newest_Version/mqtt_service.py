@@ -7,28 +7,41 @@ from logger import get_logger
 
 logger = get_logger("mqtt_service")
 
-# Global in-memory cache for Subnodes registry, pending pairing queue, and overall combined telemetry
-pending_subnodes_queue = {}
+# Global in-memory cache for Multi-Lab state
+labs_registry = {}
 
-subnodes_registry = {}
+def get_lab_state(lab_id):
+    if lab_id not in labs_registry:
+        labs_registry[lab_id] = {
+            "pending_subnodes": {},
+            "subnodes": {},
+            "latest_sensor_data": {
+                "temperature": 0.0,
+                "humidity": 0.0,
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "altitude": 0.0,
+                "speed": 0.0,
+                "satellites": 0,
+                "pm25": 0.0,
+                "co2": 0.0,
+                "light": 0.0,
+                "dht_ok": False,
+                "gnss_ok": False,
+                "last_updated": None,
+                "online": False,
+                "subnodes": []
+            }
+        }
+    return labs_registry[lab_id]
 
-latest_sensor_data = {
-    "temperature": 0.0,
-    "humidity": 0.0,
-    "latitude": 0.0,
-    "longitude": 0.0,
-    "altitude": 0.0,
-    "speed": 0.0,
-    "satellites": 0,
-    "pm25": 0.0,
-    "co2": 0.0,
-    "light": 0.0,
-    "dht_ok": False,
-    "gnss_ok": False,
-    "last_updated": None,
-    "online": False,
-    "subnodes": list(subnodes_registry.values())
-}
+def extract_lab_id(topic):
+    parts = topic.split('/')
+    # Expected format: smartdoor/{lab_id}/sensors/...
+    if len(parts) >= 3 and parts[0] == "smartdoor":
+        return parts[1]
+    return "lab_1"
+
 
 class MQTTTelemetryService:
     def __init__(self, db_instance, broker_host=None, broker_port=None, topics=None):
@@ -36,12 +49,7 @@ class MQTTTelemetryService:
         self.broker_host = broker_host or os.getenv("MQTT_BROKER_HOST", "broker.emqx.io")
         self.broker_port = int(broker_port or os.getenv("MQTT_BROKER_PORT", 1883))
         self.topics = topics or [
-            "smartdoor/vgu24/sensors/#",
-            "smartdoor/vgu24/sensors/dht11",
-            "smartdoor/vgu24/sensors/gps",
-            "smartdoor/sensors/telemetry",
-            "smartdoor/subnodes/+/telemetry",
-            "esp32/sensors/data"
+            "smartdoor/+/sensors/#"
         ]
         self.client = None
         self.running = False
@@ -50,25 +58,39 @@ class MQTTTelemetryService:
         
         # Restore previously approved subnodes from Database to memory
         if self.db:
-            global subnodes_registry
-            saved_nodes = self.db.get_all_subnodes()
-            for node_id, data in saved_nodes.items():
-                if node_id not in subnodes_registry:
-                    subnodes_registry[node_id] = {
-                        "id": node_id,
-                        "name": data.get("name", f"Subnode ({node_id})"),
-                        "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
-                        "online": False,
-                        "sensor_ok": False,
-                        "maintenance_mode": bool(data.get("maintenance_mode", 0)),
-                        "error_msg": "Disconnected for maintenance" if data.get("maintenance_mode", 0) else "Offline (Awaiting telemetry since reboot)",
-                        "last_updated": datetime.now().astimezone().isoformat(),
-                        "last_updated_ts": 0,
-                        "connected_at_ts": 0,
-                        "capabilities": [],
-                        "data": {}
-                    }
-            logger.info(f"Restored {len(saved_nodes)} approved subnodes from database.")
+            # We fetch all labs from database to populate memory on startup
+            try:
+                conn = self.db.db_path
+                import sqlite3
+                c = sqlite3.connect(conn).cursor()
+                c.execute("SELECT DISTINCT labId FROM subnodes")
+                lab_ids = [row[0] for row in c.fetchall() if row[0]]
+                if not lab_ids: lab_ids = ["lab_1"]
+                
+                total_restored = 0
+                for lab_id in lab_ids:
+                    state = get_lab_state(lab_id)
+                    saved_nodes = self.db.get_all_subnodes(lab_id=lab_id)
+                    for node_id, data in saved_nodes.items():
+                        if node_id not in state["subnodes"]:
+                            state["subnodes"][node_id] = {
+                                "id": node_id,
+                                "name": data.get("name", f"Subnode ({node_id})"),
+                                "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
+                                "online": False,
+                                "sensor_ok": False,
+                                "maintenance_mode": bool(data.get("maintenance_mode", 0)),
+                                "error_msg": "Disconnected for maintenance" if data.get("maintenance_mode", 0) else "Offline (Awaiting telemetry since reboot)",
+                                "last_updated": datetime.now().astimezone().isoformat(),
+                                "last_updated_ts": 0,
+                                "connected_at_ts": 0,
+                                "capabilities": [],
+                                "data": {}
+                            }
+                            total_restored += 1
+                logger.info(f"Restored {total_restored} approved subnodes from database across {len(lab_ids)} labs.")
+            except Exception as e:
+                logger.error(f"Failed to restore subnodes: {e}")
 
     def start(self):
         self.running = True
@@ -81,30 +103,31 @@ class MQTTTelemetryService:
 
     def _watchdog_loop(self):
         """Watchdog thread that marks subnodes offline if no message received within 15 seconds, and purges unapproved pending requests after 10 seconds"""
-        global latest_sensor_data, subnodes_registry, pending_subnodes_queue
         while self.running:
             time.sleep(2)
             now = time.time()
-            any_subnode_online = False
-
-            # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (10s timeout)
-            for pending_id, pending_node in list(pending_subnodes_queue.items()):
-                last_seen = pending_node.get("last_seen_ts", 0)
-                if last_seen > 0 and (now - last_seen) > 10.0:
-                    del pending_subnodes_queue[pending_id]
-                    logger.info(f"Purged expired pending ESP32 pairing request for '{pending_id}' (device turned off or timeout > 10s)")
-
-            # 2. Check telemetry timeouts for approved subnodes
-            for node_id, node in list(subnodes_registry.items()):
-                last_ts = node.get("last_updated_ts", 0)
-                if last_ts > 0 and (now - last_ts) > 15:
-                    node["online"] = False
-                    node["error_msg"] = "Telemetry timeout (> 15 seconds)"
-                elif last_ts > 0:
-                    any_subnode_online = True
             
-            latest_sensor_data["online"] = any_subnode_online
-            latest_sensor_data["subnodes"] = list(subnodes_registry.values())
+            for lab_id, state in list(labs_registry.items()):
+                any_subnode_online = False
+
+                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (10s timeout)
+                for pending_id, pending_node in list(state["pending_subnodes"].items()):
+                    last_seen = pending_node.get("last_seen_ts", 0)
+                    if last_seen > 0 and (now - last_seen) > 10.0:
+                        del state["pending_subnodes"][pending_id]
+                        logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 10s)")
+
+                # 2. Check telemetry timeouts for approved subnodes
+                for node_id, node in list(state["subnodes"].items()):
+                    last_ts = node.get("last_updated_ts", 0)
+                    if last_ts > 0 and (now - last_ts) > 15:
+                        node["online"] = False
+                        node["error_msg"] = "Telemetry timeout (> 15 seconds)"
+                    elif last_ts > 0:
+                        any_subnode_online = True
+                
+                state["latest_sensor_data"]["online"] = any_subnode_online
+                state["latest_sensor_data"]["subnodes"] = list(state["subnodes"].values())
 
     def _run_loop(self):
         try:
@@ -151,7 +174,9 @@ class MQTTTelemetryService:
                 time.sleep(10)
 
     def process_manifest_payload(self, topic, data):
-        global subnodes_registry
+        lab_id = extract_lab_id(topic)
+        state = get_lab_state(lab_id)
+        
         node_id = data.get("node_id", "subnode_unknown")
         device_name = data.get("device_name", f"ESP32 Subnode ({node_id})")
         capabilities = data.get("capabilities", [])
@@ -159,8 +184,8 @@ class MQTTTelemetryService:
         sensor_names = [cap.get("name", cap.get("id")) for cap in capabilities]
         sensors_str = ", ".join(sensor_names) if sensor_names else "Dynamic Sensor Cluster"
 
-        if node_id not in subnodes_registry:
-            subnodes_registry[node_id] = {
+        if node_id not in state["subnodes"]:
+            state["subnodes"][node_id] = {
                 "id": node_id,
                 "name": device_name,
                 "sensors": sensors_str,
@@ -172,15 +197,17 @@ class MQTTTelemetryService:
                 "data": {}
             }
         else:
-            if not subnodes_registry[node_id].get("name"):
-                subnodes_registry[node_id]["name"] = device_name
-            subnodes_registry[node_id]["sensors"] = sensors_str
-            subnodes_registry[node_id]["capabilities"] = capabilities
+            if not state["subnodes"][node_id].get("name"):
+                state["subnodes"][node_id]["name"] = device_name
+            state["subnodes"][node_id]["sensors"] = sensors_str
+            state["subnodes"][node_id]["capabilities"] = capabilities
 
-        logger.info(f"Registered ESP32 Manifest for '{node_id}': {sensors_str}")
+        logger.info(f"[{lab_id}] Registered ESP32 Manifest for '{node_id}': {sensors_str}")
 
     def process_telemetry_payload(self, topic, data):
-        global latest_sensor_data, subnodes_registry, pending_subnodes_queue
+        lab_id = extract_lab_id(topic)
+        state = get_lab_state(lab_id)
+        
         now_iso = datetime.now().astimezone().isoformat()
         now_ts = time.time()
 
@@ -189,15 +216,15 @@ class MQTTTelemetryService:
         if not raw_node_id:
             raw_node_id = "unknown_esp32_device"
 
-        if raw_node_id in subnodes_registry:
+        if raw_node_id in state["subnodes"]:
             subnode_id = raw_node_id
         else:
             # Unrecognized / new ESP32 subnode detected via MQTT!
             # Put into pending discovery queue for user approval instead of auto-registering
-            if raw_node_id not in pending_subnodes_queue:
-                logger.info(f"Queued unapproved ESP32 Subnode '{raw_node_id}' in pairing queue.")
+            if raw_node_id not in state["pending_subnodes"]:
+                logger.info(f"[{lab_id}] Queued unapproved ESP32 Subnode '{raw_node_id}' in pairing queue.")
 
-            pending_subnodes_queue[raw_node_id] = {
+            state["pending_subnodes"][raw_node_id] = {
                 "id": raw_node_id,
                 "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
                 "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
@@ -208,7 +235,7 @@ class MQTTTelemetryService:
             }
             return
 
-        target_node = subnodes_registry[subnode_id]
+        target_node = state["subnodes"][subnode_id]
 
         # Check if node is currently in Maintenance Disconnect mode
         if target_node.get("maintenance_mode", False):
@@ -277,52 +304,55 @@ class MQTTTelemetryService:
                 target_node["sensors"] = " + ".join(readable_sensors)
 
         # Update global combined summary metrics
+        latest_data = state["latest_sensor_data"]
         if "temperature_c" in target_node["data"] or "temperature" in target_node["data"]:
-            latest_sensor_data["temperature"] = float(target_node["data"].get("temperature_c", target_node["data"].get("temperature", 0.0)))
-            latest_sensor_data["humidity"] = float(target_node["data"].get("humidity_pct", target_node["data"].get("humidity", 0.0)))
-            latest_sensor_data["dht_ok"] = target_node["sensor_ok"]
+            latest_data["temperature"] = float(target_node["data"].get("temperature_c", target_node["data"].get("temperature", 0.0)))
+            latest_data["humidity"] = float(target_node["data"].get("humidity_pct", target_node["data"].get("humidity", 0.0)))
+            latest_data["dht_ok"] = target_node["sensor_ok"]
 
         if "latitude" in target_node["data"] or "lat" in target_node["data"]:
-            latest_sensor_data["latitude"] = float(target_node["data"].get("latitude", target_node["data"].get("lat", 0.0)))
-            latest_sensor_data["longitude"] = float(target_node["data"].get("longitude", target_node["data"].get("lng", 0.0)))
-            latest_sensor_data["altitude"] = float(target_node["data"].get("altitude_m", target_node["data"].get("altitude", 0.0)))
-            latest_sensor_data["speed"] = float(target_node["data"].get("speed_kmph", target_node["data"].get("speed", 0.0)))
-            latest_sensor_data["satellites"] = int(target_node["data"].get("satellites", target_node["data"].get("sats", 0)))
-            latest_sensor_data["gnss_ok"] = target_node["sensor_ok"]
+            latest_data["latitude"] = float(target_node["data"].get("latitude", target_node["data"].get("lat", 0.0)))
+            latest_data["longitude"] = float(target_node["data"].get("longitude", target_node["data"].get("lng", 0.0)))
+            latest_data["altitude"] = float(target_node["data"].get("altitude_m", target_node["data"].get("altitude", 0.0)))
+            latest_data["speed"] = float(target_node["data"].get("speed_kmph", target_node["data"].get("speed", 0.0)))
+            latest_data["satellites"] = int(target_node["data"].get("satellites", target_node["data"].get("sats", 0)))
+            latest_data["gnss_ok"] = target_node["sensor_ok"]
 
         if "pm25_ugm3" in target_node["data"] or "pm25" in target_node["data"]:
-            latest_sensor_data["pm25"] = float(target_node["data"].get("pm25_ugm3", target_node["data"].get("pm25", 0.0)))
+            latest_data["pm25"] = float(target_node["data"].get("pm25_ugm3", target_node["data"].get("pm25", 0.0)))
 
         if "co2_ppm" in target_node["data"] or "co2" in target_node["data"]:
-            latest_sensor_data["co2"] = float(target_node["data"].get("co2_ppm", target_node["data"].get("co2", 0.0)))
+            latest_data["co2"] = float(target_node["data"].get("co2_ppm", target_node["data"].get("co2", 0.0)))
 
         if "light_lux" in target_node["data"] or "lux" in target_node["data"]:
-            latest_sensor_data["light"] = float(target_node["data"].get("light_lux", target_node["data"].get("lux", 0.0)))
+            latest_data["light"] = float(target_node["data"].get("light_lux", target_node["data"].get("lux", 0.0)))
 
-        latest_sensor_data["last_updated"] = now_iso
-        latest_sensor_data["online"] = True
-        latest_sensor_data["subnodes"] = list(subnodes_registry.values())
+        latest_data["last_updated"] = now_iso
+        latest_data["online"] = True
+        latest_data["subnodes"] = list(state["subnodes"].values())
 
         # Save telemetry event to database
         if self.db:
             self.db.save_sensor_telemetry(
-                temperature=latest_sensor_data["temperature"],
-                humidity=latest_sensor_data["humidity"],
-                latitude=latest_sensor_data["latitude"],
-                longitude=latest_sensor_data["longitude"],
-                altitude=latest_sensor_data["altitude"],
-                speed=latest_sensor_data["speed"],
-                satellites=latest_sensor_data["satellites"],
-                dht_ok=latest_sensor_data["dht_ok"],
-                gnss_ok=latest_sensor_data["gnss_ok"],
+                lab_id=lab_id,
+                temperature=latest_data["temperature"],
+                humidity=latest_data["humidity"],
+                latitude=latest_data["latitude"],
+                longitude=latest_data["longitude"],
+                altitude=latest_data["altitude"],
+                speed=latest_data["speed"],
+                satellites=latest_data["satellites"],
+                dht_ok=latest_data["dht_ok"],
+                gnss_ok=latest_data["gnss_ok"],
                 raw_payload=json.dumps(data)
             )
             
             # Save individual node telemetry history
             self.db.save_individual_node_telemetry(
+                lab_id=lab_id,
                 node_id=subnode_id,
                 metrics=target_node["data"],
                 raw_payload=json.dumps(data)
             )
 
-        logger.info(f"Ingested dynamic subnode '{subnode_id}' metrics: {target_node['data']}")
+        logger.info(f"[{lab_id}] Ingested dynamic subnode '{subnode_id}' metrics: {target_node['data']}")
