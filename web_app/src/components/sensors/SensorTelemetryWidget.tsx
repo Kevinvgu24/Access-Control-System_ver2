@@ -33,6 +33,17 @@ export interface SubnodeData {
 export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }) {
   const { selectedLabId } = useLabStore()
 
+  const formatLocalTime = (isoStr?: string | null) => {
+    if (!isoStr) return 'N/A'
+    try {
+      const d = new Date(isoStr)
+      if (isNaN(d.getTime())) return 'N/A'
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+    } catch {
+      return 'N/A'
+    }
+  }
+
   const [telemetry, setTelemetry] = useState<TelemetryData>({
     temperature: 0,
     humidity: 0,
@@ -111,28 +122,38 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   const activeSubnode = subnodes.find(s => s.id === selectedSubnodeId)
 
+  // Identify specific disconnected / offline subnodes
+  const offlineSubnodes = subnodes.filter(s => !s.online || s.sensor_ok === false)
+  const isAllConnected = subnodes.length > 0 && offlineSubnodes.length === 0 && telemetry.online
+
+  const offlineBannerTitle = offlineSubnodes.length === 1
+    ? `HARDWARE DISCONNECTION ALERT: ${offlineSubnodes[0].name.toUpperCase()} UNREACHABLE!`
+    : offlineSubnodes.length > 1
+    ? `HARDWARE DISCONNECTION ALERT: ${offlineSubnodes.length} ESP32 SUBNODES UNREACHABLE!`
+    : `HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!`
+
+  const offlineBannerMessage = offlineSubnodes.length > 0
+    ? `Disconnected node(s): ${offlineSubnodes.map(s => `${s.name} (${s.sensors || 'ESP32'})`).join(' | ')}. Check Wi-Fi and power!`
+    : `Raspberry Pi 5 has not received MQTT telemetry data from subnodes (Timeout > 15 sec). Check Wi-Fi and power!`
+
+  const offlineTagText = offlineSubnodes.length > 0 && offlineSubnodes.length < subnodes.length
+    ? `${offlineSubnodes.length}/${subnodes.length} OFFLINE`
+    : 'OFFLINE'
+
   if (compact) {
+    if (isAllConnected) return null
+
     return (
       <div className="flex flex-col gap-3">
-        <div className={`border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all ${
-          telemetry.online 
-            ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-            : 'bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]'
-        }`}>
+        <div className="border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all bg-[#fffbeb] border-[#fde047] text-[#b91c1c]">
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
-            <span className="text-base">{telemetry.online ? '🟢' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
-            <span className={telemetry.online ? 'text-slate-900' : 'text-[#e06666] font-extrabold'}>
-              {telemetry.online 
-                ? 'SYSTEM CONNECTED: Dynamic ESP32 sensor telemetry active.' 
-                : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE!'}
+            <span className="text-base"><AlertTriangle className="w-5 h-5 text-[#b91c1c]" /></span>
+            <span className="text-[#b91c1c] font-extrabold">
+              {offlineBannerTitle}
             </span>
           </div>
-          <span className={`px-2.5 py-1 text-[10px] font-mono font-black rounded uppercase tracking-wider ${
-            telemetry.online 
-              ? 'bg-emerald-600 text-white border border-emerald-700' 
-              : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-md shadow-red-500/30 animate-pulse'
-          }`}>
-            {telemetry.online ? 'ONLINE' : 'OFFLINE'}
+          <span className="px-2.5 py-1 text-[10px] font-mono font-black rounded uppercase tracking-wider bg-[#fce8e8] text-[#b91c1c] border border-[#e06666] shadow-md shadow-red-500/20 animate-pulse">
+            {offlineTagText}
           </span>
         </div>
       </div>
@@ -141,43 +162,27 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1. Status Notification Banner */}
-      <div className={`border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all ${
-        telemetry.online 
-          ? 'bg-emerald-50 border-emerald-300 text-slate-900' 
-          : 'bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]'
-      }`}>
-        <div className="flex items-center gap-3.5">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 ${
-            telemetry.online ? 'bg-emerald-100 border border-emerald-300' : 'bg-[#fce8e8] border border-[#e06666]/40'
-          }`}>
-            {telemetry.online ? '🟢' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}
+      {/* 1. Status Notification Banner (Only visible when at least 1 subnode is disconnected) */}
+      {!isAllConnected && (
+        <div className="border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all bg-[#fffbeb] border-[#fde047] text-[#b91c1c]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 bg-[#fef3c7] border border-[#fde047]">
+              <AlertTriangle className="w-5 h-5 text-[#b91c1c]" />
+            </div>
+            <div>
+              <h4 className="font-sans font-extrabold text-sm uppercase tracking-wide text-[#b91c1c]">
+                {offlineBannerTitle}
+              </h4>
+              <p className="text-xs mt-0.5 font-sans font-bold text-[#991b1b]">
+                {offlineBannerMessage}
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className={`font-sans font-extrabold text-sm uppercase tracking-wide ${
-              telemetry.online ? 'text-slate-900' : 'text-[#e06666] font-black'
-            }`}>
-              {telemetry.online 
-                ? 'SYSTEM CONNECTED: DYNAMIC SENSOR TELEMETRY ACTIVE' 
-                : 'HARDWARE DISCONNECTION ALERT: ESP32 SUBNODES UNREACHABLE'}
-            </h4>
-            <p className={`text-xs mt-0.5 font-sans font-bold ${
-              telemetry.online ? 'text-slate-700' : 'text-[#e06666]'
-            }`}>
-              {telemetry.online 
-                ? 'Raspberry Pi 5 is receiving telemetry data directly from ESP32 sensors via MQTT.' 
-                : 'Raspberry Pi 5 has not received MQTT telemetry data from subnodes (Timeout > 7 sec). Check Wi-Fi and power!'}
-            </p>
-          </div>
+          <span className="px-3.5 py-1.5 font-mono text-xs font-black rounded-lg shadow-md uppercase tracking-wider shrink-0 transition-all bg-[#fce8e8] text-[#b91c1c] border border-[#e06666] shadow-red-500/20 animate-pulse">
+            {offlineTagText}
+          </span>
         </div>
-        <span className={`px-3.5 py-1.5 font-mono text-xs font-black rounded-lg shadow-md uppercase tracking-wider shrink-0 transition-all ${
-          telemetry.online 
-            ? 'bg-emerald-600 text-white border border-emerald-700 shadow-emerald-500/20' 
-            : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-red-500/30 animate-pulse'
-        }`}>
-          {telemetry.online ? 'ONLINE' : 'OFFLINE'}
-        </span>
-      </div>
+      )}
 
       {/* 2. Main 6-Column Grid Layout (Left: 4/6 Width | Right: 2/6 Width Subnodes List) */}
       <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 items-start">
@@ -247,7 +252,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                     </p>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-3 font-mono">
-                    Last Heartbeat: {activeSubnode.last_updated ? new Date(activeSubnode.last_updated).toLocaleTimeString() : 'N/A'}
+                    Last Heartbeat: {formatLocalTime(activeSubnode.last_updated)}
                   </p>
                 </div>
               </div>
@@ -352,7 +357,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
-                <span>Last Updated: {telemetry.last_updated ? new Date(telemetry.last_updated).toLocaleTimeString() : 'N/A'}</span>
+                <span>Last Updated: {formatLocalTime(telemetry.last_updated)}</span>
                 {telemetry.online && telemetry.latitude ? (
                   <a href={mapsUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">
                     View Google Maps ↗

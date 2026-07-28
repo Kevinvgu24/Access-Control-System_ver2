@@ -174,7 +174,7 @@ class MQTTTelemetryService:
                 "online": True,
                 "sensor_ok": True,
                 "error_msg": None,
-                "last_updated": datetime.now().isoformat(),
+                "last_updated": datetime.now().astimezone().isoformat(),
                 "capabilities": capabilities,
                 "data": {}
             }
@@ -187,7 +187,7 @@ class MQTTTelemetryService:
 
     def process_telemetry_payload(self, topic, data):
         global latest_sensor_data, subnodes_registry
-        now_iso = datetime.now().isoformat()
+        now_iso = datetime.now().astimezone().isoformat()
         now_ts = time.time()
 
         # Map client node IDs to registered subnodes

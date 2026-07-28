@@ -960,7 +960,7 @@ def get_ir_stream(lab_id, node_id):
 @app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
     from mqtt_service import subnodes_registry
-    now_dt = datetime.now()
+    now_dt = datetime.now().astimezone()
 
     # Update freshness for each subnode in registry
     subnodes_list = []
@@ -970,6 +970,8 @@ def get_latest_sensors(lab_id):
         if node_copy.get("last_updated"):
             try:
                 last_dt = datetime.fromisoformat(node_copy["last_updated"])
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.astimezone()
                 if (now_dt - last_dt).total_seconds() > 15.0:
                     node_copy["online"] = False
                     node_copy["sensor_ok"] = False
@@ -992,6 +994,8 @@ def get_latest_sensors(lab_id):
     if data.get("last_updated"):
         try:
             last_dt = datetime.fromisoformat(data["last_updated"])
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.astimezone()
             if (now_dt - last_dt).total_seconds() > 15.0:
                 data["online"] = False
                 data["dht_ok"] = False

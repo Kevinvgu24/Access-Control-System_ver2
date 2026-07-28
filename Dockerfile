@@ -18,9 +18,12 @@ RUN npm run build
 FROM python:3.10-slim
 WORKDIR /app
 
-# Install curl for optional container healthchecks
+# Set system timezone to ICT (Vietnam UTC+7)
+ENV TZ=Asia/Ho_Chi_Minh
+
+# Install curl and tzdata for accurate local timezone support
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    curl tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Install minimal python dependencies for the API server
