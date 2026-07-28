@@ -49,7 +49,8 @@ class MQTTTelemetryService:
         self.broker_host = broker_host or os.getenv("MQTT_BROKER_HOST", "broker.emqx.io")
         self.broker_port = int(broker_port or os.getenv("MQTT_BROKER_PORT", 1883))
         self.topics = topics or [
-            "smartdoor/+/sensors/#"
+            "smartdoor/#",
+            "smartlab/#"
         ]
         self.client = None
         self.running = False
@@ -110,12 +111,12 @@ class MQTTTelemetryService:
             for lab_id, state in list(labs_registry.items()):
                 any_subnode_online = False
 
-                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (10s timeout)
+                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (120s timeout)
                 for pending_id, pending_node in list(state["pending_subnodes"].items()):
                     last_seen = pending_node.get("last_seen_ts", 0)
-                    if last_seen > 0 and (now - last_seen) > 10.0:
+                    if last_seen > 0 and (now - last_seen) > 120.0:
                         del state["pending_subnodes"][pending_id]
-                        logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 10s)")
+                        logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 120s)")
 
                 # 2. Check telemetry timeouts for approved subnodes
                 for node_id, node in list(state["subnodes"].items()):
@@ -216,20 +217,51 @@ class MQTTTelemetryService:
         if not raw_node_id:
             raw_node_id = "unknown_esp32_device"
 
+        # Check if node is already approved in current lab OR any other lab
+        target_lab_id = lab_id
+        if raw_node_id not in state["subnodes"]:
+            for lid, lstate in labs_registry.items():
+                if raw_node_id in lstate["subnodes"]:
+                    target_lab_id = lid
+                    state = lstate
+                    break
+
         if raw_node_id in state["subnodes"]:
             subnode_id = raw_node_id
         else:
             # Unrecognized / new ESP32 subnode detected via MQTT!
             # Put into pending discovery queue for user approval instead of auto-registering
+            existing_pending = state["pending_subnodes"].get(raw_node_id, {})
+            
+            # Determine readable sensors string
+            sensors_str = data.get("sensors") or existing_pending.get("sensors")
+            if not sensors_str or sensors_str == "Dynamic MQTT Sensors":
+                if "temperature" in data or "dht_ok" in data or "DHT11" in raw_node_id or "dht" in topic.lower():
+                    sensors_str = "DHT11 Temp & Humidity"
+                elif "latitude" in data or "gnss_ok" in data or "speed" in data or "GPS" in raw_node_id or "gps" in topic.lower():
+                    sensors_str = "LC76G GNSS GPS"
+                else:
+                    sensors_str = "Dynamic MQTT Sensors"
+
+            # Determine readable device name
+            device_name = data.get("device_name") or existing_pending.get("name")
+            if not device_name or device_name.startswith("Discovered ESP32"):
+                if "DHT11" in sensors_str or "DHT11" in raw_node_id or "dht" in topic.lower():
+                    device_name = "ESP32 Subnode 1 (DHT11)"
+                elif "GPS" in sensors_str or "GPS" in raw_node_id or "gps" in topic.lower():
+                    device_name = "ESP32 Subnode 2 (LC76G GPS)"
+                else:
+                    device_name = f"Discovered ESP32 ({raw_node_id})"
+
             if raw_node_id not in state["pending_subnodes"]:
-                logger.info(f"[{lab_id}] Queued unapproved ESP32 Subnode '{raw_node_id}' in pairing queue.")
+                logger.info(f"[{target_lab_id}] Queued unapproved ESP32 Subnode '{raw_node_id}' ({device_name}) in pairing queue.")
 
             state["pending_subnodes"][raw_node_id] = {
                 "id": raw_node_id,
-                "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
-                "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
+                "name": device_name,
+                "sensors": sensors_str,
                 "topic": topic,
-                "discovered_at": now_iso,
+                "discovered_at": existing_pending.get("discovered_at", now_iso),
                 "last_seen_ts": now_ts,
                 "sample_data": data
             }

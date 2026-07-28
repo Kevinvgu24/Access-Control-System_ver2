@@ -960,10 +960,9 @@ def get_ir_stream(lab_id, node_id):
 # 15c. Sensor Telemetry Endpoints (DHT11 & GPS Subnodes)
 @app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
-    from mqtt_service import get_lab_state
+    from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
     subnodes_registry = state["subnodes"]
-    pending_subnodes_queue = state["pending_subnodes"]
     latest_sensor_data = state["latest_sensor_data"]
 
     now_dt = datetime.now().astimezone()
@@ -998,14 +997,20 @@ def get_latest_sensors(lab_id):
 
         subnodes_list.append(node_copy)
 
-    # Active Pending Nodes filter (Purge any node off for > 10 seconds)
+    # Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 120 seconds)
     active_pending = []
+    seen_pending_ids = set()
     now_ts = time.time()
-    for pid, pnode in list(pending_subnodes_queue.items()):
-        if pnode.get("last_seen_ts") and (now_ts - pnode["last_seen_ts"]) <= 10.0:
-            active_pending.append(pnode)
-        else:
-            pending_subnodes_queue.pop(pid, None)
+    for lid, lstate in list(labs_registry.items()):
+        pending_queue = lstate.get("pending_subnodes", {})
+        for pid, pnode in list(pending_queue.items()):
+            last_seen = pnode.get("last_seen_ts", 0)
+            if last_seen > 0 and (now_ts - last_seen) <= 120.0:
+                if pid not in seen_pending_ids:
+                    seen_pending_ids.add(pid)
+                    active_pending.append(pnode)
+            else:
+                pending_queue.pop(pid, None)
 
     data = latest_sensor_data.copy()
     data["subnodes"] = subnodes_list
@@ -1031,21 +1036,25 @@ def get_latest_sensors(lab_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/approve", methods=["POST"])
 def approve_subnode(lab_id):
-    from mqtt_service import get_lab_state
+    from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
     subnodes_registry = state["subnodes"]
-    pending_subnodes_queue = state["pending_subnodes"]
     
     req_data = request.json or {}
     node_id = req_data.get("node_id")
-    custom_name = req_data.get("custom_name")
 
     if not node_id:
         return jsonify({"success": False, "message": "Missing node_id"}), 400
 
-    pending_node = pending_subnodes_queue.pop(node_id, None)
+    # Pop node from pending queue of target lab OR any lab in labs_registry
+    pending_node = None
+    for lid, lstate in list(labs_registry.items()):
+        if node_id in lstate["pending_subnodes"]:
+            pending_node = lstate["pending_subnodes"].pop(node_id)
+            break
+
     if not pending_node and node_id not in subnodes_registry:
-        return jsonify({"success": False, "message": "Node not found in pending queue"}), 440
+        return jsonify({"success": False, "message": "Node not found in pending queue"}), 404
 
     custom_name = (req_data.get("custom_name") or "").strip()
     if custom_name:
@@ -1060,8 +1069,7 @@ def approve_subnode(lab_id):
     existing_names = [node["name"].lower().strip() for node in subnodes_registry.values() if node["id"] != node_id]
     if name.lower().strip() in existing_names:
         if pending_node:
-            # Restore to queue so it's not lost
-            pending_subnodes_queue[node_id] = pending_node
+            state["pending_subnodes"][node_id] = pending_node
         return jsonify({"success": False, "message": f"Subnode name '{name}' already exists! Please choose a different name."}), 400
     sensors = pending_node.get("sensors", "Dynamic MQTT Sensors") if pending_node else "Approved Dynamic Cluster"
 
@@ -1088,8 +1096,7 @@ def approve_subnode(lab_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/reject", methods=["POST"])
 def reject_subnode(lab_id):
-    from mqtt_service import get_lab_state
-    pending_subnodes_queue = get_lab_state(lab_id)["pending_subnodes"]
+    from mqtt_service import labs_registry
     
     req_data = request.json or {}
     node_id = req_data.get("node_id")
@@ -1097,7 +1104,9 @@ def reject_subnode(lab_id):
     if not node_id:
         return jsonify({"success": False, "message": "Missing node_id"}), 400
 
-    pending_subnodes_queue.pop(node_id, None)
+    for lid, lstate in list(labs_registry.items()):
+        lstate["pending_subnodes"].pop(node_id, None)
+
     logger.info(f"Rejected pending ESP32 Subnode pairing request '{node_id}'.")
     return jsonify({"success": True, "message": "Pending subnode pairing rejected"})
 
@@ -1128,11 +1137,21 @@ def toggle_maintenance(lab_id, node_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>", methods=["DELETE"])
 def delete_subnode(lab_id, node_id):
-    from mqtt_service import get_lab_state
+    from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
     
     removed_registry = state["subnodes"].pop(node_id, None)
     removed_pending = state["pending_subnodes"].pop(node_id, None)
+
+    # Search in all labs as fallback
+    if not removed_registry and not removed_pending:
+        for lid, lstate in list(labs_registry.items()):
+            r = lstate["subnodes"].pop(node_id, None)
+            p = lstate["pending_subnodes"].pop(node_id, None)
+            if r or p:
+                removed_registry = r
+                removed_pending = p
+                break
 
     # Delete from SQLite database
     db.delete_subnode(lab_id, node_id)
