@@ -77,7 +77,7 @@ if project_root not in sys.path:
 from database import FaceDatabase
 from logger import get_logger
 from run_schedule_parser import UniversalScheduleParser
-from mqtt_service import MQTTTelemetryService, latest_sensor_data
+from mqtt_service import MQTTTelemetryService
 
 logger = get_logger("api_server")
 
@@ -660,7 +660,7 @@ def delete_lab_user(lab_id, user_id):
     full_name = row[0]
     
     # Delete from database
-    db.delete_user(full_name)
+    db.delete_user(lab_id, full_name)
     
     # Delete from Qdrant if client is available
     if qdrant_client is not None:
