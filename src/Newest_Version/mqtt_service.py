@@ -230,9 +230,18 @@ class MQTTTelemetryService:
             subnode_id = raw_node_id
         else:
             # Unrecognized / new ESP32 subnode detected via MQTT!
-            # Put into pending discovery queue for user approval instead of auto-registering
-            existing_pending = state["pending_subnodes"].get(raw_node_id, {})
-            
+            # Search if this raw_node_id is already queued in ANY lab's pending queue
+            pending_lab_id = target_lab_id
+            pending_state = state
+            existing_pending = {}
+
+            for lid, lstate in labs_registry.items():
+                if raw_node_id in lstate.get("pending_subnodes", {}):
+                    pending_lab_id = lid
+                    pending_state = lstate
+                    existing_pending = lstate["pending_subnodes"][raw_node_id]
+                    break
+
             # Determine readable sensors string
             sensors_str = data.get("sensors") or existing_pending.get("sensors")
             if not sensors_str or sensors_str == "Dynamic MQTT Sensors":
@@ -253,10 +262,10 @@ class MQTTTelemetryService:
                 else:
                     device_name = f"Discovered ESP32 ({raw_node_id})"
 
-            if raw_node_id not in state["pending_subnodes"]:
-                logger.info(f"[{target_lab_id}] Queued unapproved ESP32 Subnode '{raw_node_id}' ({device_name}) in pairing queue.")
+            if raw_node_id not in pending_state["pending_subnodes"]:
+                logger.info(f"[{pending_lab_id}] Queued unapproved ESP32 Subnode '{raw_node_id}' ({device_name}) in pairing queue.")
 
-            state["pending_subnodes"][raw_node_id] = {
+            pending_state["pending_subnodes"][raw_node_id] = {
                 "id": raw_node_id,
                 "name": device_name,
                 "sensors": sensors_str,
