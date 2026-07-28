@@ -205,6 +205,11 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     window.location.href = `/api/labs/${selectedLabId}/sensors/export`
   }
 
+  const handleExportIndividualNode = (nodeId: string) => {
+    if (!selectedLabId) return
+    window.location.href = `/api/labs/${selectedLabId}/nodes/${nodeId}/telemetry/export`
+  }
+
   useEffect(() => {
     fetchTelemetry()
     const interval = setInterval(fetchTelemetry, 2500)
@@ -326,28 +331,38 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   )}
                 </div>
 
-                <span
-                  className={`px-3 py-1 rounded-lg text-xs font-mono font-black uppercase tracking-wider border shrink-0 ${
-                    !activeSubnode.maintenance_mode && !activeSubnode.online ? 'animate-pulse' : ''
-                  }`}
-                  style={
-                    activeSubnode.maintenance_mode
-                      ? { backgroundColor: '#94a3b8', color: '#ffffff', borderColor: '#64748b' }
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-black uppercase tracking-wider border shrink-0 ${
+                      !activeSubnode.maintenance_mode && !activeSubnode.online ? 'animate-pulse' : ''
+                    }`}
+                    style={
+                      activeSubnode.maintenance_mode
+                        ? { backgroundColor: '#94a3b8', color: '#ffffff', borderColor: '#64748b' }
+                        : activeSubnode.online && activeSubnode.sensor_ok
+                        ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                        : activeSubnode.online
+                        ? { backgroundColor: '#fef9c3', color: '#a16207', borderColor: '#fde047' }
+                        : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                    }
+                  >
+                    {activeSubnode.maintenance_mode
+                      ? '🛠 MAINTENANCE'
                       : activeSubnode.online && activeSubnode.sensor_ok
-                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                      ? '● ONLINE (OK)'
                       : activeSubnode.online
-                      ? { backgroundColor: '#fef9c3', color: '#a16207', borderColor: '#fde047' }
-                      : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
-                  }
-                >
-                  {activeSubnode.maintenance_mode
-                    ? '🛠 MAINTENANCE'
-                    : activeSubnode.online && activeSubnode.sensor_ok
-                    ? '● ONLINE (OK)'
-                    : activeSubnode.online
-                    ? '⚠️ WARNING'
-                    : '✖ OFFLINE'}
-                </span>
+                      ? '⚠️ WARNING'
+                      : '✖ OFFLINE'}
+                  </span>
+                  <button
+                    onClick={() => handleExportIndividualNode(activeSubnode.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-orange-400 hover:text-white hover:bg-orange-600 border border-slate-700 hover:border-orange-600 transition-colors rounded text-xs font-mono font-bold w-full justify-center"
+                    title="Export history for this specific node"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>EXPORT NODE</span>
+                  </button>
+                </div>
               </div>
 
               {/* Dynamic Telemetry Metric Cards for Active Subnode */}

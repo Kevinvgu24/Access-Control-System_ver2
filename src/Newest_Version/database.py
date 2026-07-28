@@ -223,6 +223,26 @@ class FaceDatabase:
             )
         ''')
 
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS node_telemetry_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                node_id TEXT,
+                temperature REAL,
+                humidity REAL,
+                pm25 REAL,
+                co2 REAL,
+                light REAL,
+                latitude REAL,
+                longitude REAL,
+                altitude REAL,
+                speed REAL,
+                satellites INTEGER,
+                sensor_ok INTEGER DEFAULT 1,
+                raw_payload TEXT,
+                receivedAt TEXT
+            )
+        ''')
+
         # Add maintenance_mode column to subnodes if it doesn't exist
         try:
             c.execute("ALTER TABLE subnodes ADD COLUMN maintenance_mode INTEGER DEFAULT 0")
@@ -617,6 +637,54 @@ class FaceDatabase:
             logger.error(f"Error updating subnode maintenance: {e}")
         finally:
             conn.close()
+
+    def save_individual_node_telemetry(self, node_id, metrics, raw_payload=""):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            import datetime as dt
+            now_str = dt.datetime.now().isoformat()
+            
+            # Extract values dynamically from metrics dict
+            t_c = metrics.get("temperature_c", metrics.get("temperature", None))
+            h_p = metrics.get("humidity_pct", metrics.get("humidity", None))
+            pm = metrics.get("pm25_ugm3", metrics.get("pm25", None))
+            co2 = metrics.get("co2_ppm", metrics.get("co2", None))
+            light = metrics.get("light_lux", metrics.get("lux", None))
+            lat = metrics.get("latitude", metrics.get("lat", None))
+            lng = metrics.get("longitude", metrics.get("lng", None))
+            alt = metrics.get("altitude_m", metrics.get("altitude", None))
+            spd = metrics.get("speed_kmph", metrics.get("speed", None))
+            sats = metrics.get("satellites", metrics.get("sats", None))
+            s_ok = metrics.get("dht_ok", metrics.get("gnss_ok", metrics.get("status_ok", True)))
+            
+            c.execute("""
+                INSERT INTO node_telemetry_history 
+                    (node_id, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok, raw_payload, receivedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                str(node_id), t_c, h_p, pm, co2, light, lat, lng, alt, spd, sats, 1 if s_ok else 0, str(raw_payload), now_str
+            ))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving individual node telemetry: {e}")
+        finally:
+            conn.close()
+
+    def get_individual_node_telemetry(self, node_id, limit=50):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM node_telemetry_history WHERE node_id = ? ORDER BY id DESC LIMIT ?", (node_id, limit))
+            rows = c.fetchall()
+            return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error reading node telemetry history: {e}")
+            return []
+        finally:
+            conn.close()
+
 
 
 

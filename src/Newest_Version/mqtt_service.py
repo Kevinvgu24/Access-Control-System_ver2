@@ -232,6 +232,7 @@ class MQTTTelemetryService:
 
         # Merge dynamic metric key-values into subnode data
         esp_uptime_sec = 0
+        metrics = data.get("metrics", data)
         for k, v in metrics.items():
             if k in ["node_id", "status_ok", "sensor_status", "error_msg", "device_name", "subnode_id"]:
                 continue
@@ -314,6 +315,13 @@ class MQTTTelemetryService:
                 satellites=latest_sensor_data["satellites"],
                 dht_ok=latest_sensor_data["dht_ok"],
                 gnss_ok=latest_sensor_data["gnss_ok"],
+                raw_payload=json.dumps(data)
+            )
+            
+            # Save individual node telemetry history
+            self.db.save_individual_node_telemetry(
+                node_id=subnode_id,
+                metrics=target_node["data"],
                 raw_payload=json.dumps(data)
             )
 

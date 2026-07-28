@@ -1162,6 +1162,25 @@ def export_sensor_history(lab_id):
     response.headers["Content-Disposition"] = f"attachment; filename=Sensor_Telemetry_Export.csv"
     return response
 
+@app.route("/api/labs/<lab_id>/nodes/<node_id>/telemetry/export", methods=["GET"])
+def export_individual_node_history(lab_id, node_id):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE node_id = ? ORDER BY id DESC LIMIT 10000", (node_id,))
+    rows = c.fetchall()
+    conn.close()
+
+    import csv
+    from io import StringIO
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(["Record ID", "Time", "Temperature (C)", "Humidity (%)", "PM2.5", "CO2 (ppm)", "Light (Lux)", "Latitude", "Longitude", "Altitude (m)", "Speed (km/h)", "Satellites", "Sensor OK"])
+    cw.writerows(rows)
+    
+    response = Response(si.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=Node_{node_id}_Telemetry.csv"
+    return response
+
 
 
 # 16. Get node config directly
