@@ -81,27 +81,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     online: false
   })
   
-  const [subnodes, setSubnodes] = useState<SubnodeData[]>([
-    {
-      id: 'subnode-1',
-      name: 'Subnode 1',
-      online: true,
-      sensors: 'DHT11 Temp & Humidity, PM2.5 Dust',
-      sensor_ok: true,
-      last_updated: new Date().toISOString(),
-      data: { temperature: 28.5, humidity: 62.0, pm25: 18.4, co2: 420, light: 350 }
-    },
-    {
-      id: 'subnode-2',
-      name: 'Subnode 2',
-      online: false,
-      sensors: 'LC76G GNSS GPS, CO2 Sensor',
-      sensor_ok: false,
-      error_msg: 'Hardware Unreachable (MQTT Timeout > 7s)',
-      last_updated: new Date(Date.now() - 15000).toISOString(),
-      data: { latitude: 10.762622, longitude: 106.660172, satellites: 0 }
-    }
-  ])
+  const [subnodes, setSubnodes] = useState<SubnodeData[]>([])
 
   const [selectedSubnodeId, setSelectedSubnodeId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -216,6 +196,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }
 
   useEffect(() => {
+    setSelectedSubnodeId(null)
+    setSubnodes([])
     fetchTelemetry()
     const interval = setInterval(fetchTelemetry, 2500)
     return () => clearInterval(interval)
