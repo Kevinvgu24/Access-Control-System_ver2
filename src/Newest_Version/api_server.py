@@ -990,11 +990,18 @@ def get_latest_sensors(lab_id):
         if node_copy["online"]:
             any_online = True
 
-        subnodes_list.append(node_copy)
+    # Active Pending Nodes filter (Purge any node off for > 10 seconds)
+    active_pending = []
+    now_ts = time.time()
+    for pid, pnode in list(pending_subnodes_queue.items()):
+        if pnode.get("last_seen_ts") and (now_ts - pnode["last_seen_ts"]) <= 10.0:
+            active_pending.append(pnode)
+        else:
+            pending_subnodes_queue.pop(pid, None)
 
     data = latest_sensor_data.copy()
     data["subnodes"] = subnodes_list
-    data["pending_nodes"] = list(pending_subnodes_queue.values())
+    data["pending_nodes"] = active_pending
 
     if data.get("last_updated"):
         try:

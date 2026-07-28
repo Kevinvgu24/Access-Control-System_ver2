@@ -58,12 +58,21 @@ class MQTTTelemetryService:
         logger.info(f"MQTT Telemetry Service thread started (Subscribed to {self.broker_host}:{self.broker_port})")
 
     def _watchdog_loop(self):
-        """Watchdog thread that marks subnodes offline if no message received within 7 seconds"""
-        global latest_sensor_data, subnodes_registry
+        """Watchdog thread that marks subnodes offline if no message received within 15 seconds, and purges unapproved pending requests after 10 seconds"""
+        global latest_sensor_data, subnodes_registry, pending_subnodes_queue
         while self.running:
             time.sleep(2)
             now = time.time()
             any_subnode_online = False
+
+            # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (10s timeout)
+            for pending_id, pending_node in list(pending_subnodes_queue.items()):
+                last_seen = pending_node.get("last_seen_ts", 0)
+                if last_seen > 0 and (now - last_seen) > 10.0:
+                    del pending_subnodes_queue[pending_id]
+                    logger.info(f"Purged expired pending ESP32 pairing request for '{pending_id}' (device turned off or timeout > 10s)")
+
+            # 2. Check telemetry timeouts for approved subnodes
             for node_id, node in list(subnodes_registry.items()):
                 last_ts = node.get("last_updated_ts", 0)
                 if last_ts > 0 and (now - last_ts) > 15:
@@ -162,16 +171,18 @@ class MQTTTelemetryService:
         else:
             # Unrecognized / new ESP32 subnode detected via MQTT!
             # Put into pending discovery queue for user approval instead of auto-registering
-            if raw_node_id not in subnodes_registry:
-                pending_subnodes_queue[raw_node_id] = {
-                    "id": raw_node_id,
-                    "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
-                    "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
-                    "topic": topic,
-                    "discovered_at": now_iso,
-                    "sample_data": data
-                }
+            if raw_node_id not in pending_subnodes_queue:
                 logger.info(f"Queued unapproved ESP32 Subnode '{raw_node_id}' in pairing queue.")
+
+            pending_subnodes_queue[raw_node_id] = {
+                "id": raw_node_id,
+                "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
+                "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
+                "topic": topic,
+                "discovered_at": now_iso,
+                "last_seen_ts": now_ts,
+                "sample_data": data
+            }
             return
 
         target_node = subnodes_registry[subnode_id]
