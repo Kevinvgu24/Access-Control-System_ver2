@@ -526,19 +526,19 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                           ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border-slate-200'
                       }`}
-                      title={isMaintenance ? 'Khôi phục kết nối sau khi bảo trì phần cứng' : 'Ngắt kết nối thiết bị để bảo trì phần cứng'}
+                      title={isMaintenance ? 'Reconnect subnode after hardware maintenance' : 'Disconnect subnode for hardware maintenance'}
                     >
                       <Wrench className="w-3.5 h-3.5" />
-                      <span>{isMaintenance ? '⚡ Khôi phục kết nối' : 'Ngắt để bảo trì'}</span>
+                      <span>{isMaintenance ? '⚡ Reconnect' : 'Disconnect for Maintenance'}</span>
                     </button>
 
                     <button
                       onClick={(e) => handleOpenDeleteModal(e, node)}
                       className="px-2.5 py-1 text-[11px] font-mono font-extrabold bg-[#fce8e8] text-[#e06666] border border-[#e06666]/40 hover:bg-red-200 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
-                      title="Xóa hoàn toàn thông tin đăng ký và dữ liệu của subnode"
+                      title="Permanently wipe subnode registration and data"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-[#e06666]" />
-                      <span>Xóa Subnode</span>
+                      <span>Delete Subnode</span>
                     </button>
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               <div className="flex items-center gap-2.5 font-mono">
                 <AlertTriangle className="w-6 h-6 text-yellow-300 animate-pulse" />
                 <h3 className="font-extrabold text-sm uppercase tracking-wider">
-                  CẢNH BÁO NGUY HIỂM: XÓA SUBNODE
+                  DANGER ALERT: DELETE SUBNODE
                 </h3>
               </div>
               <button
@@ -581,20 +581,20 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 </div>
                 <div className="flex flex-col gap-1 text-xs font-mono text-slate-800">
                   <span className="font-black text-sm text-[#b91c1c]">
-                    HÀNH ĐỘNG KHÔNG THỂ KHÔI PHỤC!
+                    IRREVERSIBLE ACTION!
                   </span>
                   <p className="leading-relaxed mt-1 text-[#e06666] font-bold">
-                    Bạn đang tiến hành xóa vĩnh viễn Subnode <strong className="text-slate-900 underline">{nodeToDelete.name}</strong> (ID: <code className="bg-white px-1 py-0.5 rounded border border-red-200">{nodeToDelete.id}</code>).
+                    You are about to permanently delete subnode <strong className="text-slate-900 underline">{nodeToDelete.name}</strong> (ID: <code className="bg-white px-1 py-0.5 rounded border border-red-200">{nodeToDelete.id}</code>).
                   </p>
                 </div>
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-[11px] text-slate-600 flex flex-col gap-1.5">
-                <span className="font-bold text-slate-800">Hệ thống sẽ thực hiện các thao tác sau:</span>
+                <span className="font-bold text-slate-800">The system will perform the following actions:</span>
                 <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
-                  <li>Xóa toàn bộ mã định danh phần cứng & đăng ký kênh MQTT.</li>
-                  <li>Hủy toàn bộ lịch sử đo đạc cảm biến đã lưu trong cơ sở dữ liệu.</li>
-                  <li>Loại bỏ hoàn toàn thiết bị khỏi danh sách quản lý trên Web App.</li>
+                  <li>Wipe hardware identifier & MQTT channel subscriptions.</li>
+                  <li>Delete all historical sensor measurement records from database.</li>
+                  <li>Permanently remove device from Web App dashboard.</li>
                 </ul>
               </div>
             </div>
@@ -605,7 +605,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 onClick={() => setNodeToDelete(null)}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-mono text-xs font-bold rounded-lg transition-all"
               >
-                Hủy bỏ (Keep Node)
+                Cancel (Keep Node)
               </button>
 
               <button
@@ -613,7 +613,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 className="px-4 py-2 bg-[#b91c1c] hover:bg-red-800 text-white font-mono text-xs font-black rounded-lg transition-all shadow-md flex items-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Xác Nhận Xóa Vĩnh Viễn</span>
+                <span>Confirm Permanent Delete</span>
               </button>
             </div>
           </div>

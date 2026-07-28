@@ -100,10 +100,10 @@ export function SystemPage() {
       {/* Embedded Full ESP32 Sensor & GPS Telemetry Widget */}
       <SensorTelemetryWidget compact={false} />
 
-      {/* Main Two-Column Layout */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>
-        {/* Left Column - Live View, Hardware Metrics & Telemetry Log Table */}
-        <div className="flex flex-col gap-5">
+      {/* Main Two-Column Layout (Matching Sensor Telemetry Widget 4/6 and 2/6 Grid Alignment) */}
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 items-start">
+        {/* Left Column (4/6 Width): IR Live View Stream & Hardware Performance */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
           <Panel>
             <PanelHeader eyebrow="Camera Monitoring" title="IR Live View Stream" />
             {selectedLabId && selectedNodeId ? (
@@ -130,11 +130,10 @@ export function SystemPage() {
               <p className="font-mono text-[11px] text-[#94a3b8]">No telemetry — node offline or no active node found.</p>
             )}
           </Panel>
-
         </div>
 
-        {/* Right Column - Recognition Controls and Tuning */}
-        <div className="flex flex-col gap-5">
+        {/* Right Column (2/6 Width): Recognition Controls & Operational Tuning */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
           <Panel>
             <PanelHeader eyebrow="Model Tuning" title="Recognition Thresholds"
               action={
