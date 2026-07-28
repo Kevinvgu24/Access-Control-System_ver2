@@ -226,25 +226,47 @@ class MQTTTelemetryService:
         if not raw_node_id:
             raw_node_id = "unknown_esp32_device"
 
-        # Check if node is already approved in current lab OR any other lab
-        target_lab_id = lab_id
-        if raw_node_id not in state["subnodes"]:
-            for lid, lstate in labs_registry.items():
+        # Query SQLite to check if node was approved in database
+        db_node = self.db.get_subnode_globally(raw_node_id) if self.db else None
+
+        # Check if node is approved in memory OR SQLite DB
+        target_lab_id = (db_node.get("labId") if db_node else None) or lab_id
+        target_state = get_lab_state(target_lab_id)
+
+        is_approved = False
+        if db_node or raw_node_id in target_state["subnodes"]:
+            is_approved = True
+            state = target_state
+            if raw_node_id not in state["subnodes"] and db_node:
+                state["subnodes"][raw_node_id] = {
+                    "id": raw_node_id,
+                    "name": db_node.get("name", f"Subnode ({raw_node_id})"),
+                    "sensors": db_node.get("sensors", "Dynamic MQTT Sensors"),
+                    "online": True,
+                    "sensor_ok": True,
+                    "maintenance_mode": bool(db_node.get("maintenance_mode", 0)),
+                    "error_msg": None,
+                    "last_updated": now_iso,
+                    "last_updated_ts": now_ts,
+                    "connected_at_ts": now_ts,
+                    "capabilities": [],
+                    "data": data
+                }
+        else:
+            # Check other labs in memory
+            for lid, lstate in list(labs_registry.items()):
                 if raw_node_id in lstate["subnodes"]:
-                    target_lab_id = lid
+                    is_approved = True
                     state = lstate
                     break
 
-        if raw_node_id in state["subnodes"]:
-            subnode_id = raw_node_id
-        else:
-            # Unrecognized / new ESP32 subnode detected via MQTT!
-            # Search if this raw_node_id is already queued in ANY lab's pending queue
+        if not is_approved:
+            # Unrecognized / unapproved ESP32 subnode: MUST go into pending queue!
             pending_lab_id = target_lab_id
             pending_state = state
             existing_pending = {}
 
-            for lid, lstate in labs_registry.items():
+            for lid, lstate in list(labs_registry.items()):
                 if raw_node_id in lstate.get("pending_subnodes", {}):
                     pending_lab_id = lid
                     pending_state = lstate

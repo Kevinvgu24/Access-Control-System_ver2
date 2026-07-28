@@ -643,6 +643,20 @@ class FaceDatabase:
         finally:
             conn.close()
 
+    def get_subnode_globally(self, node_id):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes WHERE id = ?", (node_id,))
+            row = c.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error fetching subnode globally: {e}")
+            return None
+        finally:
+            conn.close()
+
     def update_subnode_maintenance(self, lab_id, node_id, maintenance_mode):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
