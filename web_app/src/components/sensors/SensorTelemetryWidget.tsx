@@ -346,11 +346,16 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                     Room Telemetry Overview
                   </h3>
                 </div>
-                <span className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider ${
-                  telemetry.online 
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                    : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
-                }`}>
+                <span
+                  className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider border ${
+                    !telemetry.online ? 'animate-pulse' : ''
+                  }`}
+                  style={
+                    telemetry.online
+                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                      : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                  }
+                >
                   {telemetry.online ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
@@ -490,7 +495,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                       : node.online && node.sensor_ok
                       ? 'bg-white text-slate-900 border-slate-200 hover:bg-slate-100 hover:border-slate-300' 
                       : node.online
-                      ? 'bg-amber-50/50 text-slate-900 border-amber-300 hover:bg-amber-100'
+                      ? 'bg-[#fffbeb] text-slate-900 border-[#fde047] hover:bg-[#fef9c3]'
                       : 'bg-red-50 text-slate-900 border-red-300 hover:bg-red-100'
                   }`}
                 >
@@ -504,15 +509,20 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                       </span>
                     </div>
 
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 ${
-                      isMaintenance
-                        ? 'bg-slate-400 text-white border border-slate-500 font-black'
-                        : node.online && node.sensor_ok
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-black' 
-                        : node.online
-                        ? 'bg-amber-100 text-amber-800 border border-amber-300 font-black'
-                        : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666]/40 font-black animate-pulse'
-                    }`}>
+                    <span
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 border ${
+                        !isMaintenance && !node.online ? 'animate-pulse' : ''
+                      }`}
+                      style={
+                        isMaintenance
+                          ? { backgroundColor: '#94a3b8', color: '#ffffff', borderColor: '#64748b' }
+                          : node.online && node.sensor_ok
+                          ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                          : node.online
+                          ? { backgroundColor: '#fef9c3', color: '#a16207', borderColor: '#fde047' }
+                          : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                      }
+                    >
                       {isMaintenance ? 'MAINTENANCE' : node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
                     </span>
                   </div>
