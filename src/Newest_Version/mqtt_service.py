@@ -74,11 +74,11 @@ class MQTTTelemetryService:
         self.broker_host = broker_host or os.getenv("MQTT_BROKER_HOST", "broker.emqx.io")
         self.broker_port = int(broker_port or os.getenv("MQTT_BROKER_PORT", 1883))
         self.topics = topics or [
+            "smartdoor/vgu24/sensors/#",
+            "smartdoor/vgu24/sensors/dht11",
+            "smartdoor/vgu24/sensors/gps",
             "smartdoor/sensors/telemetry",
-            "smartdoor/subnodes/+/manifest",
             "smartdoor/subnodes/+/telemetry",
-            "smartdoor/subnodes/subnode1/telemetry",
-            "smartdoor/subnodes/subnode2/telemetry",
             "esp32/sensors/data"
         ]
         self.client = None
@@ -192,19 +192,14 @@ class MQTTTelemetryService:
 
         # Map client node IDs to registered subnodes
         raw_node_id = str(data.get("node_id", data.get("subnode_id", "")))
-        if "ESP32_DHT11_Node1" in raw_node_id or "Node1" in raw_node_id or "subnode1" in raw_node_id:
+        if "DHT11" in raw_node_id or "dht11" in topic or "Node1" in raw_node_id or "subnode1" in raw_node_id or "temperature" in data:
             subnode_id = "subnode1"
-        elif "ESP32_GPS_Node2" in raw_node_id or "Node2" in raw_node_id or "subnode2" in raw_node_id:
+        elif "GPS" in raw_node_id or "gps" in topic or "Node2" in raw_node_id or "subnode2" in raw_node_id or "latitude" in data:
             subnode_id = "subnode2"
         elif raw_node_id:
             subnode_id = raw_node_id
         else:
-            if "dht11" in topic or "temperature" in data:
-                subnode_id = "subnode1"
-            elif "gnss" in topic or "latitude" in data:
-                subnode_id = "subnode2"
-            else:
-                subnode_id = "subnode1"
+            subnode_id = "subnode1"
 
         # Update specific subnode record
         if subnode_id not in subnodes_registry:
