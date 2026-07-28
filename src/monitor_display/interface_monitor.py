@@ -512,14 +512,14 @@ class InterfaceMonitorApp(QMainWindow):
                                     self.last_logged_name = f"Spoof warning: {name}"
                                     self.last_logged_time = now
                                     try:
-                                    self.log_event_async(
-                                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                                        userId="", universityId="", displayName=name, method="face",
-                                        result="denied", reason=f"Spoof detected: {liveness_msg}",
-                                        confidence=float(valid_user.get("confidence", 0.0) * 100), livenessScore=float(liveness_score), pinFallbackUsed=0
-                                    )
-                                except Exception as e:
-                                    logger.error(f"[DB LOG ERROR] {e}")
+                                        self.log_event_async(
+                                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                            userId="", universityId="", displayName=name, method="face",
+                                            result="denied", reason=f"Spoof detected: {liveness_msg}",
+                                            confidence=float(valid_user.get("confidence", 0.0) * 100), livenessScore=float(liveness_score), pinFallbackUsed=0
+                                        )
+                                    except Exception as e:
+                                        logger.error(f"[DB LOG ERROR] {e}")
                                 self.last_detection_time = now
                                 return
                         
