@@ -187,25 +187,26 @@ class MQTTTelemetryService:
         sensor_names = [cap.get("name", cap.get("id")) for cap in capabilities]
         sensors_str = ", ".join(sensor_names) if sensor_names else "Dynamic Sensor Cluster"
 
-        if node_id not in state["subnodes"]:
-            state["subnodes"][node_id] = {
-                "id": node_id,
-                "name": device_name,
-                "sensors": sensors_str,
-                "online": True,
-                "sensor_ok": True,
-                "error_msg": None,
-                "last_updated": datetime.now().astimezone().isoformat(),
-                "capabilities": capabilities,
-                "data": {}
-            }
-        else:
-            if not state["subnodes"][node_id].get("name"):
-                state["subnodes"][node_id]["name"] = device_name
-            state["subnodes"][node_id]["sensors"] = sensors_str
-            state["subnodes"][node_id]["capabilities"] = capabilities
+        # Check if node is approved in current lab or any other lab
+        is_approved = node_id in state["subnodes"]
+        if not is_approved:
+            for lid, lstate in labs_registry.items():
+                if node_id in lstate.get("subnodes", {}):
+                    is_approved = True
+                    state = lstate
+                    break
 
-        logger.info(f"[{lab_id}] Registered ESP32 Manifest for '{node_id}': {sensors_str}")
+        if not is_approved:
+            # Unapproved node sent a manifest: delegate to process_telemetry_payload to queue into pending_subnodes
+            self.process_telemetry_payload(topic, data)
+            return
+
+        if not state["subnodes"][node_id].get("name"):
+            state["subnodes"][node_id]["name"] = device_name
+        state["subnodes"][node_id]["sensors"] = sensors_str
+        state["subnodes"][node_id]["capabilities"] = capabilities
+
+        logger.info(f"[{lab_id}] Updated ESP32 Manifest for approved subnode '{node_id}': {sensors_str}")
 
     def process_telemetry_payload(self, topic, data):
         lab_id = extract_lab_id(topic)
