@@ -113,10 +113,10 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }
 
   const handleApproveNode = async (nodeId: string) => {
-    if (!selectedLabId) return
+    const labId = selectedLabId || 'lab_1'
     try {
       const customName = customNames[nodeId] || ''
-      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/approve`, {
+      const res = await fetch(`/api/labs/${labId}/subnodes/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id: nodeId, custom_name: customName })
@@ -130,9 +130,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }
 
   const handleRejectNode = async (nodeId: string) => {
-    if (!selectedLabId) return
+    const labId = selectedLabId || 'lab_1'
     try {
-      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/reject`, {
+      const res = await fetch(`/api/labs/${labId}/subnodes/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id: nodeId })
@@ -471,7 +471,10 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               <Search className="w-3.5 h-3.5" />
               <span>Discover Devices</span>
               {pendingNodes.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-red-600 text-white font-mono text-[10px] font-extrabold rounded-full animate-bounce shadow-md">
+                <span
+                  className="absolute -top-2 -right-2 px-2 py-0.5 font-mono text-[11px] font-extrabold rounded-full animate-bounce shadow-md flex items-center justify-center min-w-[22px] min-h-[22px]"
+                  style={{ backgroundColor: '#ea580c', color: '#ffffff', border: '2px solid #ffffff' }}
+                >
                   {pendingNodes.length}
                 </span>
               )}
@@ -651,7 +654,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
             <div className="p-6 overflow-y-auto flex flex-col gap-4">
               <p className="text-xs font-mono text-slate-600">
-                The following unapproved ESP32 hardware subnodes were discovered via MQTT. Approving a device will pair it to the system.
+                The following unapproved ESP32 hardware subnodes were discovered via MQTT. Click <strong className="text-emerald-700">Approve & Pair</strong> to authorize a device into system registry.
               </p>
 
               {pendingNodes.length === 0 ? (
@@ -665,54 +668,57 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   </span>
                 </div>
               ) : (
-                pendingNodes.map((pNode) => (
-                  <div key={pNode.id} className="border-2 border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-mono text-xs font-black text-slate-900 block">
-                          Node ID: {pNode.id}
-                        </span>
-                        <span className="font-mono text-[11px] text-slate-500 block mt-0.5">
-                          Sensors: {pNode.sensors || 'Dynamic Cluster'}
+                <div className="flex flex-col gap-3.5 max-h-[380px] overflow-y-auto pr-1">
+                  {pendingNodes.map((pNode) => (
+                    <div key={pNode.id} className="border-2 border-slate-200 hover:border-orange-300 rounded-xl p-4 bg-slate-50 flex flex-col gap-3 transition-all shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-xs font-black text-slate-900 block">
+                            Hardware ID: <code className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800 font-bold">{pNode.id}</code>
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-500 block mt-0.5">
+                            Declared Sensors: {pNode.sensors || 'Dynamic Cluster'}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0">
+                          PENDING APPROVAL
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-mono font-bold uppercase">
-                        PENDING APPROVAL
-                      </span>
-                    </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-mono font-bold text-slate-600">
-                        Custom Subnode Name (Optional):
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={`e.g. Subnode ${pendingNodes.indexOf(pNode) + 3} - Air Quality`}
-                        value={customNames[pNode.id] || ''}
-                        onChange={(e) => setCustomNames({ ...customNames, [pNode.id]: e.target.value })}
-                        className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:border-orange-500"
-                      />
-                    </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[11px] font-mono font-bold text-slate-600">
+                          Assign Custom Subnode Name (Optional):
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={`e.g. Subnode ${pendingNodes.indexOf(pNode) + 1} - Air Quality`}
+                          value={customNames[pNode.id] || ''}
+                          onChange={(e) => setCustomNames({ ...customNames, [pNode.id]: e.target.value })}
+                          className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:border-orange-500 bg-white"
+                        />
+                      </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                      <button
-                        onClick={() => handleRejectNode(pNode.id)}
-                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>Reject</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200">
+                        <button
+                          onClick={() => handleRejectNode(pNode.id)}
+                          className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
 
-                      <button
-                        onClick={() => handleApproveNode(pNode.id)}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Approve & Pair</span>
-                      </button>
+                        <button
+                          onClick={() => handleApproveNode(pNode.id)}
+                          className="px-4 py-2 text-white text-xs font-mono font-black rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95 hover:opacity-90"
+                          style={{ backgroundColor: '#16a34a', color: '#ffffff' }}
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>Approve & Pair Node</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
 
