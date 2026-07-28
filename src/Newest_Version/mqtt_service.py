@@ -10,49 +10,7 @@ logger = get_logger("mqtt_service")
 # Global in-memory cache for Subnodes registry, pending pairing queue, and overall combined telemetry
 pending_subnodes_queue = {}
 
-subnodes_registry = {
-    "subnode1": {
-        "id": "subnode1",
-        "name": "Subnode 1 - Environment",
-        "sensors": "DHT11 Temp & Humidity",
-        "online": False,
-        "sensor_ok": False,
-        "maintenance_mode": False,
-        "error_msg": "No connection established",
-        "last_updated": None,
-        "capabilities": [
-            {"name": "Temperature", "key": "temperature", "unit": "°C"},
-            {"name": "Humidity", "key": "humidity", "unit": "% RH"}
-        ],
-        "data": {
-            "temperature": 0.0,
-            "humidity": 0.0
-        }
-    },
-    "subnode2": {
-        "id": "subnode2",
-        "name": "Subnode 2 - GPS Tracker",
-        "sensors": "LC76G GNSS Module",
-        "online": False,
-        "sensor_ok": False,
-        "maintenance_mode": False,
-        "error_msg": "No connection established",
-        "last_updated": None,
-        "capabilities": [
-            {"name": "Latitude", "key": "latitude", "unit": "°"},
-            {"name": "Longitude", "key": "longitude", "unit": "°"},
-            {"name": "Altitude", "key": "altitude", "unit": "m"},
-            {"name": "Satellites", "key": "satellites", "unit": "Sats"}
-        ],
-        "data": {
-            "latitude": 0.0,
-            "longitude": 0.0,
-            "altitude": 0.0,
-            "speed": 0.0,
-            "satellites": 0
-        }
-    }
-}
+subnodes_registry = {}
 
 latest_sensor_data = {
     "temperature": 0.0,
@@ -194,18 +152,17 @@ class MQTTTelemetryService:
         now_iso = datetime.now().astimezone().isoformat()
         now_ts = time.time()
 
-        # Map client node IDs to registered subnodes
+        # Extract exact node ID sent by ESP32
         raw_node_id = str(data.get("node_id", data.get("subnode_id", "")))
-        if "DHT11" in raw_node_id or "dht11" in topic or "Node1" in raw_node_id or "subnode1" in raw_node_id or ("temperature" in data and "subnode1" in subnodes_registry):
-            subnode_id = "subnode1"
-        elif "GPS" in raw_node_id or "gps" in topic or "Node2" in raw_node_id or "subnode2" in raw_node_id or ("latitude" in data and "subnode2" in subnodes_registry):
-            subnode_id = "subnode2"
-        elif raw_node_id in subnodes_registry:
+        if not raw_node_id:
+            raw_node_id = "unknown_esp32_device"
+
+        if raw_node_id in subnodes_registry:
             subnode_id = raw_node_id
         else:
             # Unrecognized / new ESP32 subnode detected via MQTT!
             # Put into pending discovery queue for user approval instead of auto-registering
-            if raw_node_id and raw_node_id not in subnodes_registry:
+            if raw_node_id not in subnodes_registry:
                 pending_subnodes_queue[raw_node_id] = {
                     "id": raw_node_id,
                     "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
