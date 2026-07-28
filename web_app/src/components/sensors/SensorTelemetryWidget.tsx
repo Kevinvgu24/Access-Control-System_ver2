@@ -111,9 +111,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   const [nodeToDelete, setNodeToDelete] = useState<SubnodeData | null>(null)
 
   const fetchTelemetry = async () => {
-    if (!selectedLabId) return
+    const labId = selectedLabId || 'lab_1'
     try {
-      const res = await fetch(`/api/labs/${selectedLabId}/sensors/latest`)
+      const res = await fetch(`/api/labs/${labId}/sensors/latest`)
       if (res.ok) {
         const data = await res.json()
         setTelemetry(data)
@@ -543,7 +543,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
             {/* Scan / Discover Devices Button */}
             <button
-              onClick={() => setShowPairingModal(true)}
+              onClick={() => { fetchTelemetry(); setShowPairingModal(true); }}
               className="relative px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-sm"
               title="Scan and approve new unpaired ESP32 subnodes discovered over MQTT"
             >
