@@ -193,10 +193,11 @@ class MQTTTelemetryService:
         sensor_names = [cap.get("name", cap.get("id")) for cap in capabilities]
         sensors_str = ", ".join(sensor_names) if sensor_names else "Dynamic Sensor Cluster"
 
-        # Check if node is approved in current lab or any other lab
-        is_approved = node_id in state["subnodes"]
+        # Check if node is approved in memory OR SQLite DB
+        db_node = self.db.get_subnode_globally(node_id) if self.db else None
+        is_approved = bool(db_node) or node_id in state["subnodes"]
         if not is_approved:
-            for lid, lstate in labs_registry.items():
+            for lid, lstate in list(labs_registry.items()):
                 if node_id in lstate.get("subnodes", {}):
                     is_approved = True
                     state = lstate
@@ -206,6 +207,10 @@ class MQTTTelemetryService:
             # Unapproved node sent a manifest: delegate to process_telemetry_payload to queue into pending_subnodes
             self.process_telemetry_payload(topic, data)
             return
+
+        # Always purge approved subnodes from any pending queues
+        for lid, lstate in list(labs_registry.items()):
+            lstate.get("pending_subnodes", {}).pop(node_id, None)
 
         if not state["subnodes"][node_id].get("name"):
             state["subnodes"][node_id]["name"] = device_name
@@ -260,6 +265,11 @@ class MQTTTelemetryService:
                     state = lstate
                     break
 
+        if is_approved:
+            # Always purge approved subnodes from any pending queues across all labs
+            for lid, lstate in list(labs_registry.items()):
+                lstate.get("pending_subnodes", {}).pop(raw_node_id, None)
+
         if not is_approved:
             # Unrecognized / unapproved ESP32 subnode: MUST go into pending queue!
             pending_lab_id = target_lab_id
@@ -307,7 +317,23 @@ class MQTTTelemetryService:
             }
             return
 
-        target_node = state["subnodes"][subnode_id]
+        if raw_node_id not in state["subnodes"]:
+            state["subnodes"][raw_node_id] = {
+                "id": raw_node_id,
+                "name": (db_node.get("name") if db_node else f"Subnode ({raw_node_id})"),
+                "sensors": (db_node.get("sensors") if db_node else "Dynamic MQTT Sensors"),
+                "online": True,
+                "sensor_ok": True,
+                "maintenance_mode": False,
+                "error_msg": None,
+                "last_updated": now_iso,
+                "last_updated_ts": now_ts,
+                "connected_at_ts": now_ts,
+                "capabilities": [],
+                "data": data
+            }
+
+        target_node = state["subnodes"][raw_node_id]
 
         # Check if node is currently in Maintenance Disconnect mode
         if target_node.get("maintenance_mode", False):
