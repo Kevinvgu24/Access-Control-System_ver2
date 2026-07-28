@@ -60,15 +60,30 @@ class VideoWidget(QFrame):
         qimg = QImage(rgb_frame.data, im_width, im_height, im_width * 3, QImage.Format_RGB888)
         pix = QPixmap.fromImage(qimg)
         
-        # [OPT] FastTransformation: thay bicubic bằng bilinear — không phân biệt được ở 50-80cm
-        # nhưng giảm ~20% CPU render frame trên ARM Cortex-A76
         scaled_pix = pix.scaled(w, h, Qt.KeepAspectRatio, Qt.FastTransformation)
+        
+        # Draw Top-Left LAB Code HUD Tag Overlay
+        painter = QPainter(scaled_pix)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        tag_text = f"🏷️ LAB CODE: {getattr(self, 'lab_code', '304')} | RPI5"
+        painter.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        
+        fm = painter.fontMetrics()
+        txt_w = fm.horizontalAdvance(tag_text) + 20
+        txt_h = 26
+        
+        # Draw dark pill box background with orange border
+        painter.fillRect(10, 10, txt_w, txt_h, QColor(2, 6, 23, 210))
+        painter.setPen(QPen(QColor("#ea580c"), 1.5))
+        painter.drawRoundedRect(10, 10, txt_w, txt_h, 4, 4)
+        
+        # Draw white bold text
+        painter.setPen(QColor("#ffffff"))
+        painter.drawText(10, 10, txt_w, txt_h, Qt.AlignCenter, tag_text)
         
         # Draw 3D oval alignment guide overlay if enrollment is active
         if self.draw_oval:
-            painter = QPainter(scaled_pix)
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
             # Create full-screen path
             path = QPainterPath()
             path.addRect(0, 0, scaled_pix.width(), scaled_pix.height())
@@ -106,7 +121,7 @@ class VideoWidget(QFrame):
                     Qt.AlignCenter, self.guide_text
                 )
             
-            painter.end()
+        painter.end()
 
         self.lblVideo.setPixmap(scaled_pix)
 

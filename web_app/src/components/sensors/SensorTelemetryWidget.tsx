@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio, Activity, Download } from 'lucide-react'
+import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio, Activity, Download, Thermometer, Droplets, Wind, Leaf, Sun, Navigation } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -427,7 +427,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Temperature</span>
-                    <span className="text-xl">{telemetry.online ? '🌡️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-orange-50 border border-orange-200">
+                      {telemetry.online ? <Thermometer className="w-4 h-4 text-orange-600" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <p className={`text-3xl font-black mt-3 ${tempColor}`}>
                     {telemetry.online ? `${telemetry.temperature.toFixed(1)}°C` : '--'}
@@ -438,7 +440,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Humidity</span>
-                    <span className="text-xl">{telemetry.online ? '💧' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200">
+                      {telemetry.online ? <Droplets className="w-4 h-4 text-blue-600" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online ? `${telemetry.humidity.toFixed(1)}%` : '--'}
@@ -449,7 +453,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">PM2.5 Dust</span>
-                    <span className="text-xl">{telemetry.online ? '🌫️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-slate-100 border border-slate-300">
+                      {telemetry.online ? <Wind className="w-4 h-4 text-slate-600" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <p className="text-3xl font-black text-slate-900 mt-3">
                     {telemetry.online && telemetry.pm25 ? `${telemetry.pm25.toFixed(1)}` : '--'}
@@ -461,7 +467,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">CO2 Level</span>
-                    <span className="text-xl">{telemetry.online ? '🍃' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      {telemetry.online ? <Leaf className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.co2 ? `${telemetry.co2}` : '--'}
@@ -473,7 +481,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">Light Lux</span>
-                    <span className="text-xl">{telemetry.online ? '☀️' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-200">
+                      {telemetry.online ? <Sun className="w-4 h-4 text-amber-500" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <p className="text-3xl font-black text-orange-600 mt-3">
                     {telemetry.online && telemetry.light ? `${telemetry.light}` : '--'}
@@ -485,7 +495,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div className="border rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm bg-white border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] uppercase font-bold text-slate-600">GNSS GPS</span>
-                    <span className="text-xl">{telemetry.online ? '📡' : <AlertTriangle className="w-5 h-5 text-[#e06666]" />}</span>
+                    <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-200">
+                      {telemetry.online ? <Navigation className="w-4 h-4 text-indigo-600" /> : <AlertTriangle className="w-4 h-4 text-[#e06666]" />}
+                    </div>
                   </div>
                   <div className="mt-2">
                     {telemetry.online && telemetry.latitude ? (

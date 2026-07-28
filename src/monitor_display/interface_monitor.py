@@ -33,6 +33,8 @@ from widgets.access_widget import AccessWidget
 from widgets.keypad_widget import KeypadWidget
 from widgets.register_widget import RegisterWidget
 from widgets.logs_widget import LogsWidget
+from widgets.lab_widget import LabWidget
+from lab_config import get_lab_config, save_lab_config
 
 # Import core smart door system and database synchronization
 from app import ProfessionalSmartDoor
@@ -119,7 +121,7 @@ class InterfaceMonitorApp(QMainWindow):
 
         # Initialize GUI Layout and Stylesheet
         self.init_ui()
-        self.start_pipeline()
+        self.start_pipeline_async()
 
     def init_ui(self):
         self.setWindowTitle("Smart Lab Access Monitor")
@@ -218,26 +220,39 @@ class InterfaceMonitorApp(QMainWindow):
         self.tabKeypad = KeypadWidget()
         self.tabRegister = RegisterWidget()
         self.tabLogs = LogsWidget()
+        self.tabLab = LabWidget()
 
         # Connect signals
         self.tabAccess.manual_unlock_requested.connect(self.unlock_door)
         self.tabKeypad.pin_submitted.connect(self.handle_pin_submitted)
         self.tabRegister.register_requested.connect(self.handle_register_requested)
         self.tabLogs.sync_requested.connect(self.handle_sync_requested)
+        self.tabLab.lab_code_changed.connect(self.on_lab_code_changed)
+
+        # Set initial lab code on camera viewport
+        cfg = get_lab_config()
+        self.videoWidget.lab_code = cfg['lab_code']
 
         # Add tabs
         self.tabs.addTab(self.tabAccess, "Access")
         self.tabs.addTab(self.tabKeypad, "Keypad")
         self.tabs.addTab(self.tabRegister, "Register")
         self.tabs.addTab(self.tabLogs, "Logs")
+        self.tabs.addTab(self.tabLab, "Lab Setup")
+
+        # If Pi 5 is booting up for the first time or pending activation, jump to Lab Setup tab immediately!
+        if not cfg.get('is_activated'):
+            self.tabs.setCurrentIndex(4)
 
         self.tabs.currentChanged.connect(self.handle_tab_changed)
 
         right_layout.addWidget(self.tabs)
         main_layout.addWidget(right_frame, stretch=9)
 
-        # Add initial log entry
-        self.add_log("System", "Monitor UI initialized.")
+    def on_lab_code_changed(self, new_lab_code):
+        self.videoWidget.lab_code = new_lab_code
+        self.add_log("Lab Setup", f"Assigned & Activated Raspberry Pi 5 node for LAB Code: '{new_lab_code}'.")
+        self.tabs.setCurrentIndex(0)
 
     def log_event_async(self, **kwargs):
         """Asynchronously log access events to prevent blocking the Qt main thread."""
@@ -252,46 +267,51 @@ class InterfaceMonitorApp(QMainWindow):
     # =====================================================================
     # GSTREAMER INTERFACE AND SIGNAL EVENT HANDLERS
     # =====================================================================
-    def start_pipeline(self):
-        """Initializes and runs the GStreamer Hailo pipeline."""
-        logger.info("Starting GStreamer Hailo Pipeline from GUI...")
-        try:
-            self.door_app = ProfessionalSmartDoor(
-                yolo_hef=self.args.yolo_hef,
-                arcface_hef=self.args.arcface_hef,
-                anti_spoofing_hef=self.args.anti_spoofing_hef,
-                lbf_model_path=self.args.lbf_model,
-                database_dir=self.args.db_dir,
-                close_thresh=self.args.close_thresh
-            )
-            
-            # Hook the recognition callback inside the app.py frame probe to emit signals back
-            def on_rec_callback(detections_info):
-                self.emitter.recognition_event.emit(detections_info)
-            self.door_app.recognition_callback = on_rec_callback
-
-            # Hook the appsink callback to emit new video frame buffers back
-            def on_frame_callback(rgb_frame):
-                self.emitter.new_frame.emit(rgb_frame)
-
-            # Start the GStreamer pipeline without the blocking GLib mainloop
-            self.door_app.run(
-                width=self.args.cam_width,
-                height=self.args.cam_height,
-                source=self.args.cam_source,
-                appsink_callback=on_frame_callback
-            )
-            
-            # Start the IR camera pipeline if enabled
-            if getattr(self.args, "use_ir", False):
-                self.door_app.start_ir_camera(ir_source=getattr(self.args, "ir_source", "libcamerasrc"))
-                self.add_log("System", "IR GStreamer pipeline is playing.")
+    def start_pipeline_async(self):
+        """Asynchronously preloads AI Face Recognition models & Hailo GStreamer pipeline in parallel background thread."""
+        def loader():
+            logger.info("⚡ Parallel Loading: Initializing AI Face Recognition models & GStreamer Hailo pipeline in background...")
+            try:
+                self.door_app = ProfessionalSmartDoor(
+                    yolo_hef=self.args.yolo_hef,
+                    arcface_hef=self.args.arcface_hef,
+                    anti_spoofing_hef=self.args.anti_spoofing_hef,
+                    lbf_model_path=self.args.lbf_model,
+                    database_dir=self.args.db_dir,
+                    close_thresh=self.args.close_thresh
+                )
                 
-            self.update_recognition_state()
-            self.add_log("System", "GStreamer pipeline is playing.")
-        except Exception as e:
-            self.add_log("System", f"Pipeline Init Error: {e}")
-            QMessageBox.critical(self, "Pipeline Error", f"Failed to initialize GStreamer: {e}")
+                # Hook the recognition callback inside the app.py frame probe to emit signals back
+                def on_rec_callback(detections_info):
+                    self.emitter.recognition_event.emit(detections_info)
+                self.door_app.recognition_callback = on_rec_callback
+
+                # Hook the appsink callback to emit new video frame buffers back
+                def on_frame_callback(rgb_frame):
+                    self.emitter.new_frame.emit(rgb_frame)
+
+                # Start the GStreamer pipeline without the blocking GLib mainloop
+                self.door_app.run(
+                    width=self.args.cam_width,
+                    height=self.args.cam_height,
+                    source=self.args.cam_source,
+                    appsink_callback=on_frame_callback
+                )
+                
+                # Start the IR camera pipeline if enabled
+                if getattr(self.args, "use_ir", False):
+                    self.door_app.start_ir_camera(ir_source=getattr(self.args, "ir_source", "libcamerasrc"))
+                    self.add_log("System", "IR GStreamer pipeline is playing.")
+                    
+                self.update_recognition_state()
+                self.add_log("System", "⚡ AI Face Recognition Models & Pipeline preloaded successfully in parallel.")
+                if hasattr(self, 'tabLab'):
+                    self.tabLab.set_preload_done()
+            except Exception as e:
+                logger.error(f"Pipeline Preload Error: {e}")
+                self.add_log("System", f"Pipeline Init Error: {e}")
+
+        threading.Thread(target=loader, daemon=True).start()
 
     def _check_walkaway_timeout(self):
         """[OPT] Walk-away check chạy 5x/giây qua QTimer — thay vì 30x/giây trong frame callback."""

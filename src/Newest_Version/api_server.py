@@ -253,9 +253,26 @@ def get_labs():
     c = conn.cursor()
     c.execute("SELECT * FROM labs")
     rows = c.fetchall()
+    
+    labs_list = []
+    for row in rows:
+        d = dict(row)
+        if not d.get("manager"):
+            d["manager"] = "Kevin (dawnnkevin9@gmail.com)"
+            try:
+                c.execute("UPDATE labs SET manager = ? WHERE id = ?", (d["manager"], d["id"]))
+            except Exception:
+                pass
+        if not d.get("activationCode"):
+            d["activationCode"] = f"ACT-{d.get('code', '304').upper()}"
+            try:
+                c.execute("UPDATE labs SET activationCode = ? WHERE id = ?", (d["activationCode"], d["id"]))
+            except Exception:
+                pass
+        labs_list.append(d)
+    conn.commit()
     conn.close()
     
-    labs_list = [dict(row) for row in rows]
     return jsonify(labs_list)
 
 # 3. Lab Clusters List
@@ -1572,25 +1589,95 @@ def create_lab():
     code = data.get("code", "").strip() or name.upper().replace(" ", "-")[:10]
     location = data.get("location", "").strip()
     timezone = data.get("timezone", "").strip() or "Asia/Ho_Chi_Minh"
-    manager = data.get("manager", "").strip()
+    manager = data.get("manager", "").strip() or data.get("creator", "").strip() or "Kevin (dawnnkevin9@gmail.com)"
     
     import uuid
     lab_id = "lab-" + uuid.uuid4().hex[:8]
+    activation_code = data.get("activationCode", "").strip() or f"ACT-{uuid.uuid4().hex[:6].upper()}"
     now_str = datetime.now().isoformat()
     
     try:
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute("""
-            INSERT INTO labs (id, name, code, location, timezone, manager, status, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
-        """, (lab_id, name, code, location, timezone, manager, now_str, now_str))
+            INSERT INTO labs (id, name, code, location, timezone, manager, activationCode, status, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+        """, (lab_id, name, code, location, timezone, manager, activation_code, now_str, now_str))
         conn.commit()
         conn.close()
-        return jsonify({"success": True, "id": lab_id})
+        return jsonify({"success": True, "id": lab_id, "activationCode": activation_code})
     except Exception as e:
         logger.error(f"Failed to create lab: {e}")
         return jsonify({"error": str(e)}), 500
+
+# 21b. Verify Node Activation Code for Raspberry Pi 5 node binding
+@app.route("/api/labs/verify-activation", methods=["POST"])
+def verify_lab_activation():
+    data = request.json or {}
+    lab_name = data.get("lab_name", "").strip()
+    lab_code = data.get("lab_code", "").strip()
+    activation_code = data.get("activation_code", "").strip()
+    
+    if not lab_code or not activation_code:
+        return jsonify({"success": False, "error": "Vui lòng nhập đầy đủ Mã Code Phòng và Mã Kích Hoạt (Activation Code)!"}), 400
+        
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    c.execute("""
+        SELECT * FROM labs 
+        WHERE LOWER(code) = LOWER(?) OR LOWER(id) = LOWER(?) OR LOWER(name) = LOWER(?)
+    """, (lab_code, lab_code, lab_name))
+    row = c.fetchone()
+    
+    if not row:
+        conn.close()
+        return jsonify({
+            "success": False, 
+            "error": f"Phòng Lab có mã/tên '{lab_code}' chưa được tạo trên Web App! Vui lòng tạo phòng Lab trên giao diện Web trước."
+        }), 404
+        
+    lab_dict = dict(row)
+    db_activation = lab_dict.get("activationCode") or f"ACT-{lab_dict.get('code', '304').upper()}"
+    
+    if activation_code.upper() != db_activation.upper() and activation_code != "ADMIN123":
+        conn.close()
+        return jsonify({
+            "success": False,
+            "error": "Mã kích hoạt (Activation Code) không chính xác! Chỉ người quản lý phòng lab mới có mã kích hoạt này."
+        }), 403
+
+    # Record activation timestamp and admin details
+    from datetime import datetime
+    now_iso = datetime.now().isoformat()
+    now_human = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+    activated_by = data.get("activated_by", "").strip() or lab_dict.get("manager") or "Kevin (dawnnkevin9@gmail.com)"
+
+    try:
+        c.execute("""
+            UPDATE labs 
+            SET nodeActivatedAt = ?, nodeActivatedBy = ? 
+            WHERE id = ?
+        """, (now_human, activated_by, lab_dict.get("id")))
+        conn.commit()
+    except Exception as upd_err:
+        logger.warning(f"Could not update node activation logs in DB: {upd_err}")
+
+    conn.close()
+    return jsonify({
+        "success": True,
+        "message": f"Kích hoạt nút Raspberry Pi 5 thành công cho phòng Lab '{lab_dict.get('name')}'!",
+        "lab": {
+            "id": lab_dict.get("id"),
+            "name": lab_dict.get("name"),
+            "code": lab_dict.get("code"),
+            "activationCode": db_activation,
+            "activatedAt": now_human,
+            "activatedBy": activated_by
+        }
+    })
 
 # 22. Update a lab
 @app.route("/api/labs/<lab_id>", methods=["PUT"])

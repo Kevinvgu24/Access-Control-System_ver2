@@ -104,13 +104,16 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
         )}
 
         {/* Live HUD Overlay */}
-        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-2 border border-white/10">
+        <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-orange-500/30">
           <span className="w-2 h-2 rounded-full bg-green animate-pulse" />
-          <span className="font-mono text-[10px] text-white font-bold tracking-widest uppercase">LIVE IR</span>
+          <span className="font-mono text-[10px] text-white font-black tracking-widest uppercase">LIVE IR</span>
+          <span className="text-[10px] font-mono font-bold text-orange-400 border-l border-white/20 pl-2">
+            LAB CODE: {labId}
+          </span>
         </div>
 
-        <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded font-mono text-[9px] text-slate-300 border border-white/5">
-          NODE: {nodeId}
+        <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded font-mono text-[9px] text-slate-300 border border-white/10 flex items-center gap-1.5">
+          <span className="text-orange-400 font-bold">NODE:</span> {nodeId}
         </div>
       </div>
       

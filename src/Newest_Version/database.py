@@ -83,11 +83,19 @@ class FaceDatabase:
                 location TEXT,
                 timezone TEXT,
                 manager TEXT,
+                activationCode TEXT,
+                nodeActivatedAt TEXT,
+                nodeActivatedBy TEXT,
                 status TEXT DEFAULT 'active',
                 createdAt TEXT,
                 updatedAt TEXT
             )
         ''')
+        for col in ["activationCode", "nodeActivatedAt", "nodeActivatedBy"]:
+            try:
+                c.execute(f"ALTER TABLE labs ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                pass
         
         c.execute('''
             CREATE TABLE IF NOT EXISTS clusters (
