@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import threading
@@ -17,12 +18,12 @@ subnodes_registry = {
         "error_msg": "No connection established",
         "last_updated": None,
         "capabilities": [
-            {"name": "Temperature", "key": "temperature_c", "unit": "°C"},
-            {"name": "Humidity", "key": "humidity_pct", "unit": "% RH"}
+            {"name": "Temperature", "key": "temperature", "unit": "°C"},
+            {"name": "Humidity", "key": "humidity", "unit": "% RH"}
         ],
         "data": {
-            "temperature_c": 0.0,
-            "humidity_pct": 0.0
+            "temperature": 0.0,
+            "humidity": 0.0
         }
     },
     "subnode2": {
@@ -36,14 +37,14 @@ subnodes_registry = {
         "capabilities": [
             {"name": "Latitude", "key": "latitude", "unit": "°"},
             {"name": "Longitude", "key": "longitude", "unit": "°"},
-            {"name": "Altitude", "key": "altitude_m", "unit": "m"},
+            {"name": "Altitude", "key": "altitude", "unit": "m"},
             {"name": "Satellites", "key": "satellites", "unit": "Sats"}
         ],
         "data": {
             "latitude": 0.0,
             "longitude": 0.0,
-            "altitude_m": 0.0,
-            "speed_kmph": 0.0,
+            "altitude": 0.0,
+            "speed": 0.0,
             "satellites": 0
         }
     }
@@ -68,27 +69,49 @@ latest_sensor_data = {
 }
 
 class MQTTTelemetryService:
-    def __init__(self, db_instance, broker_host="127.0.0.1", broker_port=1883, topics=None):
+    def __init__(self, db_instance, broker_host=None, broker_port=None, topics=None):
         self.db = db_instance
-        self.broker_host = broker_host
-        self.broker_port = broker_port
+        self.broker_host = broker_host or os.getenv("MQTT_BROKER_HOST", "broker.emqx.io")
+        self.broker_port = int(broker_port or os.getenv("MQTT_BROKER_PORT", 1883))
         self.topics = topics or [
+            "smartdoor/sensors/telemetry",
             "smartdoor/subnodes/+/manifest",
             "smartdoor/subnodes/+/telemetry",
             "smartdoor/subnodes/subnode1/telemetry",
             "smartdoor/subnodes/subnode2/telemetry",
-            "smartdoor/sensors/telemetry",
             "esp32/sensors/data"
         ]
         self.client = None
         self.running = False
         self.thread = None
+        self.watchdog_thread = None
 
     def start(self):
         self.running = True
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
-        logger.info(f"MQTT Telemetry Service thread started (Listening on {self.broker_host}:{self.broker_port})")
+        
+        self.watchdog_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
+        self.watchdog_thread.start()
+        logger.info(f"MQTT Telemetry Service thread started (Subscribed to {self.broker_host}:{self.broker_port})")
+
+    def _watchdog_loop(self):
+        """Watchdog thread that marks subnodes offline if no message received within 7 seconds"""
+        global latest_sensor_data, subnodes_registry
+        while self.running:
+            time.sleep(2)
+            now = time.time()
+            any_subnode_online = False
+            for node_id, node in list(subnodes_registry.items()):
+                last_ts = node.get("last_updated_ts", 0)
+                if last_ts > 0 and (now - last_ts) > 7:
+                    node["online"] = False
+                    node["error_msg"] = "Telemetry timeout (> 7 seconds)"
+                elif last_ts > 0:
+                    any_subnode_online = True
+            
+            latest_sensor_data["online"] = any_subnode_online
+            latest_sensor_data["subnodes"] = list(subnodes_registry.values())
 
     def _run_loop(self):
         try:
@@ -165,13 +188,20 @@ class MQTTTelemetryService:
     def process_telemetry_payload(self, topic, data):
         global latest_sensor_data, subnodes_registry
         now_iso = datetime.now().isoformat()
+        now_ts = time.time()
 
-        # Determine subnode_id from payload or topic
-        subnode_id = data.get("node_id", data.get("subnode_id"))
-        if not subnode_id:
-            if "subnode1" in topic or "dht11" in topic or "temperature_c" in data:
+        # Map client node IDs to registered subnodes
+        raw_node_id = str(data.get("node_id", data.get("subnode_id", "")))
+        if "ESP32_DHT11_Node1" in raw_node_id or "Node1" in raw_node_id or "subnode1" in raw_node_id:
+            subnode_id = "subnode1"
+        elif "ESP32_GPS_Node2" in raw_node_id or "Node2" in raw_node_id or "subnode2" in raw_node_id:
+            subnode_id = "subnode2"
+        elif raw_node_id:
+            subnode_id = raw_node_id
+        else:
+            if "dht11" in topic or "temperature" in data:
                 subnode_id = "subnode1"
-            elif "subnode2" in topic or "gnss" in topic or "latitude" in data:
+            elif "gnss" in topic or "latitude" in data:
                 subnode_id = "subnode2"
             else:
                 subnode_id = "subnode1"
@@ -186,6 +216,7 @@ class MQTTTelemetryService:
                 "sensor_ok": True,
                 "error_msg": None,
                 "last_updated": now_iso,
+                "last_updated_ts": now_ts,
                 "capabilities": [],
                 "data": {}
             }
@@ -193,7 +224,10 @@ class MQTTTelemetryService:
         target_node = subnodes_registry[subnode_id]
         target_node["online"] = True
         target_node["last_updated"] = now_iso
-        target_node["sensor_ok"] = bool(data.get("status_ok", data.get("sensor_ok", True)))
+        target_node["last_updated_ts"] = now_ts
+        
+        sensor_ok = data.get("dht_ok", data.get("gnss_ok", data.get("status_ok", data.get("sensor_ok", True))))
+        target_node["sensor_ok"] = bool(sensor_ok)
         target_node["error_msg"] = data.get("error", data.get("error_msg", None if target_node["sensor_ok"] else "Sensor anomaly reported"))
 
         # Extract dynamic metrics dictionary or flat root attributes

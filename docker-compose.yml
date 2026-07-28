@@ -10,6 +10,9 @@ services:
     volumes:
       - /mnt/smart-door/database:/app/database
       - /mnt/smart-door/database/logs:/app/logs
+    environment:
+      - MQTT_BROKER_HOST=broker.emqx.io
+      - MQTT_BROKER_PORT=1883
     depends_on:
       - qdrant
 
