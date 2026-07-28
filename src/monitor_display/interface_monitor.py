@@ -25,7 +25,7 @@ logger = get_logger("monitor")
 from qt_imports import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QFrame, Qt, QTimer,
-    pyqtSlot, GPIO, GPIO_AVAILABLE, RELAY_PIN, QColor, QGraphicsDropShadowEffect
+    pyqtSlot, GPIO, GPIO_AVAILABLE, RELAY_PIN, QColor, QGraphicsDropShadowEffect, QStackedWidget
 )
 from frame_emitter import FrameEmitter
 from widgets.video_widget import VideoWidget

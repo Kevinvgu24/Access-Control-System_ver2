@@ -23,7 +23,7 @@ try:
         QApplication, QMainWindow, QWidget, QLabel, QPushButton,
         QLineEdit, QVBoxLayout, QHBoxLayout, QGridLayout, QTabWidget,
         QListWidget, QGroupBox, QMessageBox, QFrame, QScroller,
-        QGraphicsDropShadowEffect
+        QGraphicsDropShadowEffect, QStackedWidget
     )
     # PyQt6 Enum Compatibility Layer
     Qt.AlignCenter = Qt.AlignmentFlag.AlignCenter
@@ -52,7 +52,7 @@ except ImportError:
                 QApplication, QMainWindow, QWidget, QLabel, QPushButton,
                 QLineEdit, QVBoxLayout, QHBoxLayout, QGridLayout, QTabWidget,
                 QListWidget, QGroupBox, QMessageBox, QFrame,
-                QGraphicsDropShadowEffect
+                QGraphicsDropShadowEffect, QStackedWidget
             )
             QScroller = None
         except ImportError:
@@ -63,7 +63,7 @@ except ImportError:
                     QApplication, QMainWindow, QWidget, QLabel, QPushButton,
                     QLineEdit, QVBoxLayout, QHBoxLayout, QGridLayout, QTabWidget,
                     QListWidget, QGroupBox, QMessageBox, QFrame,
-                    QGraphicsDropShadowEffect
+                    QGraphicsDropShadowEffect, QStackedWidget
                 )
                 QScroller = None
             except ImportError:
