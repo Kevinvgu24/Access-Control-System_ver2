@@ -967,45 +967,38 @@ def get_latest_sensors(lab_id):
 
     now_dt = datetime.now().astimezone()
 
-    # Aggregate approved subnodes across all labs (deduplicate by node_id)
+    # 1. Filter subnodes STRICTLY belonging to this lab_id
     subnodes_list = []
-    seen_subnode_ids = set()
     any_online = False
 
-    for lid, lstate in list(labs_registry.items()):
-        subnodes_reg = lstate.get("subnodes", {})
-        for node_id, node_info in list(subnodes_reg.items()):
-            if node_id in seen_subnode_ids:
-                continue
-            seen_subnode_ids.add(node_id)
-            
-            node_copy = node_info.copy()
-            if node_copy.get("maintenance_mode", False):
-                node_copy["online"] = False
-                node_copy["sensor_ok"] = False
-                node_copy["error_msg"] = "Disconnected for Maintenance"
-            elif node_copy.get("last_updated"):
-                try:
-                    last_dt = datetime.fromisoformat(node_copy["last_updated"])
-                    if last_dt.tzinfo is None:
-                        last_dt = last_dt.astimezone()
-                    if (now_dt - last_dt).total_seconds() > 15.0:
-                        node_copy["online"] = False
-                        node_copy["sensor_ok"] = False
-                        node_copy["error_msg"] = "Connection Timeout (>15s)"
-                except Exception:
+    for node_id, node_info in list(subnodes_registry.items()):
+        node_copy = node_info.copy()
+        if node_copy.get("maintenance_mode", False):
+            node_copy["online"] = False
+            node_copy["sensor_ok"] = False
+            node_copy["error_msg"] = "Disconnected for Maintenance"
+        elif node_copy.get("last_updated"):
+            try:
+                last_dt = datetime.fromisoformat(node_copy["last_updated"])
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.astimezone()
+                if (now_dt - last_dt).total_seconds() > 15.0:
                     node_copy["online"] = False
-            else:
+                    node_copy["sensor_ok"] = False
+                    node_copy["error_msg"] = "Connection Timeout (>15s)"
+            except Exception:
                 node_copy["online"] = False
-                node_copy["sensor_ok"] = False
-                node_copy["error_msg"] = "Never Connected"
+        else:
+            node_copy["online"] = False
+            node_copy["sensor_ok"] = False
+            node_copy["error_msg"] = "Never Connected"
 
-            if node_copy["online"]:
-                any_online = True
+        if node_copy["online"]:
+            any_online = True
 
-            subnodes_list.append(node_copy)
+        subnodes_list.append(node_copy)
 
-    # Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 120 seconds)
+    # 2. Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 120 seconds)
     active_pending = []
     seen_pending_ids = set()
     now_ts = time.time()
@@ -1020,27 +1013,40 @@ def get_latest_sensors(lab_id):
             else:
                 pending_queue.pop(pid, None)
 
-    data = latest_sensor_data.copy()
-    data["subnodes"] = subnodes_list
-    data["pending_nodes"] = active_pending
+    # 3. Room Telemetry Overview summary STRICTLY for this lab_id
+    summary = latest_sensor_data.copy()
+    
+    # Fallback to online subnode metrics of THIS lab if summary values are 0
+    for sn in subnodes_list:
+        if sn.get("online"):
+            sndata = sn.get("data", {})
+            if ("temperature" in sndata or "temperature_c" in sndata) and not summary.get("temperature"):
+                summary["temperature"] = float(sndata.get("temperature", sndata.get("temperature_c", 0.0)))
+            if ("humidity" in sndata or "humidity_pct" in sndata) and not summary.get("humidity"):
+                summary["humidity"] = float(sndata.get("humidity", sndata.get("humidity_pct", 0.0)))
+            if "latitude" in sndata and not summary.get("latitude"):
+                summary["latitude"] = float(sndata["latitude"])
+                summary["longitude"] = float(sndata.get("longitude", 0.0))
+            if sn.get("last_updated") and not summary.get("last_updated"):
+                summary["last_updated"] = sn["last_updated"]
 
-    if data.get("last_updated"):
+    summary["subnodes"] = subnodes_list
+    summary["pending_nodes"] = active_pending
+    summary["online"] = any_online if len(subnodes_list) > 0 else False
+
+    if summary.get("last_updated"):
         try:
-            last_dt = datetime.fromisoformat(data["last_updated"])
+            last_dt = datetime.fromisoformat(summary["last_updated"])
             if last_dt.tzinfo is None:
                 last_dt = last_dt.astimezone()
             if (now_dt - last_dt).total_seconds() > 15.0:
-                data["online"] = False
-                data["dht_ok"] = False
-                data["gnss_ok"] = False
-            else:
-                data["online"] = any_online
+                summary["online"] = False
+                summary["dht_ok"] = False
+                summary["gnss_ok"] = False
         except Exception:
-            data["online"] = False
-    else:
-        data["online"] = False
+            summary["online"] = False
 
-    return jsonify(data)
+    return jsonify(summary)
 
 @app.route("/api/labs/<lab_id>/subnodes/approve", methods=["POST"])
 def approve_subnode(lab_id):
@@ -1120,13 +1126,19 @@ def reject_subnode(lab_id):
 
 @app.route("/api/labs/<lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
 def toggle_maintenance(lab_id, node_id):
-    from mqtt_service import get_lab_state
-    subnodes_registry = get_lab_state(lab_id)["subnodes"]
-    
-    if node_id not in subnodes_registry:
+    from mqtt_service import labs_registry
+    target = None
+    target_lab_id = lab_id
+
+    for lid, lstate in list(labs_registry.items()):
+        if node_id in lstate.get("subnodes", {}):
+            target = lstate["subnodes"][node_id]
+            target_lab_id = lid
+            break
+            
+    if not target:
         return jsonify({"success": False, "message": "Node not found"}), 404
 
-    target = subnodes_registry[node_id]
     new_state = not target.get("maintenance_mode", False)
     target["maintenance_mode"] = new_state
     if new_state:
@@ -1138,7 +1150,7 @@ def toggle_maintenance(lab_id, node_id):
         target["error_msg"] = None
 
     # Save to SQLite database so the new state persists
-    db.update_subnode_maintenance(lab_id, node_id, new_state)
+    db.update_subnode_maintenance(target_lab_id, node_id, new_state)
 
     logger.info(f"Toggled maintenance mode for '{node_id}' to {new_state}")
     return jsonify({"success": True, "maintenance_mode": new_state})

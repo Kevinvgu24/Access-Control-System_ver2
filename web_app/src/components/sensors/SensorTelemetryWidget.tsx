@@ -170,9 +170,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   const handleToggleMaintenance = async (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
-    if (!selectedLabId) return
+    const labId = selectedLabId || 'lab_1'
     try {
-      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${nodeId}/toggle-maintenance`, {
+      const res = await fetch(`/api/labs/${labId}/subnodes/${nodeId}/toggle-maintenance`, {
         method: 'POST'
       })
       if (res.ok) {
@@ -189,9 +189,10 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }
 
   const handleConfirmDelete = async () => {
-    if (!selectedLabId || !nodeToDelete) return
+    if (!nodeToDelete) return
+    const labId = selectedLabId || 'lab_1'
     try {
-      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${nodeToDelete.id}`, {
+      const res = await fetch(`/api/labs/${labId}/subnodes/${nodeToDelete.id}`, {
         method: 'DELETE'
       })
       if (res.ok) {
@@ -205,13 +206,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   }
 
   const handleExportExcel = () => {
-    if (!selectedLabId) return
-    window.location.href = `/api/labs/${selectedLabId}/sensors/export`
+    const labId = selectedLabId || 'lab_1'
+    window.location.href = `/api/labs/${labId}/sensors/export`
   }
 
   const handleExportIndividualNode = (nodeId: string) => {
-    if (!selectedLabId) return
-    window.location.href = `/api/labs/${selectedLabId}/nodes/${nodeId}/telemetry/export`
+    const labId = selectedLabId || 'lab_1'
+    window.location.href = `/api/labs/${labId}/nodes/${nodeId}/telemetry/export`
   }
 
   useEffect(() => {
