@@ -148,14 +148,16 @@ class MQTTTelemetryService:
 
         def on_message(client, userdata, msg):
             try:
-                payload_str = msg.payload.decode("utf-8")
-                data = json.loads(payload_str)
+                payload_str = msg.payload.decode("utf-8", errors="ignore")
+                # Sanitize non-standard float representations (nan, NaN, inf) into standard JSON numbers
+                payload_str_clean = payload_str.replace("nan", "0.0").replace("NaN", "0.0").replace("inf", "0.0").replace("Infinity", "0.0")
+                data = json.loads(payload_str_clean)
                 if "manifest" in msg.topic:
                     self.process_manifest_payload(msg.topic, data)
                 else:
                     self.process_telemetry_payload(msg.topic, data)
             except Exception as e:
-                logger.error(f"Error parsing MQTT message from {msg.topic}: {e}")
+                logger.error(f"Error parsing MQTT message from {msg.topic}: {e} | Raw Payload: {msg.payload.decode('utf-8', errors='ignore')}")
 
         while self.running:
             try:
