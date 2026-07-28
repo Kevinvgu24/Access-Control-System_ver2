@@ -122,8 +122,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   const activeSubnode = subnodes.find(s => s.id === selectedSubnodeId)
 
-  // Identify specific disconnected / offline subnodes
-  const offlineSubnodes = subnodes.filter(s => !s.online || s.sensor_ok === false)
+  // Identify specific disconnected / offline subnodes (Network connectivity only)
+  const offlineSubnodes = subnodes.filter(s => !s.online)
   const isAllConnected = subnodes.length > 0 && offlineSubnodes.length === 0 && telemetry.online
 
   const offlineBannerTitle = offlineSubnodes.length === 1
@@ -145,14 +145,14 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
     return (
       <div className="flex flex-col gap-3">
-        <div className="border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all bg-[#fffbeb] border-[#fde047] text-[#b91c1c]">
+        <div className="border-2 rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm transition-all bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]">
           <div className="flex items-center gap-2 text-xs font-bold font-mono">
-            <span className="text-base"><AlertTriangle className="w-5 h-5 text-[#b91c1c]" /></span>
-            <span className="text-[#b91c1c] font-extrabold">
+            <span className="text-base"><AlertTriangle className="w-5 h-5 text-[#e06666]" /></span>
+            <span className="text-[#e06666] font-extrabold">
               {offlineBannerTitle}
             </span>
           </div>
-          <span className="px-2.5 py-1 text-[10px] font-mono font-black rounded uppercase tracking-wider bg-[#fce8e8] text-[#b91c1c] border border-[#e06666] shadow-md shadow-red-500/20 animate-pulse">
+          <span className="px-2.5 py-1 text-[10px] font-mono font-black rounded uppercase tracking-wider bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-md shadow-red-500/30 animate-pulse">
             {offlineTagText}
           </span>
         </div>
@@ -164,21 +164,21 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     <div className="flex flex-col gap-6">
       {/* 1. Status Notification Banner (Only visible when at least 1 subnode is disconnected) */}
       {!isAllConnected && (
-        <div className="border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all bg-[#fffbeb] border-[#fde047] text-[#b91c1c]">
+        <div className="border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 bg-[#fef3c7] border border-[#fde047]">
-              <AlertTriangle className="w-5 h-5 text-[#b91c1c]" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-2xl shrink-0 bg-[#fce8e8] border border-[#e06666]/40">
+              <AlertTriangle className="w-5 h-5 text-[#e06666]" />
             </div>
             <div>
-              <h4 className="font-sans font-extrabold text-sm uppercase tracking-wide text-[#b91c1c]">
+              <h4 className="font-sans font-extrabold text-sm uppercase tracking-wide text-[#e06666] font-black">
                 {offlineBannerTitle}
               </h4>
-              <p className="text-xs mt-0.5 font-sans font-bold text-[#991b1b]">
+              <p className="text-xs mt-0.5 font-sans font-bold text-[#e06666]">
                 {offlineBannerMessage}
               </p>
             </div>
           </div>
-          <span className="px-3.5 py-1.5 font-mono text-xs font-black rounded-lg shadow-md uppercase tracking-wider shrink-0 transition-all bg-[#fce8e8] text-[#b91c1c] border border-[#e06666] shadow-red-500/20 animate-pulse">
+          <span className="px-3.5 py-1.5 font-mono text-xs font-black rounded-lg shadow-md uppercase tracking-wider shrink-0 transition-all bg-[#fce8e8] text-[#e06666] border border-[#e06666] shadow-red-500/30 animate-pulse">
             {offlineTagText}
           </span>
         </div>
