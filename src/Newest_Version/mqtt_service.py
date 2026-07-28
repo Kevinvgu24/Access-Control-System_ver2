@@ -7,7 +7,9 @@ from logger import get_logger
 
 logger = get_logger("mqtt_service")
 
-# Global in-memory cache for Subnodes registry and overall combined telemetry
+# Global in-memory cache for Subnodes registry, pending pairing queue, and overall combined telemetry
+pending_subnodes_queue = {}
+
 subnodes_registry = {
     "subnode1": {
         "id": "subnode1",
@@ -15,6 +17,7 @@ subnodes_registry = {
         "sensors": "DHT11 Temp & Humidity",
         "online": False,
         "sensor_ok": False,
+        "maintenance_mode": False,
         "error_msg": "No connection established",
         "last_updated": None,
         "capabilities": [
@@ -32,6 +35,7 @@ subnodes_registry = {
         "sensors": "LC76G GNSS Module",
         "online": False,
         "sensor_ok": False,
+        "maintenance_mode": False,
         "error_msg": "No connection established",
         "last_updated": None,
         "capabilities": [
@@ -186,37 +190,44 @@ class MQTTTelemetryService:
         logger.info(f"Registered ESP32 Manifest for '{node_id}': {sensors_str}")
 
     def process_telemetry_payload(self, topic, data):
-        global latest_sensor_data, subnodes_registry
+        global latest_sensor_data, subnodes_registry, pending_subnodes_queue
         now_iso = datetime.now().astimezone().isoformat()
         now_ts = time.time()
 
         # Map client node IDs to registered subnodes
         raw_node_id = str(data.get("node_id", data.get("subnode_id", "")))
-        if "DHT11" in raw_node_id or "dht11" in topic or "Node1" in raw_node_id or "subnode1" in raw_node_id or "temperature" in data:
+        if "DHT11" in raw_node_id or "dht11" in topic or "Node1" in raw_node_id or "subnode1" in raw_node_id or ("temperature" in data and "subnode1" in subnodes_registry):
             subnode_id = "subnode1"
-        elif "GPS" in raw_node_id or "gps" in topic or "Node2" in raw_node_id or "subnode2" in raw_node_id or "latitude" in data:
+        elif "GPS" in raw_node_id or "gps" in topic or "Node2" in raw_node_id or "subnode2" in raw_node_id or ("latitude" in data and "subnode2" in subnodes_registry):
             subnode_id = "subnode2"
-        elif raw_node_id:
+        elif raw_node_id in subnodes_registry:
             subnode_id = raw_node_id
         else:
-            subnode_id = "subnode1"
-
-        # Update specific subnode record
-        if subnode_id not in subnodes_registry:
-            subnodes_registry[subnode_id] = {
-                "id": subnode_id,
-                "name": data.get("device_name", f"Subnode ({subnode_id})"),
-                "sensors": "Dynamic Sensor Cluster",
-                "online": True,
-                "sensor_ok": True,
-                "error_msg": None,
-                "last_updated": now_iso,
-                "last_updated_ts": now_ts,
-                "capabilities": [],
-                "data": {}
-            }
+            # Unrecognized / new ESP32 subnode detected via MQTT!
+            # Put into pending discovery queue for user approval instead of auto-registering
+            if raw_node_id and raw_node_id not in subnodes_registry:
+                pending_subnodes_queue[raw_node_id] = {
+                    "id": raw_node_id,
+                    "name": data.get("device_name", f"Discovered ESP32 ({raw_node_id})"),
+                    "sensors": data.get("sensors", "Dynamic MQTT Sensors"),
+                    "topic": topic,
+                    "discovered_at": now_iso,
+                    "sample_data": data
+                }
+                logger.info(f"Queued unapproved ESP32 Subnode '{raw_node_id}' in pairing queue.")
+            return
 
         target_node = subnodes_registry[subnode_id]
+
+        # Check if node is currently in Maintenance Disconnect mode
+        if target_node.get("maintenance_mode", False):
+            target_node["online"] = False
+            target_node["sensor_ok"] = False
+            target_node["error_msg"] = "Disconnected for maintenance"
+            target_node["last_updated"] = now_iso
+            target_node["last_updated_ts"] = now_ts
+            return
+
         target_node["online"] = True
         target_node["last_updated"] = now_iso
         target_node["last_updated_ts"] = now_ts

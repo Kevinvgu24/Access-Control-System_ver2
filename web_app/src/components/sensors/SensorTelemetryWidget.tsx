@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Search, Trash2, Power, Check, X, Radio } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -27,6 +27,7 @@ export interface SubnodeData {
   last_updated?: string
   data: Record<string, any>
   sensor_ok?: boolean
+  maintenance_mode?: boolean
   error_msg?: string
 }
 
@@ -85,6 +86,9 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   const [selectedSubnodeId, setSelectedSubnodeId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pendingNodes, setPendingNodes] = useState<any[]>([])
+  const [showPairingModal, setShowPairingModal] = useState(false)
+  const [customNames, setCustomNames] = useState<Record<string, string>>({})
 
   const fetchTelemetry = async () => {
     if (!selectedLabId) return
@@ -96,11 +100,81 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         if (data.subnodes && Array.isArray(data.subnodes)) {
           setSubnodes(data.subnodes)
         }
+        if (data.pending_nodes && Array.isArray(data.pending_nodes)) {
+          setPendingNodes(data.pending_nodes)
+        }
       }
     } catch (e) {
       console.error('Failed to fetch sensor telemetry:', e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleApproveNode = async (nodeId: string) => {
+    if (!selectedLabId) return
+    try {
+      const customName = customNames[nodeId] || ''
+      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId, custom_name: customName })
+      })
+      if (res.ok) {
+        fetchTelemetry()
+      }
+    } catch (e) {
+      console.error('Failed to approve subnode:', e)
+    }
+  }
+
+  const handleRejectNode = async (nodeId: string) => {
+    if (!selectedLabId) return
+    try {
+      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId })
+      })
+      if (res.ok) {
+        fetchTelemetry()
+      }
+    } catch (e) {
+      console.error('Failed to reject subnode:', e)
+    }
+  }
+
+  const handleToggleMaintenance = async (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation()
+    if (!selectedLabId) return
+    try {
+      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${nodeId}/toggle-maintenance`, {
+        method: 'POST'
+      })
+      if (res.ok) {
+        fetchTelemetry()
+      }
+    } catch (e) {
+      console.error('Failed to toggle subnode maintenance:', e)
+    }
+  }
+
+  const handleDeleteSubnode = async (e: React.MouseEvent, node: SubnodeData) => {
+    e.stopPropagation()
+    if (!selectedLabId) return
+    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE subnode '${node.name}'? All registration and telemetry data will be wiped!`)) {
+      return
+    }
+    try {
+      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${node.id}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        if (selectedSubnodeId === node.id) setSelectedSubnodeId(null)
+        fetchTelemetry()
+      }
+    } catch (e) {
+      console.error('Failed to delete subnode:', e)
     }
   }
 
@@ -368,7 +442,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           )}
         </div>
 
-        {/* RIGHT PANEL (2/6 Width): Subnodes Selection List & Status Badges */}
+        {/* RIGHT PANEL (2/6 Width): Subnodes Selection List & Management Controls */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
             <div>
@@ -379,21 +453,37 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 Subnodes List
               </h3>
             </div>
-            <span className="font-mono text-[11px] text-slate-500 font-bold">
-              {subnodes.filter(s => s.online).length}/{subnodes.length} Online
-            </span>
+
+            {/* Scan / Discover Devices Button */}
+            <button
+              onClick={() => setShowPairingModal(true)}
+              className="relative px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-sm"
+              title="Scan and approve new unpaired ESP32 subnodes discovered over MQTT"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Discover Devices</span>
+              {pendingNodes.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-red-600 text-white font-mono text-[10px] font-extrabold rounded-full animate-bounce shadow-md">
+                  {pendingNodes.length}
+                </span>
+              )}
+            </button>
           </div>
 
           <div className="flex flex-col gap-3">
             {subnodes.map((node) => {
               const isSelected = node.id === selectedSubnodeId
+              const isMaintenance = node.maintenance_mode === true
+
               return (
                 <div
                   key={node.id}
                   onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
-                  className={`border rounded-xl p-3.5 cursor-pointer transition-all flex items-center justify-between shadow-sm ${
+                  className={`border rounded-xl p-3.5 cursor-pointer transition-all flex flex-col gap-2.5 shadow-sm ${
                     isSelected 
-                      ? 'bg-orange-500 text-white border-transparent shadow-md font-bold' 
+                      ? 'bg-orange-50 border-orange-400 shadow-md font-bold' 
+                      : isMaintenance
+                      ? 'bg-slate-50 border-slate-300 opacity-80'
                       : node.online && node.sensor_ok
                       ? 'bg-white text-slate-900 border-slate-200 hover:bg-slate-100 hover:border-slate-300' 
                       : node.online
@@ -401,24 +491,53 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                       : 'bg-red-50 text-slate-900 border-red-300 hover:bg-red-100'
                   }`}
                 >
-                  <div className="min-w-0 flex flex-col gap-1">
-                    <span className={`font-mono text-sm font-black truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                      {node.name}
-                    </span>
-                    <span className={`text-[11px] truncate font-mono ${isSelected ? 'text-white/90' : 'text-slate-500'}`}>
-                      {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex flex-col gap-0.5">
+                      <span className="font-mono text-sm font-black truncate text-slate-900">
+                        {node.name}
+                      </span>
+                      <span className="text-[11px] truncate font-mono text-slate-500">
+                        {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
+                      </span>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 ${
+                      isMaintenance
+                        ? 'bg-slate-600 text-white border border-slate-700'
+                        : node.online && node.sensor_ok
+                        ? 'bg-emerald-600 text-white border border-emerald-700' 
+                        : node.online
+                        ? 'bg-amber-500 text-white border border-amber-600'
+                        : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
+                    }`}>
+                      {isMaintenance ? 'MAINTENANCE' : node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
                     </span>
                   </div>
 
-                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 ${
-                    node.online && node.sensor_ok
-                      ? 'bg-emerald-600 text-white border border-emerald-700' 
-                      : node.online
-                      ? 'bg-amber-500 text-white border border-amber-600'
-                      : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
-                  }`}>
-                    {node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
-                  </span>
+                  {/* Subnode Maintenance & Delete Control Buttons */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => handleToggleMaintenance(e, node.id)}
+                      className={`px-2.5 py-1 text-[11px] font-mono font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+                        isMaintenance
+                          ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border-slate-200'
+                      }`}
+                      title={isMaintenance ? 'Reconnect node after hardware maintenance' : 'Disconnect node for hardware maintenance'}
+                    >
+                      <Power className="w-3 h-3" />
+                      <span>{isMaintenance ? '⚡ Reconnect' : '🔌 Maintenance'}</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => handleDeleteSubnode(e, node)}
+                      className="px-2.5 py-1 text-[11px] font-mono font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all flex items-center gap-1"
+                      title="Permanently delete subnode registration and data"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -430,6 +549,104 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
         </div>
 
       </div>
+
+      {/* PAIRING MODAL: PENDING SUBNODES PAIRING QUEUE */}
+      {showPairingModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white border-b border-slate-800">
+              <div className="flex items-center gap-2 font-mono">
+                <Radio className="w-5 h-5 text-orange-500 animate-pulse" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                  Pending Pairing Queue ({pendingNodes.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPairingModal(false)}
+                className="p-1 hover:bg-slate-800 rounded-lg transition-all text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex flex-col gap-4">
+              <p className="text-xs font-mono text-slate-600">
+                The following unapproved ESP32 hardware subnodes were discovered via MQTT. Approving a device will pair it to the system.
+              </p>
+
+              {pendingNodes.length === 0 ? (
+                <div className="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center flex flex-col items-center gap-2">
+                  <Search className="w-8 h-8 text-slate-300" />
+                  <span className="font-mono text-xs font-bold text-slate-500">
+                    No unapproved subnodes waiting in pairing queue.
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Power on a new ESP32 subnode to auto-discover it over MQTT.
+                  </span>
+                </div>
+              ) : (
+                pendingNodes.map((pNode) => (
+                  <div key={pNode.id} className="border-2 border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-mono text-xs font-black text-slate-900 block">
+                          Node ID: {pNode.id}
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-500 block mt-0.5">
+                          Sensors: {pNode.sensors || 'Dynamic Cluster'}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-mono font-bold uppercase">
+                        PENDING APPROVAL
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-mono font-bold text-slate-600">
+                        Custom Subnode Name (Optional):
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={`e.g. Subnode ${pendingNodes.indexOf(pNode) + 3} - Air Quality`}
+                        value={customNames[pNode.id] || ''}
+                        onChange={(e) => setCustomNames({ ...customNames, [pNode.id]: e.target.value })}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        onClick={() => handleRejectNode(pNode.id)}
+                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Reject</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleApproveNode(pNode.id)}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve & Pair</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="bg-slate-100 px-6 py-3 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setShowPairingModal(false)}
+                className="px-4 py-2 bg-slate-900 text-white font-mono text-xs font-bold rounded-lg hover:bg-slate-800 transition-all"
+              >
+                Close Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

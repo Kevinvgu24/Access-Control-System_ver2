@@ -959,7 +959,7 @@ def get_ir_stream(lab_id, node_id):
 # 15c. Sensor Telemetry Endpoints (DHT11 & GPS Subnodes)
 @app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
-    from mqtt_service import subnodes_registry
+    from mqtt_service import subnodes_registry, pending_subnodes_queue
     now_dt = datetime.now().astimezone()
 
     # Update freshness for each subnode in registry
@@ -967,7 +967,11 @@ def get_latest_sensors(lab_id):
     any_online = False
     for node_id, node_info in list(subnodes_registry.items()):
         node_copy = node_info.copy()
-        if node_copy.get("last_updated"):
+        if node_copy.get("maintenance_mode", False):
+            node_copy["online"] = False
+            node_copy["sensor_ok"] = False
+            node_copy["error_msg"] = "Disconnected for Maintenance"
+        elif node_copy.get("last_updated"):
             try:
                 last_dt = datetime.fromisoformat(node_copy["last_updated"])
                 if last_dt.tzinfo is None:
@@ -990,6 +994,7 @@ def get_latest_sensors(lab_id):
 
     data = latest_sensor_data.copy()
     data["subnodes"] = subnodes_list
+    data["pending_nodes"] = list(pending_subnodes_queue.values())
 
     if data.get("last_updated"):
         try:
@@ -1008,6 +1013,87 @@ def get_latest_sensors(lab_id):
         data["online"] = False
 
     return jsonify(data)
+
+@app.route("/api/labs/<lab_id>/subnodes/approve", methods=["POST"])
+def approve_subnode(lab_id):
+    from mqtt_service import subnodes_registry, pending_subnodes_queue
+    req_data = request.json or {}
+    node_id = req_data.get("node_id")
+    custom_name = req_data.get("custom_name")
+
+    if not node_id:
+        return jsonify({"success": False, "message": "Missing node_id"}), 400
+
+    pending_node = pending_subnodes_queue.pop(node_id, None)
+    if not pending_node and node_id not in subnodes_registry:
+        return jsonify({"success": False, "message": "Node not found in pending queue"}), 440
+
+    name = custom_name or (pending_node.get("name") if pending_node else f"Subnode ({node_id})")
+    sensors = pending_node.get("sensors", "Dynamic MQTT Sensors") if pending_node else "Approved Dynamic Cluster"
+
+    subnodes_registry[node_id] = {
+        "id": node_id,
+        "name": name,
+        "sensors": sensors,
+        "online": True,
+        "sensor_ok": True,
+        "maintenance_mode": False,
+        "error_msg": None,
+        "last_updated": datetime.now().astimezone().isoformat(),
+        "capabilities": [],
+        "data": pending_node.get("sample_data", {}) if pending_node else {}
+    }
+
+    logger.info(f"Approved and paired new ESP32 Subnode '{node_id}' ({name}).")
+    return jsonify({"success": True, "message": f"Subnode '{name}' paired successfully", "subnode": subnodes_registry[node_id]})
+
+@app.route("/api/labs/<lab_id>/subnodes/reject", methods=["POST"])
+def reject_subnode(lab_id):
+    from mqtt_service import pending_subnodes_queue
+    req_data = request.json or {}
+    node_id = req_data.get("node_id")
+
+    if not node_id:
+        return jsonify({"success": False, "message": "Missing node_id"}), 400
+
+    pending_subnodes_queue.pop(node_id, None)
+    logger.info(f"Rejected pending ESP32 Subnode pairing request '{node_id}'.")
+    return jsonify({"success": True, "message": "Pending subnode pairing rejected"})
+
+@app.route("/api/labs/<lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
+def toggle_subnode_maintenance(lab_id, node_id):
+    from mqtt_service import subnodes_registry
+    if node_id not in subnodes_registry:
+        return jsonify({"success": False, "message": "Subnode not found"}), 404
+
+    target = subnodes_registry[node_id]
+    current_mode = target.get("maintenance_mode", False)
+    target["maintenance_mode"] = not current_mode
+
+    if target["maintenance_mode"]:
+        target["online"] = False
+        target["sensor_ok"] = False
+        target["error_msg"] = "Disconnected for Maintenance"
+        action = "disconnected for maintenance"
+    else:
+        target["online"] = True
+        target["error_msg"] = None
+        action = "re-connected for normal operation"
+
+    logger.info(f"Subnode '{node_id}' maintenance mode updated: {action}")
+    return jsonify({"success": True, "maintenance_mode": target["maintenance_mode"], "subnode": target})
+
+@app.route("/api/labs/<lab_id>/subnodes/<node_id>", methods=["DELETE"])
+def delete_subnode(lab_id, node_id):
+    from mqtt_service import subnodes_registry, pending_subnodes_queue
+    removed_registry = subnodes_registry.pop(node_id, None)
+    removed_pending = pending_subnodes_queue.pop(node_id, None)
+
+    if not removed_registry and not removed_pending:
+        return jsonify({"success": False, "message": "Subnode not found"}), 404
+
+    logger.info(f"Permanently wiped subnode '{node_id}' from system registry.")
+    return jsonify({"success": True, "message": f"Subnode '{node_id}' deleted permanently"})
 
 @app.route("/api/labs/<lab_id>/sensors/telemetry", methods=["POST"])
 def post_sensor_telemetry(lab_id):
