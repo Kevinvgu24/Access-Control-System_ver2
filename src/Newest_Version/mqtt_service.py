@@ -36,10 +36,16 @@ def get_lab_state(lab_id):
     return labs_registry[lab_id]
 
 def extract_lab_id(topic):
-    parts = topic.split('/')
     # Expected format: smartdoor/{lab_id}/sensors/...
-    if len(parts) >= 3 and parts[0] == "smartdoor":
-        return parts[1]
+    if topic.startswith("smartdoor/"):
+        sensors_idx = topic.find("/sensors/")
+        if sensors_idx != -1:
+            extracted = topic[len("smartdoor/"):sensors_idx]
+            if extracted:
+                return extracted
+        parts = topic.split('/')
+        if len(parts) >= 2 and parts[1]:
+            return parts[1]
     return "lab_1"
 
 

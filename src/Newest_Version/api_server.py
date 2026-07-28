@@ -958,7 +958,7 @@ def get_ir_stream(lab_id, node_id):
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # 15c. Sensor Telemetry Endpoints (DHT11 & GPS Subnodes)
-@app.route("/api/labs/<lab_id>/sensors/latest", methods=["GET"])
+@app.route("/api/labs/<path:lab_id>/sensors/latest", methods=["GET"])
 def get_latest_sensors(lab_id):
     from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
@@ -1048,7 +1048,7 @@ def get_latest_sensors(lab_id):
 
     return jsonify(summary)
 
-@app.route("/api/labs/<lab_id>/subnodes/approve", methods=["POST"])
+@app.route("/api/labs/<path:lab_id>/subnodes/approve", methods=["POST"])
 def approve_subnode(lab_id):
     from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
@@ -1108,7 +1108,7 @@ def approve_subnode(lab_id):
     logger.info(f"Approved and paired new ESP32 Subnode '{node_id}' ({name}).")
     return jsonify({"success": True, "message": f"Subnode '{name}' paired successfully", "subnode": subnodes_registry[node_id]})
 
-@app.route("/api/labs/<lab_id>/subnodes/reject", methods=["POST"])
+@app.route("/api/labs/<path:lab_id>/subnodes/reject", methods=["POST"])
 def reject_subnode(lab_id):
     from mqtt_service import labs_registry
     
@@ -1124,7 +1124,7 @@ def reject_subnode(lab_id):
     logger.info(f"Rejected pending ESP32 Subnode pairing request '{node_id}'.")
     return jsonify({"success": True, "message": "Pending subnode pairing rejected"})
 
-@app.route("/api/labs/<lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
+@app.route("/api/labs/<path:lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])
 def toggle_maintenance(lab_id, node_id):
     from mqtt_service import labs_registry
     target = None
@@ -1155,7 +1155,7 @@ def toggle_maintenance(lab_id, node_id):
     logger.info(f"Toggled maintenance mode for '{node_id}' to {new_state}")
     return jsonify({"success": True, "maintenance_mode": new_state})
 
-@app.route("/api/labs/<lab_id>/subnodes/<node_id>", methods=["DELETE"])
+@app.route("/api/labs/<path:lab_id>/subnodes/<node_id>", methods=["DELETE"])
 def delete_subnode(lab_id, node_id):
     from mqtt_service import get_lab_state, labs_registry
     state = get_lab_state(lab_id)
