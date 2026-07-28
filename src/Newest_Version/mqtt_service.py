@@ -150,7 +150,8 @@ class MQTTTelemetryService:
                 "data": {}
             }
         else:
-            subnodes_registry[node_id]["name"] = device_name
+            if not subnodes_registry[node_id].get("name"):
+                subnodes_registry[node_id]["name"] = device_name
             subnodes_registry[node_id]["sensors"] = sensors_str
             subnodes_registry[node_id]["capabilities"] = capabilities
 

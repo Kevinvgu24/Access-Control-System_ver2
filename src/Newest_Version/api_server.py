@@ -1037,7 +1037,14 @@ def approve_subnode(lab_id):
     if not pending_node and node_id not in subnodes_registry:
         return jsonify({"success": False, "message": "Node not found in pending queue"}), 440
 
-    name = custom_name or (pending_node.get("name") if pending_node else f"Subnode ({node_id})")
+    custom_name = (req_data.get("custom_name") or "").strip()
+    if custom_name:
+        name = custom_name
+    elif pending_node and pending_node.get("name") and not pending_node["name"].startswith("Discovered ESP32"):
+        name = pending_node["name"]
+    else:
+        existing_count = len(subnodes_registry) + 1
+        name = f"Subnode {existing_count} ({node_id})"
     sensors = pending_node.get("sensors", "Dynamic MQTT Sensors") if pending_node else "Approved Dynamic Cluster"
 
     subnodes_registry[node_id] = {

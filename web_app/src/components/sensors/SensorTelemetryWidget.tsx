@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio } from 'lucide-react'
+import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio, Activity } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -34,12 +34,18 @@ export interface SubnodeData {
 export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }) {
   const { selectedLabId } = useLabStore()
 
-  const formatLocalTime = (isoStr?: string | null) => {
+  const formatLocalTime = (isoStr?: string | number | null) => {
     if (!isoStr) return 'N/A'
     try {
-      const d = new Date(isoStr)
+      const d = typeof isoStr === 'number' ? new Date(isoStr) : new Date(isoStr)
       if (isNaN(d.getTime())) return 'N/A'
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const hours = String(d.getHours()).padStart(2, '0')
+      const minutes = String(d.getMinutes()).padStart(2, '0')
+      const seconds = String(d.getSeconds()).padStart(2, '0')
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
     } catch {
       return 'N/A'
     }
@@ -277,37 +283,59 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   >
                     <span>← Back to Room Telemetry Overview</span>
                   </button>
-                  <h3 className="text-xl font-bold text-white tracking-tight">
-                    {activeSubnode.name} — Hardware Inspection & Telemetry
+                  <h3 className="text-xl font-bold text-white tracking-tight flex flex-wrap items-center gap-2 max-w-full overflow-hidden">
+                    <span className="truncate max-w-[260px] sm:max-w-md" title={activeSubnode.name}>{activeSubnode.name}</span>
+                    <span className="text-xs font-mono font-bold text-orange-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 break-all shrink-0">
+                      ID: {activeSubnode.id}
+                    </span>
                   </h3>
                   {activeSubnode.sensors && (
-                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                    <p className="text-xs text-slate-400 mt-1 font-mono truncate" title={activeSubnode.sensors}>
                       Declared Sensor Modules: <span className="text-slate-200 font-semibold">{activeSubnode.sensors}</span>
                     </p>
                   )}
                 </div>
 
-                <span className={`px-3 py-1 rounded text-xs font-mono font-black uppercase tracking-wider ${
-                  activeSubnode.online && activeSubnode.sensor_ok
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                <span
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-black uppercase tracking-wider border shrink-0 ${
+                    !activeSubnode.maintenance_mode && !activeSubnode.online ? 'animate-pulse' : ''
+                  }`}
+                  style={
+                    activeSubnode.maintenance_mode
+                      ? { backgroundColor: '#94a3b8', color: '#ffffff', borderColor: '#64748b' }
+                      : activeSubnode.online && activeSubnode.sensor_ok
+                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                      : activeSubnode.online
+                      ? { backgroundColor: '#fef9c3', color: '#a16207', borderColor: '#fde047' }
+                      : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                  }
+                >
+                  {activeSubnode.maintenance_mode
+                    ? '🛠 MAINTENANCE'
+                    : activeSubnode.online && activeSubnode.sensor_ok
+                    ? '● ONLINE (OK)'
                     : activeSubnode.online
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    : 'bg-red-600 text-white border border-red-700 animate-pulse'
-                }`}>
-                  {activeSubnode.online && activeSubnode.sensor_ok ? '● ONLINE (OK)' : activeSubnode.online ? '⚠️ WARNING' : '✖ OFFLINE'}
+                    ? '⚠️ WARNING'
+                    : '✖ OFFLINE'}
                 </span>
               </div>
 
               {/* Dynamic Telemetry Metric Cards for Active Subnode */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 font-mono text-xs">
                 {Object.entries(activeSubnode.data || {}).map(([key, val]) => (
-                  <div key={key} className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">{key.replace('_', ' ')}</span>
-                      <span className="text-base">📊</span>
+                  <div key={key} className="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between overflow-hidden">
+                    <div className="flex justify-between items-center gap-1 overflow-hidden">
+                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider truncate" title={key.replace('_', ' ')}>
+                        {key.replace('_', ' ')}
+                      </span>
+                      <Activity className="w-4 h-4 text-orange-400 shrink-0" />
                     </div>
-                    <p className="text-2xl font-black text-white mt-2">
-                      {activeSubnode.online ? (typeof val === 'number' ? val.toFixed(1) : String(val)) : '--'}
+                    <p className={`font-black text-white mt-2 truncate ${key.toLowerCase().includes('timestamp') ? 'text-sm font-mono text-orange-300' : 'text-2xl'}`}>
+                      {activeSubnode.online 
+                        ? (key.toLowerCase().includes('timestamp') 
+                            ? formatLocalTime(val as any) 
+                            : (typeof val === 'number' ? val.toFixed(1) : String(val))) 
+                        : '--'}
                     </p>
                   </div>
                 ))}
@@ -490,7 +518,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                 <div
                   key={node.id}
                   onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}
-                  className={`border rounded-xl p-3.5 cursor-pointer transition-all flex flex-col gap-2.5 shadow-sm ${
+                  className={`border rounded-xl p-3.5 cursor-pointer transition-all flex flex-col gap-2.5 shadow-sm overflow-hidden ${
                     isSelected 
                       ? 'bg-orange-50 border-orange-400 shadow-md font-bold' 
                       : isMaintenance
@@ -502,13 +530,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                       : 'bg-red-50 text-slate-900 border-red-300 hover:bg-red-100'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex flex-col gap-0.5">
-                      <span className="font-mono text-sm font-black truncate text-slate-900">
+                  <div className="flex items-center justify-between gap-2 overflow-hidden">
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5 overflow-hidden">
+                      <span className="font-mono text-sm font-black truncate text-slate-900 block" title={node.name}>
                         {node.name}
                       </span>
-                      <span className="text-[11px] truncate font-mono text-slate-500">
-                        {node.sensors ? node.sensors.split(',')[0] : 'ESP32 Subnode'}
+                      <span className="text-[11px] truncate font-mono text-slate-500 block" title={node.sensors}>
+                        {node.sensors || 'ESP32 Subnode'}
                       </span>
                     </div>
 
@@ -670,13 +698,13 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               ) : (
                 <div className="flex flex-col gap-3.5 max-h-[380px] overflow-y-auto pr-1">
                   {pendingNodes.map((pNode) => (
-                    <div key={pNode.id} className="border-2 border-slate-200 hover:border-orange-300 rounded-xl p-4 bg-slate-50 flex flex-col gap-3 transition-all shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-mono text-xs font-black text-slate-900 block">
-                            Hardware ID: <code className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800 font-bold">{pNode.id}</code>
+                    <div key={pNode.id} className="border-2 border-slate-200 hover:border-orange-300 rounded-xl p-4 bg-slate-50 flex flex-col gap-3 transition-all shadow-sm overflow-hidden">
+                      <div className="flex items-center justify-between gap-2 overflow-hidden">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <span className="font-mono text-xs font-black text-slate-900 block truncate" title={`Hardware ID: ${pNode.id}`}>
+                            Hardware ID: <code className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800 font-bold break-all">{pNode.id}</code>
                           </span>
-                          <span className="font-mono text-[11px] text-slate-500 block mt-0.5">
+                          <span className="font-mono text-[11px] text-slate-500 block mt-0.5 truncate" title={pNode.sensors}>
                             Declared Sensors: {pNode.sensors || 'Dynamic Cluster'}
                           </span>
                         </div>
