@@ -179,22 +179,22 @@ export function LabSelectorPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {labs.map(lab => (
             <div
               key={lab.id}
               onClick={() => pick(lab)}
-              className="group bg-surface border border-line rounded-lg p-6 text-left hover:border-green/25 hover:bg-green/5 transition-all cursor-pointer shadow-sm flex flex-col justify-between min-h-[145px]"
+              className="group bg-surface border border-line rounded-xl p-5 text-left hover:border-orange-500/40 hover:bg-orange-500/5 transition-all cursor-pointer shadow-sm flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <span className={`inline-flex px-2 py-0.5 rounded font-mono text-[11px] border ${
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <span className={`inline-flex px-2 py-0.5 rounded font-mono text-[11px] font-bold border ${
                     lab.status === 'active'
                       ? 'bg-green/10 text-green border-green/20'
                       : 'bg-amber/10 text-amber border-amber/20'
                   }`}>{lab.status}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] text-[#94a3b8]">{lab.code}</span>
+                    <span className="font-mono text-[11px] font-bold text-[#64748b] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{lab.code}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -222,9 +222,44 @@ export function LabSelectorPage() {
                     </button>
                   </div>
                 </div>
-                <p className="text-lg font-bold text-[#0f172a] leading-tight">{lab.name}</p>
+                <p className="text-xl font-extrabold text-[#0f172a] leading-tight">{lab.name}</p>
+                <p className="font-mono text-[11px] text-[#64748b] mt-1.5 flex items-center gap-1.5">
+                  <span>📍 {[lab.location, lab.manager ? `Quản lý: ${lab.manager}` : ''].filter(Boolean).join(' · ') || '—'}</span>
+                </p>
               </div>
-              <p className="font-mono text-[11px] text-[#94a3b8] mt-2">{[lab.location, lab.manager].filter(Boolean).join(' · ') || '—'}</p>
+
+              {/* RPi 5 Node Security Passcode & Audit Badge */}
+              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2 bg-orange-500/10 border border-orange-500/30 rounded-lg px-3 py-2">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-mono text-[10px] text-orange-600 font-extrabold uppercase tracking-wider flex items-center gap-1">
+                      🔐 RPi5 Passcode
+                    </span>
+                    <span className="font-mono text-sm font-black text-orange-600 truncate">
+                      {lab.activationCode || `ACT-${(lab.code || '304').toUpperCase()}`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const codeToCopy = lab.activationCode || `ACT-${(lab.code || '304').toUpperCase()}`
+                      navigator.clipboard.writeText(codeToCopy)
+                      alert(`Đã sao chép mã kích hoạt RPi5: ${codeToCopy}`)
+                    }}
+                    className="text-[11px] font-mono bg-orange-500/20 hover:bg-orange-500/30 text-orange-700 font-bold px-2.5 py-1 rounded border border-orange-500/30 transition-colors shrink-0 cursor-pointer active:scale-95"
+                    title="Sao chép mã kích hoạt"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+
+                {lab.nodeActivatedAt && (
+                  <div className="flex flex-col gap-0.5 px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[10px] font-mono text-emerald-700">
+                    <span className="font-bold truncate">🕒 Kích hoạt: {lab.nodeActivatedAt}</span>
+                    <span className="truncate">👤 Admin: {lab.nodeActivatedBy || 'Kevin'}</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

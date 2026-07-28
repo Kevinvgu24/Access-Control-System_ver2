@@ -127,52 +127,6 @@ export function SystemPage() {
         </div>
       </div>
 
-      {/* Node Deployment & Activation Security Badge */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-orange-950/40 border border-orange-500/30 rounded-xl p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 text-xl font-bold shrink-0">
-            🔐
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-xs text-orange-400 font-extrabold uppercase tracking-wider">Raspberry Pi 5 Node Deployment Security</span>
-              <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-mono font-bold">Lab Passcode</span>
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-mono font-bold border border-blue-500/30">
-                👤 Người Tạo Lab: {labCreator || admin?.email || 'Kevin (dawnnkevin9@gmail.com)'}
-              </span>
-            </div>
-            <p className="text-sm font-semibold text-slate-200 mt-1">
-              Mã Kích Hoạt (Activation Code) cho Phòng Lab <span className="text-orange-400 font-bold">{selectedLabId || '304'}</span> (Tạo bởi: <span className="text-blue-400 font-mono font-bold">{labCreator || admin?.email || 'Kevin'}</span>):
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Nhập mã kích hoạt này trên màn hình cài đặt Raspberry Pi 5 lần đầu để xác thực quyền quản lý và gán thiết bị vào phòng lab.
-            </p>
-            {nodeActivatedAt && (
-              <div className="mt-2 flex items-center gap-3 text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-md">
-                <span>🕒 Ngày giờ kích hoạt: <strong className="text-emerald-300">{nodeActivatedAt}</strong></span>
-                <span>•</span>
-                <span>👤 Kích hoạt bởi Admin: <strong className="text-emerald-300">{nodeActivatedBy || 'Kevin'}</strong></span>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3 self-stretch md:self-auto bg-slate-950 px-4 py-2.5 rounded-lg border border-orange-500/40">
-          <span className="font-mono text-xl font-black tracking-widest text-orange-400">
-            {activationCode || `ACT-${(selectedLabId || '304').toUpperCase()}`}
-          </span>
-          <button
-            onClick={() => {
-              const codeToCopy = activationCode || `ACT-${(selectedLabId || '304').toUpperCase()}`
-              navigator.clipboard.writeText(codeToCopy)
-              alert(`Đã sao chép mã kích hoạt: ${codeToCopy}`)
-            }}
-            className="text-xs font-mono bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1.5 rounded border border-orange-500/30 transition-colors font-bold active:scale-95 cursor-pointer"
-          >
-            📋 Sao chép
-          </button>
-        </div>
-      </div>
-
       {/* Embedded Full ESP32 Sensor & GPS Telemetry Widget */}
       <SensorTelemetryWidget compact={false} />
 

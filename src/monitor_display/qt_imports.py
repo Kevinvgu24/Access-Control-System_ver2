@@ -42,7 +42,7 @@ except ImportError:
             QApplication, QMainWindow, QWidget, QLabel, QPushButton,
             QLineEdit, QVBoxLayout, QHBoxLayout, QGridLayout, QTabWidget,
             QListWidget, QGroupBox, QMessageBox, QFrame, QScroller,
-            QGraphicsDropShadowEffect
+            QGraphicsDropShadowEffect, QStackedWidget
         )
     except ImportError:
         try:

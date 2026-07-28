@@ -170,32 +170,27 @@ class InterfaceMonitorApp(QMainWindow):
             }
         """)
 
-        # Central Widget
-        central = QWidget(self)
-        central.setObjectName("centralWidget")
-        self.setCentralWidget(central)
+        # Central Widget: QStackedWidget switching between standalone Setup Screen and Main Dashboard
+        self.stacked_widget = QStackedWidget(self)
+        self.setCentralWidget(self.stacked_widget)
 
-        # Main horizontal layout dividing screen into Left and Right
-        main_layout = QHBoxLayout(central)
+        # =====================================================================
+        # PAGE 1: Main Operational Dashboard Page
+        # =====================================================================
+        self.mainPage = QWidget()
+        main_layout = QHBoxLayout(self.mainPage)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
 
-        # =====================================================================
         # LEFT PANEL: Video Stream Feed & Door Lock Status
-        # =====================================================================
         self.videoWidget = VideoWidget(self)
         main_layout.addWidget(self.videoWidget, stretch=11)
 
-        # [OPT] Removed QGraphicsDropShadowEffect on VideoWidget — compositing shadow
-        # on every repaint (30fps) wastes ~10% CPU on ARM. Border used via stylesheet instead.
-
-        # =====================================================================
         # RIGHT PANEL: Tabbed Touchscreen Navigation & Controls
-        # =====================================================================
         right_frame = QFrame()
         right_frame.setObjectName("panelFrame")
         
-        # Add beautiful 3D relief drop shadow to Control Panel Card
+        # Add 3D relief drop shadow to Control Panel Card
         shadow_control = QGraphicsDropShadowEffect(self)
         shadow_control.setBlurRadius(15)
         shadow_control.setColor(QColor(0, 0, 0, 40))
@@ -233,26 +228,66 @@ class InterfaceMonitorApp(QMainWindow):
         cfg = get_lab_config()
         self.videoWidget.lab_code = cfg['lab_code']
 
-        # Add tabs
+        # Add operational tabs
         self.tabs.addTab(self.tabAccess, "Access")
         self.tabs.addTab(self.tabKeypad, "Keypad")
         self.tabs.addTab(self.tabRegister, "Register")
         self.tabs.addTab(self.tabLogs, "Logs")
-        self.tabs.addTab(self.tabLab, "Lab Setup")
-
-        # If Pi 5 is booting up for the first time or pending activation, jump to Lab Setup tab immediately!
-        if not cfg.get('is_activated'):
-            self.tabs.setCurrentIndex(4)
-
-        self.tabs.currentChanged.connect(self.handle_tab_changed)
 
         right_layout.addWidget(self.tabs)
         main_layout.addWidget(right_frame, stretch=9)
+        self.stacked_widget.addWidget(self.mainPage)
+
+        # =====================================================================
+        # PAGE 0: Standalone Setup Page (Shown exclusively when pending activation)
+        # =====================================================================
+        self.setupPage = QWidget()
+        self.setupPage.setStyleSheet("background-color: #020617;")
+        setup_outer_layout = QVBoxLayout(self.setupPage)
+        setup_outer_layout.setContentsMargins(20, 20, 20, 20)
+        setup_outer_layout.setAlignment(Qt.AlignCenter)
+
+        self.setup_card = QFrame()
+        self.setup_card.setFixedWidth(660)
+        self.setup_card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border: 2px solid #ea580c;
+                border-radius: 16px;
+            }
+        """)
+        self.card_layout = QVBoxLayout(self.setup_card)
+        self.card_layout.setContentsMargins(20, 20, 20, 20)
+        setup_outer_layout.addWidget(self.setup_card)
+
+        self.stacked_widget.addWidget(self.setupPage)
+
+        # Enforce strict initial state display according to activation status:
+        if not cfg.get('is_activated'):
+            # Pending activation: Show ONLY setup page, zero operational components visible
+            self.card_layout.addWidget(self.tabLab)
+            self.stacked_widget.setCurrentWidget(self.setupPage)
+        else:
+            # Fully activated: Add Lab Setup tab & display main operational dashboard
+            self.tabs.addTab(self.tabLab, "Lab Setup")
+            self.stacked_widget.setCurrentWidget(self.mainPage)
+            self.tabs.setCurrentIndex(0)
+
+        self.tabs.currentChanged.connect(self.handle_tab_changed)
 
     def on_lab_code_changed(self, new_lab_code):
+        os.environ["LAB_ID"] = new_lab_code
         self.videoWidget.lab_code = new_lab_code
         self.add_log("Lab Setup", f"Assigned & Activated Raspberry Pi 5 node for LAB Code: '{new_lab_code}'.")
+
+        # Dynamically move tabLab into QTabWidget if completing initial setup
+        if self.tabs.indexOf(self.tabLab) == -1:
+            self.tabs.addTab(self.tabLab, "Lab Setup")
+
+        # Switch full view from Setup Page to Main Operational Dashboard
+        self.stacked_widget.setCurrentWidget(self.mainPage)
         self.tabs.setCurrentIndex(0)
+        self.update_recognition_state()
 
     def log_event_async(self, **kwargs):
         """Asynchronously log access events to prevent blocking the Qt main thread."""

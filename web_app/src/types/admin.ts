@@ -27,6 +27,9 @@ export interface Lab {
   timezone:    string
   manager?:    string
   status:      LabStatus
+  activationCode?: string
+  nodeActivatedAt?: string
+  nodeActivatedBy?: string
   createdAt:   Timestamp | null
   updatedAt:   Timestamp | null
 }
