@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Search, Trash2, Power, Check, X, Radio } from 'lucide-react'
+import { AlertTriangle, Search, Trash2, Power, Wrench, Check, X, Radio } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 
 export interface TelemetryData {
@@ -89,6 +89,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
   const [pendingNodes, setPendingNodes] = useState<any[]>([])
   const [showPairingModal, setShowPairingModal] = useState(false)
   const [customNames, setCustomNames] = useState<Record<string, string>>({})
+  const [nodeToDelete, setNodeToDelete] = useState<SubnodeData | null>(null)
 
   const fetchTelemetry = async () => {
     if (!selectedLabId) return
@@ -159,18 +160,20 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
     }
   }
 
-  const handleDeleteSubnode = async (e: React.MouseEvent, node: SubnodeData) => {
+  const handleOpenDeleteModal = (e: React.MouseEvent, node: SubnodeData) => {
     e.stopPropagation()
-    if (!selectedLabId) return
-    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE subnode '${node.name}'? All registration and telemetry data will be wiped!`)) {
-      return
-    }
+    setNodeToDelete(node)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!selectedLabId || !nodeToDelete) return
     try {
-      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${node.id}`, {
+      const res = await fetch(`/api/labs/${selectedLabId}/subnodes/${nodeToDelete.id}`, {
         method: 'DELETE'
       })
       if (res.ok) {
-        if (selectedSubnodeId === node.id) setSelectedSubnodeId(null)
+        if (selectedSubnodeId === nodeToDelete.id) setSelectedSubnodeId(null)
+        setNodeToDelete(null)
         fetchTelemetry()
       }
     } catch (e) {
@@ -503,39 +506,39 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider shrink-0 ${
                       isMaintenance
-                        ? 'bg-slate-600 text-white border border-slate-700'
+                        ? 'bg-slate-400 text-white border border-slate-500 font-black'
                         : node.online && node.sensor_ok
-                        ? 'bg-emerald-600 text-white border border-emerald-700' 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-black' 
                         : node.online
-                        ? 'bg-amber-500 text-white border border-amber-600'
-                        : 'bg-red-600 text-white border border-red-700 shadow-sm animate-pulse'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300 font-black'
+                        : 'bg-[#fce8e8] text-[#e06666] border border-[#e06666]/40 font-black animate-pulse'
                     }`}>
                       {isMaintenance ? 'MAINTENANCE' : node.online && node.sensor_ok ? 'ONLINE' : node.online ? 'WARNING' : 'OFFLINE'}
                     </span>
                   </div>
 
                   {/* Subnode Maintenance & Delete Control Buttons */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2" onClick={() => setSelectedSubnodeId(isSelected ? null : node.id)}>
                     <button
                       onClick={(e) => handleToggleMaintenance(e, node.id)}
-                      className={`px-2.5 py-1 text-[11px] font-mono font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1 text-[11px] font-mono font-bold rounded-lg border transition-all flex items-center gap-1.5 shadow-sm ${
                         isMaintenance
                           ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border-slate-200'
                       }`}
-                      title={isMaintenance ? 'Reconnect node after hardware maintenance' : 'Disconnect node for hardware maintenance'}
+                      title={isMaintenance ? 'Khôi phục kết nối sau khi bảo trì phần cứng' : 'Ngắt kết nối thiết bị để bảo trì phần cứng'}
                     >
-                      <Power className="w-3 h-3" />
-                      <span>{isMaintenance ? '⚡ Reconnect' : '🔌 Maintenance'}</span>
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span>{isMaintenance ? '⚡ Khôi phục kết nối' : 'Ngắt để bảo trì'}</span>
                     </button>
 
                     <button
-                      onClick={(e) => handleDeleteSubnode(e, node)}
-                      className="px-2.5 py-1 text-[11px] font-mono font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all flex items-center gap-1"
-                      title="Permanently delete subnode registration and data"
+                      onClick={(e) => handleOpenDeleteModal(e, node)}
+                      className="px-2.5 py-1 text-[11px] font-mono font-extrabold bg-[#fce8e8] text-[#e06666] border border-[#e06666]/40 hover:bg-red-200 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                      title="Xóa hoàn toàn thông tin đăng ký và dữ liệu của subnode"
                     >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Delete</span>
+                      <Trash2 className="w-3.5 h-3.5 text-[#e06666]" />
+                      <span>Xóa Subnode</span>
                     </button>
                   </div>
                 </div>
@@ -544,11 +547,78 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
           </div>
 
           <p className="text-[11px] text-slate-400 font-mono text-center pt-2">
-            Click any subnode to inspect detailed sensors on the left panel.
+            Click any subnode card to inspect detailed sensors on the left panel.
           </p>
         </div>
 
       </div>
+
+      {/* CUSTOM RED WARNING MODAL FOR PERMANENT SUBNODE DELETION */}
+      {nodeToDelete && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-2 border-red-500 shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Red Header */}
+            <div className="bg-[#b91c1c] px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5 font-mono">
+                <AlertTriangle className="w-6 h-6 text-yellow-300 animate-pulse" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                  CẢNH BÁO NGUY HIỂM: XÓA SUBNODE
+                </h3>
+              </div>
+              <button
+                onClick={() => setNodeToDelete(null)}
+                className="p-1 hover:bg-red-800 rounded-lg transition-all text-white/80 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Warning Body */}
+            <div className="p-6 flex flex-col gap-4">
+              <div className="p-4 bg-[#fce8e8] border border-[#e06666]/40 rounded-xl flex items-start gap-3">
+                <div className="p-2 bg-red-100 rounded-lg shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-[#e06666]" />
+                </div>
+                <div className="flex flex-col gap-1 text-xs font-mono text-slate-800">
+                  <span className="font-black text-sm text-[#b91c1c]">
+                    HÀNH ĐỘNG KHÔNG THỂ KHÔI PHỤC!
+                  </span>
+                  <p className="leading-relaxed mt-1 text-[#e06666] font-bold">
+                    Bạn đang tiến hành xóa vĩnh viễn Subnode <strong className="text-slate-900 underline">{nodeToDelete.name}</strong> (ID: <code className="bg-white px-1 py-0.5 rounded border border-red-200">{nodeToDelete.id}</code>).
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-[11px] text-slate-600 flex flex-col gap-1.5">
+                <span className="font-bold text-slate-800">Hệ thống sẽ thực hiện các thao tác sau:</span>
+                <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
+                  <li>Xóa toàn bộ mã định danh phần cứng & đăng ký kênh MQTT.</li>
+                  <li>Hủy toàn bộ lịch sử đo đạc cảm biến đã lưu trong cơ sở dữ liệu.</li>
+                  <li>Loại bỏ hoàn toàn thiết bị khỏi danh sách quản lý trên Web App.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div className="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setNodeToDelete(null)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-mono text-xs font-bold rounded-lg transition-all"
+              >
+                Hủy bỏ (Keep Node)
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-[#b91c1c] hover:bg-red-800 text-white font-mono text-xs font-black rounded-lg transition-all shadow-md flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa Vĩnh Viễn</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PAIRING MODAL: PENDING SUBNODES PAIRING QUEUE */}
       {showPairingModal && (
