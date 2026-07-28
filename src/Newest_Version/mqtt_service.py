@@ -104,9 +104,9 @@ class MQTTTelemetryService:
             any_subnode_online = False
             for node_id, node in list(subnodes_registry.items()):
                 last_ts = node.get("last_updated_ts", 0)
-                if last_ts > 0 and (now - last_ts) > 7:
+                if last_ts > 0 and (now - last_ts) > 15:
                     node["online"] = False
-                    node["error_msg"] = "Telemetry timeout (> 7 seconds)"
+                    node["error_msg"] = "Telemetry timeout (> 15 seconds)"
                 elif last_ts > 0:
                     any_subnode_online = True
             

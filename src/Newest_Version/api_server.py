@@ -970,10 +970,10 @@ def get_latest_sensors(lab_id):
         if node_copy.get("last_updated"):
             try:
                 last_dt = datetime.fromisoformat(node_copy["last_updated"])
-                if (now_dt - last_dt).total_seconds() > 7.0:
+                if (now_dt - last_dt).total_seconds() > 15.0:
                     node_copy["online"] = False
                     node_copy["sensor_ok"] = False
-                    node_copy["error_msg"] = "Connection Timeout (>7s)"
+                    node_copy["error_msg"] = "Connection Timeout (>15s)"
             except Exception:
                 node_copy["online"] = False
         else:
@@ -992,7 +992,7 @@ def get_latest_sensors(lab_id):
     if data.get("last_updated"):
         try:
             last_dt = datetime.fromisoformat(data["last_updated"])
-            if (now_dt - last_dt).total_seconds() > 7.0:
+            if (now_dt - last_dt).total_seconds() > 15.0:
                 data["online"] = False
                 data["dht_ok"] = False
                 data["gnss_ok"] = False
