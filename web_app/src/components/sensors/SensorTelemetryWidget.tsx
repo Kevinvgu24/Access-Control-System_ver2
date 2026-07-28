@@ -263,6 +263,18 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
 
   return (
     <div className="flex flex-col gap-6">
+      {/* 0. Top Action Bar */}
+      <div className="flex justify-end -mb-2">
+        <button
+          onClick={handleExportExcel}
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white hover:bg-orange-700 transition-colors rounded-lg text-sm font-bold shadow-sm"
+          title="Export Data to Excel/CSV"
+        >
+          <Download className="w-4 h-4" />
+          <span>EXPORT SENSOR DATA</span>
+        </button>
+      </div>
+
       {/* 1. Status Notification Banner (Only visible when at least 1 subnode is disconnected) */}
       {!isAllConnected && (
         <div className="border-2 rounded-xl p-4 flex items-center justify-between shadow-md transition-all bg-[#fce8e8] border-[#e06666]/40 text-[#e06666]">
@@ -394,28 +406,18 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                     Room Telemetry Overview
                   </h3>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleExportExcel}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-200 hover:border-orange-600 transition-colors rounded text-xs font-mono font-bold"
-                    title="Export Data to Excel/CSV"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>EXPORT</span>
-                  </button>
-                  <span
-                    className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider border ${
-                      !telemetry.online ? 'animate-pulse' : ''
-                    }`}
-                    style={
-                      telemetry.online
-                        ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
-                        : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
-                    }
-                  >
-                    {telemetry.online ? 'ONLINE' : 'OFFLINE'}
-                  </span>
-                </div>
+                <span
+                  className={`px-2.5 py-1 rounded text-xs font-mono font-black uppercase tracking-wider border ${
+                    !telemetry.online ? 'animate-pulse' : ''
+                  }`}
+                  style={
+                    telemetry.online
+                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#6ee7b7' }
+                      : { backgroundColor: '#fce8e8', color: '#e06666', borderColor: '#f87171' }
+                  }
+                >
+                  {telemetry.online ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 font-mono">
