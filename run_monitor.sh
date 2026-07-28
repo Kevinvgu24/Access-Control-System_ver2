@@ -17,6 +17,14 @@ export HAILORT_CONSOLE_LOGGER_LEVEL=critical
 # Set default SERVER_URL if not set
 export SERVER_URL=${SERVER_URL:-"http://192.168.1.244:5000"}
 
+# Read LAB_ID and NODE_ID from lab_config.json if available to sync telemetry correctly with Web App
+if [ -f "src/lab_config.json" ]; then
+    DETECTED_LAB=$(python3 -c "import json; print(json.load(open('src/lab_config.json')).get('lab_id', 'default-lab'))" 2>/dev/null)
+    DETECTED_NODE=$(python3 -c "import json; print(json.load(open('src/lab_config.json')).get('node_id', 'default-node'))" 2>/dev/null)
+    if [ -n "$DETECTED_LAB" ]; then export LAB_ID="$DETECTED_LAB"; fi
+    if [ -n "$DETECTED_NODE" ]; then export NODE_ID="$DETECTED_NODE"; fi
+fi
+
 export DB_PATH="/home/kevinvgu/Access-Control-System_ver2/database/smart_door.db"
 export LAB_ID=${LAB_ID:-"default-lab"}
 export NODE_ID=${NODE_ID:-"default-node"}
@@ -24,6 +32,7 @@ export NODE_ID=${NODE_ID:-"default-node"}
 echo "========================================================="
 echo "   STARTING ACCESS CONTROL MONITOR & SYNC CLIENT         "
 echo "   Server URL: $SERVER_URL"
+echo "   Target LAB: $LAB_ID | Node: $NODE_ID"
 echo "========================================================="
 
 # 1. Start the local sync client in the background, redirect logs to sync_client.log
@@ -47,7 +56,5 @@ python3 src/monitor_display/interface_monitor.py \
   --arcface_hef /home/kevinvgu/Access-Control-System_ver2/models/arcface_mobilefacenet.hef \
   --db_dir /home/kevinvgu/Access-Control-System_ver2/database \
   --lbf_model /home/kevinvgu/Access-Control-System_ver2/src/Newest_Version/lbfmodel.yaml \
-  --cam_source 0 \
-  --use_ir \
-  --ir_source libcamerasrc
+  --cam_source 0
 

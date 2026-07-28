@@ -54,6 +54,54 @@ libgst.gst_buffer_map.restype = ctypes.c_bool
 libgst.gst_buffer_unmap.argtypes = [ctypes.c_void_p, ctypes.POINTER(GstMapInfo)]
 libgst.gst_buffer_unmap.restype = None
 
+# [FIX] Lấy địa chỉ C pointer thực của GstBuffer từ PyGObject wrapper.
+# Dùng 3 phương pháp theo thứ tự an toàn giảm dần.
+
+_GOBJECT_OFFSET_CALIBRATED = True  # sentinel, không còn dùng runtime calibration
+
+def _gst_buf_ptr(buf):
+    """
+    Trả về địa chỉ C pointer thực của GstBuffer (GObject) từ PyGObject wrapper.
+    Thử các phương pháp theo thứ tự an toàn:
+      1. buf.__gpointer__ — PyGObject >= 3.46 (aarch64 Raspberry Pi OS Bookworm)
+      2. ctypes offset tại id(buf)+16 (CPython 3.x aarch64 standard layout)
+      3. None (kích hoạt PyGObject fallback map an toàn)
+    """
+    # Phương pháp 1: PyGObject expose __gpointer__ (Capsule chứa con trỏ GObject)
+    try:
+        import ctypes as _ct
+        gp = getattr(buf, '__gpointer__', None)
+        if gp is not None:
+            ptr = _ct.pythonapi.PyCapsule_GetPointer(
+                _ct.py_object(gp), _ct.c_char_p(None)
+            )
+            if ptr and ptr > 0x1000:
+                return ptr
+    except Exception:
+        pass
+
+    # Phương pháp 2: Đọc trực tiếp từ CPython object layout
+    # PyGObject struct: [ob_refcnt(8)] [ob_type(8)] [inst_dict hoặc handle(8)] [weakref(8)] [gobj_ptr(8)]
+    # Trên CPython 3.x aarch64 chuẩn, GObject ptr thường ở offset 16 hoặc 24.
+    base = id(buf)
+    try:
+        import ctypes as _ct
+        for offset in (16, 24, 32):
+            candidate = _ct.cast(base + offset, _ct.POINTER(_ct.c_void_p)).contents.value
+            # Sanity check: địa chỉ hợp lệ > 4KB. Bỏ giới hạn trên vì AArch64 48-bit pointer có thể rất lớn.
+            if candidate and candidate > 0x1000:
+                return candidate
+    except Exception:
+        pass
+
+    # Phương pháp 3: None → kích hoạt PyGObject fallback
+    return None
+
+def _calibrate_gobject_offset(buf):
+    """Không còn dùng — kept for backward compatibility."""
+    pass
+
+
 class ProfessionalSmartDoor:
     def __init__(self, yolo_hef, arcface_hef, anti_spoofing_hef, lbf_model_path, database_dir, rec_thresh=0.45, close_thresh=130):
         self.yolo_hef = yolo_hef
@@ -219,11 +267,15 @@ class ProfessionalSmartDoor:
             return "Unknown", best_sim
 
     def on_new_frame_probe(self, pad, info, user_data):
+        global _GOBJECT_OFFSET_CALIBRATED
         buffer = info.get_buffer()
         if buffer is None:
             return Gst.PadProbeReturn.OK
 
-        # (DB checks moved to background _monitor_db_loop thread to prevent NPU pipeline lag)
+        # [CALIBRATION] Tự hiệu chỉnh GObject offset khi frame đầu tiên tới
+        if not _GOBJECT_OFFSET_CALIBRATED:
+            _calibrate_gobject_offset(buffer)
+            _GOBJECT_OFFSET_CALIBRATED = True
 
         # Calculate FPS
         self._frame_count += 1
@@ -277,100 +329,112 @@ class ProfessionalSmartDoor:
         else:
             w, h = 640, 640
 
-        # [CHỨC NĂNG] Ánh xạ bộ nhớ đệm GStreamer thô bằng ctypes (Zero-Copy) để cho phép vẽ đè trong Python
-        # [LIÊN KẾT] Khắc phục lỗi PyGObject cấm ghi đè vùng nhớ (ReadOnly), giúp OpenCV vẽ HUD trực tiếp cực nhanh
+        # [CHỨC NĂNG] Lấy thông tin nhận diện khuôn mặt và landmarks để gửi về giao diện (UI)
+        detections_info = []
         if getattr(self, "recognition_enabled", True):
-            buf_ptr = hash(buffer)
-            map_info = GstMapInfo()
-            success = libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1)
-            if success:
-                try:
-                    # Ép kiểu dữ liệu sang con trỏ byte C và bọc thành mảng NumPy (Không nhân bản vùng nhớ)
-                    data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
-                    arr = np.ctypeslib.as_array(data_ptr, shape=(h, w, 3))
-                    
-                    detections_info = []
-                    for det in detections:
-                        bbox = det.get_bbox()
-                        xmin = bbox.xmin()
-                        ymin = bbox.ymin()
-                        w_box = bbox.width()
-                        h_box = bbox.height()
+            for det in detections:
+                bbox = det.get_bbox()
+                xmin = bbox.xmin()
+                ymin = bbox.ymin()
+                w_box = bbox.width()
+                h_box = bbox.height()
+                
+                # Chuyển đổi tọa độ bbox từ tỉ lệ (%) sang pixel thực tế của khung hình
+                x1 = int(xmin * w)
+                y1 = int(ymin * h)
+                x2 = int((xmin + w_box) * w)
+                y2 = int((ymin + h_box) * h)
+                
+                # Giới hạn tọa độ trong biên khung hình tránh crash OpenCV
+                x1 = max(0, min(x1, w - 1))
+                y1 = max(0, min(y1, h - 1))
+                x2 = max(0, min(x2, w - 1))
+                y2 = max(0, min(y2, h - 1))
+                
+                # Lấy class_id từ C++ DB Matcher: 0 = Đã nhận diện (Xanh lá), 1 = Unknown (Đỏ)
+                class_id = det.get_class_id()
+                label = det.get_label()
+                
+                # [LIÊN KẾT] Đọc kết quả phân lớp "recognition" được đính kèm bởi db_matcher_post.cpp
+                display_text = label
+                for sub in det.get_objects():
+                    if isinstance(sub, hailo.HailoClassification):
+                        if sub.get_classification_type() == "recognition":
+                            display_text = sub.get_label()
+                            break
+                
+                # [LIÊN KẾT] Đọc các điểm landmarks (5 điểm mốc) được sinh ra từ mô hình YOLOv8-Face
+                landmarks_pts = []
+                for sub in det.get_objects():
+                    if isinstance(sub, hailo.HailoLandmarks):
+                        for pt in sub.get_points():
+                            px = int(x1 + pt.x() * (x2 - x1))
+                            py = int(y1 + pt.y() * (y2 - y1))
+                            px = max(0, min(px, w - 1))
+                            py = max(0, min(py, h - 1))
+                            landmarks_pts.append((pt.x(), pt.y(), px, py))
+                
+                detections_info.append({
+                    "class_id": class_id,
+                    "label": display_text,
+                    "bbox": (xmin, ymin, w_box, h_box),
+                    "coords": (x1, y1, x2, y2),
+                    "landmarks": landmarks_pts
+                })
+                
+            if len(detections_info) > 0 and self.recognition_callback is not None:
+                self.recognition_callback(detections_info)
+
+            # [CHỨC NĂNG] Ánh xạ bộ nhớ đệm GStreamer thô bằng ctypes (Zero-Copy) để cho phép vẽ đè trong Python
+            # [LIÊN KẾT] Khắc phục lỗi PyGObject cấm ghi đè vùng nhớ (ReadOnly), giúp OpenCV vẽ HUD trực tiếp cực nhanh
+            buf_ptr = _gst_buf_ptr(buffer)
+            if buf_ptr:
+                map_info = GstMapInfo()
+                success = libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1)
+                if success:
+                    try:
+                        # Ép kiểu dữ liệu sang con trỏ byte C và bọc thành mảng NumPy (Không nhân bản vùng nhớ)
+                        data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
+                        arr = np.ctypeslib.as_array(data_ptr, shape=(h, w, 3))
                         
-                        # Chuyển đổi tọa độ bbox từ tỉ lệ (%) sang pixel thực tế của khung hình
-                        x1 = int(xmin * w)
-                        y1 = int(ymin * h)
-                        x2 = int((xmin + w_box) * w)
-                        y2 = int((ymin + h_box) * h)
-                        
-                        # Giới hạn tọa độ trong biên khung hình tránh crash OpenCV
-                        x1 = max(0, min(x1, w - 1))
-                        y1 = max(0, min(y1, h - 1))
-                        x2 = max(0, min(x2, w - 1))
-                        y2 = max(0, min(y2, h - 1))
-                        
-                        # Lấy class_id từ C++ DB Matcher: 0 = Đã nhận diện (Xanh lá), 1 = Unknown (Đỏ)
-                        class_id = det.get_class_id()
-                        label = det.get_label()
-                        
-                        color = (0, 255, 0) if class_id == 0 else (0, 0, 255)
-                        
-                        # Vẽ góc Sci-Fi nổi bật (2 đoạn thẳng ngắn ở mỗi góc vuông của Bounding Box)
-                        length = int(min(x2 - x1, y2 - y1) * 0.18)
-                        length = max(10, min(length, 30))
-                        thickness = 3
-                        
-                        # Góc trên bên trái
-                        cv2.line(arr, (x1, y1), (x1 + length, y1), color, thickness)
-                        cv2.line(arr, (x1, y1), (x1, y1 + length), color, thickness)
-                        # Góc trên bên phải
-                        cv2.line(arr, (x2, y1), (x2 - length, y1), color, thickness)
-                        cv2.line(arr, (x2, y1), (x2, y1 + length), color, thickness)
-                        # Góc dưới bên trái
-                        cv2.line(arr, (x1, y2), (x1 + length, y2), color, thickness)
-                        cv2.line(arr, (x1, y2), (x1, y2 - length), color, thickness)
-                        # Góc dưới bên phải
-                        cv2.line(arr, (x2, y2), (x2 - length, y2), color, thickness)
-                        cv2.line(arr, (x2, y2), (x2, y2 - length), color, thickness)
-                        
-                        # [LIÊN KẾT] Đọc kết quả phân lớp "recognition" được đính kèm bởi db_matcher_post.cpp
-                        display_text = label
-                        for sub in det.get_objects():
-                            if isinstance(sub, hailo.HailoClassification):
-                                if sub.get_classification_type() == "recognition":
-                                    display_text = sub.get_label()
-                                    break
-                        
-                        # Vẽ nhãn tên kèm phần trăm tương đồng lên phía trên bounding box (có đổ bóng viền đen dễ nhìn)
-                        font = cv2.FONT_HERSHEY_SIMPLEX
-                        font_scale = 0.55
-                        text_thickness = 2
-                        cv2.putText(arr, display_text, (x1, y1 - 8), font, font_scale, (0, 0, 0), text_thickness + 2, cv2.LINE_AA)
-                        cv2.putText(arr, display_text, (x1, y1 - 8), font, font_scale, color, text_thickness, cv2.LINE_AA)
-                        
-                        # [LIÊN KẾT] Vẽ các điểm landmarks (5 điểm mốc) được sinh ra từ mô hình YOLOv8-Face
-                        landmarks_pts = []
-                        for sub in det.get_objects():
-                            if isinstance(sub, hailo.HailoLandmarks):
-                                for pt in sub.get_points():
-                                    px = int(x1 + pt.x() * (x2 - x1))
-                                    py = int(y1 + pt.y() * (y2 - y1))
-                                    px = max(0, min(px, w - 1))
-                                    py = max(0, min(py, h - 1))
-                                    cv2.circle(arr, (px, py), 3, (255, 0, 255), -1)
-                                    landmarks_pts.append((pt.x(), pt.y()))
-                        
-                        detections_info.append({
-                            "class_id": class_id,
-                            "label": display_text,
-                            "bbox": (xmin, ymin, w_box, h_box),
-                            "landmarks": landmarks_pts
-                        })
-                        
-                    if len(detections_info) > 0 and self.recognition_callback is not None:
-                        self.recognition_callback(detections_info)
-                finally:
-                    libgst.gst_buffer_unmap(buf_ptr, ctypes.byref(map_info))
+                        for info_item in detections_info:
+                            x1, y1, x2, y2 = info_item["coords"]
+                            class_id = info_item["class_id"]
+                            display_text = info_item["label"]
+                            
+                            color = (0, 255, 0) if class_id == 0 else (0, 0, 255)
+                            
+                            # Vẽ góc Sci-Fi nổi bật (2 đoạn thẳng ngắn ở mỗi góc vuông của Bounding Box)
+                            length = int(min(x2 - x1, y2 - y1) * 0.18)
+                            length = max(10, min(length, 30))
+                            thickness = 3
+                            
+                            # Góc trên bên trái
+                            cv2.line(arr, (x1, y1), (x1 + length, y1), color, thickness)
+                            cv2.line(arr, (x1, y1), (x1, y1 + length), color, thickness)
+                            # Góc trên bên phải
+                            cv2.line(arr, (x2, y1), (x2 - length, y1), color, thickness)
+                            cv2.line(arr, (x2, y1), (x2, y1 + length), color, thickness)
+                            # Góc dưới bên trái
+                            cv2.line(arr, (x1, y2), (x1 + length, y2), color, thickness)
+                            cv2.line(arr, (x1, y2), (x1, y2 - length), color, thickness)
+                            # Góc dưới bên phải
+                            cv2.line(arr, (x2, y2), (x2 - length, y2), color, thickness)
+                            cv2.line(arr, (x2, y2), (x2, y2 - length), color, thickness)
+                            
+                            # Vẽ nhãn tên kèm phần trăm tương đồng lên phía trên bounding box (có đổ bóng viền đen dễ nhìn)
+                            font = cv2.FONT_HERSHEY_SIMPLEX
+                            font_scale = 0.55
+                            text_thickness = 2
+                            cv2.putText(arr, display_text, (x1, y1 - 8), font, font_scale, (0, 0, 0), text_thickness + 2, cv2.LINE_AA)
+                            cv2.putText(arr, display_text, (x1, y1 - 8), font, font_scale, color, text_thickness, cv2.LINE_AA)
+                            
+                            # Vẽ các điểm landmarks
+                            for lm in info_item["landmarks"]:
+                                _, _, px, py = lm
+                                cv2.circle(arr, (px, py), 3, (255, 0, 255), -1)
+                    finally:
+                        libgst.gst_buffer_unmap(buf_ptr, ctypes.byref(map_info))
 
         return Gst.PadProbeReturn.OK
 
@@ -404,7 +468,9 @@ class ProfessionalSmartDoor:
             return Gst.PadProbeReturn.OK
 
         # Map buffer với ctypes để ghi trực tiếp (giống on_new_frame_probe)
-        buf_ptr = hash(buffer)
+        buf_ptr = _gst_buf_ptr(buffer)
+        if not buf_ptr:
+            return Gst.PadProbeReturn.OK
         map_info = GstMapInfo()
         success = libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1)
         if not success:
@@ -443,34 +509,66 @@ class ProfessionalSmartDoor:
 
     def on_new_appsink_sample(self, appsink, callback):
         sample = appsink.emit("pull-sample")
-        if sample:
-            buffer = sample.get_buffer()
+        if sample is None:
+            return Gst.FlowReturn.OK
 
-            # [OPT] Cache (w, h) sau lần đọc đầu tiên — caps không thay đổi khi pipeline PLAYING
-            if self._cached_appsink_size is None:
-                caps = sample.get_caps()
-                if caps:
-                    structure = caps.get_structure(0)
-                    self._cached_appsink_size = (
-                        structure.get_int("width")[1],
-                        structure.get_int("height")[1]
-                    )
-                else:
-                    self._cached_appsink_size = (640, 640)
-            w, h = self._cached_appsink_size
+        buffer = sample.get_buffer()
+        if buffer is None:
+            return Gst.FlowReturn.OK
 
-            buf_ptr = hash(buffer)
+        # [OPT] Cache (w, h) sau lần đọc đầu tiên — caps không thay đổi khi pipeline PLAYING
+        if self._cached_appsink_size is None:
+            caps = sample.get_caps()
+            if caps:
+                structure = caps.get_structure(0)
+                self._cached_appsink_size = (
+                    structure.get_int("width")[1],
+                    structure.get_int("height")[1]
+                )
+            else:
+                self._cached_appsink_size = (640, 640)
+        w, h = self._cached_appsink_size
+
+        # --- Path 1: ctypes zero-copy (nhanh nhất) ---
+        buf_ptr = _gst_buf_ptr(buffer)
+        frame_delivered = False
+        if buf_ptr:
             map_info = GstMapInfo()
             success = libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1)
             if success:
                 try:
                     data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
                     arr = np.ctypeslib.as_array(data_ptr, shape=(h, w, 3))
+                    self.latest_ir_frame = arr
                     callback(arr.copy())
+                    frame_delivered = True
                 except Exception as e:
-                    logger.error(f"Appsink frame mapping failed: {e}")
+                    logger.error(f"[Appsink] ctypes frame mapping failed: {e}")
                 finally:
                     libgst.gst_buffer_unmap(buf_ptr, ctypes.byref(map_info))
+
+        # --- Path 2: PyGObject fallback (an toàn, không phụ thuộc layout CPython) ---
+        if not frame_delivered:
+            try:
+                success, map_info_pg = buffer.map(Gst.MapFlags.READ)
+                if success:
+                    try:
+                        arr = np.frombuffer(map_info_pg.data, dtype=np.uint8)
+                        if arr.size == h * w * 3:
+                            arr = arr.reshape((h, w, 3)).copy()
+                            self.latest_ir_frame = arr
+                            callback(arr)
+                            frame_delivered = True
+                        else:
+                            logger.warning(f"[Appsink] Fallback buffer size mismatch: {arr.size} != {h*w*3}")
+                    finally:
+                        buffer.unmap(map_info_pg)
+            except Exception as e:
+                logger.error(f"[Appsink] PyGObject fallback frame mapping failed: {e}")
+
+        if not frame_delivered:
+            logger.warning("[Appsink] Frame dropped: both ctypes and PyGObject mapping paths failed.")
+
         return Gst.FlowReturn.OK
 
     def start_ir_camera(self, ir_source="libcamerasrc"):
@@ -528,9 +626,9 @@ class ProfessionalSmartDoor:
 
                 # Sử dụng ctypes gst_buffer_map giống như luồng chính để tránh lỗi phân mảnh/binding PyGObject
                 if libgst:
-                    buf_ptr = hash(buffer)
+                    buf_ptr = _gst_buf_ptr(buffer)
                     map_info = GstMapInfo()
-                    if libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1):
+                    if buf_ptr and libgst.gst_buffer_map(buf_ptr, ctypes.byref(map_info), 1):
                         try:
                             data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
                             # GRAY8 chỉ có 1 kênh màu
@@ -669,22 +767,146 @@ class ProfessionalSmartDoor:
     def run(self, width=640, height=480, source="0", headless=False, appsink_callback=None):
         Gst.init(None)
 
-        # Determine source type and build the source string directly
-        is_live = str(source).isdigit() or str(source).startswith("/dev/video")
-        
-        if is_live:
+        # Sentinel: True khi source_str đã được build bởi một trong các branch trước
+        _source_handled = False
+        source_str = ""
+        selected_name = "Unknown"
+        is_live = True
+
+        # -------------------------------------------------------
+        # Branch 1: libcamerasrc (CSI hoặc UVC qua libcamera)
+        # -------------------------------------------------------
+        if str(source) == "libcamerasrc" or str(source).startswith("libcamerasrc"):
+            cam_idx = 0
+            if ":" in str(source):
+                try:
+                    cam_idx = int(str(source).split(":")[1])
+                except Exception:
+                    cam_idx = 0
+
+            # [FIX] Kiểm tra xem camera index này có phải USB UVC không.
+            # libcamerasrc không hỗ trợ UVC camera — phải dùng v4l2src để tránh not-negotiated (-4).
+            import subprocess as _sp, glob as _glob
+            _is_uvc = False
+            _uvc_dev = None
+            try:
+                _lc_result = _sp.run(
+                    ["libcamera-hello", "--list-cameras"],
+                    capture_output=True, text=True, timeout=5
+                )
+                _cam_list = _lc_result.stdout + _lc_result.stderr
+                if cam_idx > 0 and "uvcvideo" in _cam_list.lower():
+                    _is_uvc = True
+                    logger.info(f"[Camera] libcamerasrc:{cam_idx} is UVC — switching to v4l2src auto-detect.")
+                elif cam_idx > 0:
+                    # Probe v4l2 devices to find UVC node
+                    for _node in sorted(_glob.glob("/dev/video*")):
+                        try:
+                            _caps_out = _sp.run(
+                                ["v4l2-ctl", "--device", _node, "--list-formats-ext"],
+                                capture_output=True, text=True, timeout=2
+                            ).stdout
+                            if "UVC" in _caps_out or "YUY2" in _caps_out or "MJPG" in _caps_out:
+                                _is_uvc = True
+                                _uvc_dev = _node
+                                logger.info(f"[Camera] UVC device found at {_node} — switching from libcamerasrc:{cam_idx}.")
+                                break
+                        except Exception:
+                            continue
+            except Exception as _ce:
+                logger.warning(f"[Camera] Could not probe camera type: {_ce}")
+
+            if _is_uvc:
+                # Redirect sang v4l2src — source biến thành path hoặc "0" để rơi vào Branch 2
+                source = _uvc_dev if _uvc_dev else "0"
+                # _source_handled = False → sẽ được xử lý ở Branch 2 bên dưới
+            else:
+                # Camera thực sự là CSI — dùng libcamerasrc
+                if cam_idx > 0:
+                    os.environ["LIBCAMERA_DEFAULT_CAMERA"] = str(cam_idx)
+                    logger.info(f"[Libcamera] Selecting CSI camera index {cam_idx} via LIBCAMERA_DEFAULT_CAMERA")
+                else:
+                    os.environ.pop("LIBCAMERA_DEFAULT_CAMERA", None)
+                source_str = (
+                    f"libcamerasrc ! "
+                    f"video/x-raw, width={width}, height={height} ! "
+                    f"videoconvert n-threads=2 ! "
+                    f"videoscale n-threads=2 ! "
+                    f"video/x-raw, width=640, height=640, format=RGB"
+                )
+                selected_name = f"RPi5 Libcamera CSI (index={cam_idx})"
+                is_live = True
+                _source_handled = True
+
+        # -------------------------------------------------------
+        # Branch 2: v4l2src — số nguyên, /dev/videoX, hoặc UVC redirect từ Branch 1
+        # -------------------------------------------------------
+        if not _source_handled and (str(source).isdigit() or str(source).startswith("/dev/video")):
             dev = f"/dev/video{source}" if str(source).isdigit() else source
-            # Direct MJPG Software pipeline configuration: most robust for USB webcams at 1920x1080
-            source_str = (
-                f"v4l2src device={dev} ! "
-                f"image/jpeg, width={width}, height={height}, framerate=30/1 ! "
-                f"jpegdec ! "
-                f"videoconvert n-threads=2 ! "
-                f"videoscale n-threads=2 ! "
-                f"video/x-raw, width=640, height=640, format=RGB"
-            )
-            selected_name = "MJPG Software (Software Decoding/Scaling/Conversion)"
-        else:
+            # Auto-detect actual USB camera device node (skip PiSP ISP nodes)
+            import glob, subprocess
+            if str(source).isdigit():
+                video_nodes = sorted(glob.glob("/dev/video*"))
+                for node in video_nodes:
+                    try:
+                        caps_out = subprocess.run(
+                            ["v4l2-ctl", "--device", node, "--list-formats-ext"],
+                            capture_output=True, text=True, timeout=2
+                        ).stdout
+                        if "UVC" in caps_out or "YUY2" in caps_out or "MJPG" in caps_out:
+                            dev = node
+                            logger.info(f"[USB Camera] Auto-detected USB RGB camera at: {dev}")
+                            break
+                    except Exception:
+                        continue
+
+            # Probe which format this camera supports by checking v4l2-ctl output
+            supported_formats = ""
+            try:
+                supported_formats = subprocess.run(
+                    ["v4l2-ctl", "--device", dev, "--list-formats-ext"],
+                    capture_output=True, text=True, timeout=2
+                ).stdout
+            except Exception:
+                pass
+
+            if "YUYV" in supported_formats or "YUY2" in supported_formats:
+                # YUYV raw format - no decoder needed, most reliable for USB cameras
+                source_str = (
+                    f"v4l2src device={dev} ! "
+                    f"video/x-raw, format=YUY2, width=640, height=480, framerate=30/1 ! "
+                    f"videoconvert n-threads=2 ! "
+                    f"videoscale n-threads=2 ! "
+                    f"video/x-raw, width=640, height=640, format=RGB"
+                )
+                selected_name = "USB RGB Camera YUYV (v4l2src)"
+            elif "MJPG" in supported_formats or "MJPEG" in supported_formats:
+                # MJPEG fallback - requires jpegdec plugin
+                source_str = (
+                    f"v4l2src device={dev} ! "
+                    f"image/jpeg, width=640, height=480, framerate=30/1 ! "
+                    f"jpegdec ! "
+                    f"videoconvert n-threads=2 ! "
+                    f"videoscale n-threads=2 ! "
+                    f"video/x-raw, width=640, height=640, format=RGB"
+                )
+                selected_name = "USB RGB Camera MJPG (v4l2src)"
+            else:
+                # Generic fallback — let GStreamer negotiate format automatically
+                source_str = (
+                    f"v4l2src device={dev} ! "
+                    f"videoconvert n-threads=2 ! "
+                    f"videoscale n-threads=2 ! "
+                    f"video/x-raw, width=640, height=640, format=RGB"
+                )
+                selected_name = "USB RGB Camera Generic (v4l2src)"
+
+            logger.info(f"[USB Camera] Selected pipeline: {selected_name}")
+            is_live = True
+            _source_handled = True
+
+        if not _source_handled:
+            # Fallback: file source
             source_str = (
                 f"filesrc location=\"{source}\" ! decodebin ! "
                 f"videoconvert n-threads=2 ! "
@@ -692,6 +914,7 @@ class ProfessionalSmartDoor:
                 f"video/x-raw, width=640, height=640, format=RGB"
             )
             selected_name = "File Software (Software Scaling/Conversion)"
+            is_live = False
 
         # Sink configuration
         use_headless = headless or "DISPLAY" not in os.environ
@@ -785,12 +1008,16 @@ class ProfessionalSmartDoor:
 
         self.stats_overlay = self.pipeline.get_by_name("stats_overlay")
 
-        # Register signal handlers
+        # Register signal handlers if running in main thread
         import signal
-        def sigint_handler(sig, frame):
-            logger.info("Force stopping pipeline and exiting...")
-            self.stop()
-        signal.signal(signal.SIGINT, sigint_handler)
+        if threading.current_thread() is threading.main_thread():
+            try:
+                def sigint_handler(sig, frame):
+                    logger.info("Force stopping pipeline and exiting...")
+                    self.stop()
+                signal.signal(signal.SIGINT, sigint_handler)
+            except Exception as e:
+                logger.warning(f"Could not register SIGINT handler: {e}")
 
         overlay = self.pipeline.get_by_name("overlay")
         if not overlay:
@@ -827,7 +1054,42 @@ class ProfessionalSmartDoor:
             self.stop()
 
         if appsink_callback is not None:
-            logger.info("=== SYSTEM RUNNING IN GUI MODE (no GLib loop in this thread) ===")
+            logger.info("=== SYSTEM RUNNING IN GUI MODE (GLib loop in background thread) ===")
+            # Start GLib MainLoop in a background daemon thread.
+            # v4l2src and many GStreamer elements require the GLib event loop to
+            # complete async PLAYING state transitions and begin delivering frames.
+            self.loop = GLib.MainLoop()
+
+            def _glib_loop():
+                try:
+                    self.loop.run()
+                except Exception:
+                    pass
+
+            loop_thread = threading.Thread(target=_glib_loop, daemon=True, name="glib-main-loop")
+            loop_thread.start()
+
+            # Watch bus for errors (poll only — do NOT mix with add_signal_watch)
+            def _bus_watcher():
+                bus = self.pipeline.get_bus()
+                while loop_thread.is_alive():
+                    msg = bus.timed_pop_filtered(
+                        1 * Gst.SECOND,
+                        Gst.MessageType.ERROR | Gst.MessageType.WARNING | Gst.MessageType.STATE_CHANGED
+                    )
+                    if msg:
+                        if msg.type == Gst.MessageType.ERROR:
+                            err, debug = msg.parse_error()
+                            logger.error(f"[Pipeline] GStreamer ERROR: {err.message}")
+                            logger.error(f"[Pipeline] Debug: {debug}")
+                        elif msg.type == Gst.MessageType.WARNING:
+                            err, debug = msg.parse_warning()
+                            logger.warning(f"[Pipeline] GStreamer WARNING: {err.message}")
+                        elif msg.type == Gst.MessageType.STATE_CHANGED:
+                            old, new, pending = msg.parse_state_changed()
+                            if msg.src == self.pipeline:
+                                logger.info(f"[Pipeline] State: {old.value_nick} -> {new.value_nick}")
+            threading.Thread(target=_bus_watcher, daemon=True, name="gst-bus-watcher").start()
             return
 
         self.loop = GLib.MainLoop()

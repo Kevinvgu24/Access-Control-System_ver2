@@ -40,11 +40,8 @@ from lab_config import get_lab_config, save_lab_config
 from app import ProfessionalSmartDoor
 # We import register modules dynamically in functions to avoid early driver binding conflicts
 
-# Initialise GStreamer Gst library module
-import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst
-Gst.init(None)
+# GStreamer is initialized inside app.py run() on the background loader thread
+# where the pipeline is created — do NOT call Gst.init() here on the main thread
 
 class InterfaceMonitorApp(QMainWindow):
     def __init__(self, args):
@@ -268,8 +265,7 @@ class InterfaceMonitorApp(QMainWindow):
             self.card_layout.addWidget(self.tabLab)
             self.stacked_widget.setCurrentWidget(self.setupPage)
         else:
-            # Fully activated: Add Lab Setup tab & display main operational dashboard
-            self.tabs.addTab(self.tabLab, "Lab Setup")
+            # Fully activated: Display main operational dashboard (original 4 tabs)
             self.stacked_widget.setCurrentWidget(self.mainPage)
             self.tabs.setCurrentIndex(0)
 
@@ -279,10 +275,6 @@ class InterfaceMonitorApp(QMainWindow):
         os.environ["LAB_ID"] = new_lab_code
         self.videoWidget.lab_code = new_lab_code
         self.add_log("Lab Setup", f"Assigned & Activated Raspberry Pi 5 node for LAB Code: '{new_lab_code}'.")
-
-        # Dynamically move tabLab into QTabWidget if completing initial setup
-        if self.tabs.indexOf(self.tabLab) == -1:
-            self.tabs.addTab(self.tabLab, "Lab Setup")
 
         # Switch full view from Setup Page to Main Operational Dashboard
         self.stacked_widget.setCurrentWidget(self.mainPage)
@@ -418,6 +410,9 @@ class InterfaceMonitorApp(QMainWindow):
                 """)
                 self.tabAccess.lblScanDetails.setText(warning_msg)
                 
+                # Lấy confidence cao nhất trong số các khuôn mặt
+                max_conf = max((d.get("confidence", 0.0) for d in detections_info), default=0.0)
+                
                 # Log to security log
                 if "Multi-face warning" != self.last_logged_name or (now - self.last_logged_time > 10):
                     self.add_log("Security", f"Warning: {num_faces} faces detected. Access blocked.")
@@ -427,7 +422,7 @@ class InterfaceMonitorApp(QMainWindow):
                         labId="default-lab", clusterId="default-cluster", nodeId="default-node",
                         userId="", universityId="", displayName="Multi-face", method="face",
                         result="denied", reason=f"Warning: {num_faces} faces detected. Access blocked.",
-                        confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                        confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
                     )
             else:
                 warning_msg = "Warning: Invalid face detected! Door remains locked."
@@ -443,6 +438,8 @@ class InterfaceMonitorApp(QMainWindow):
                 """)
                 self.tabAccess.lblScanDetails.setText(warning_msg)
                 
+                max_conf = max((d.get("confidence", 0.0) for d in detections_info if d["class_id"] != 0 or "Unknown" in d["label"]), default=0.0)
+                
                 # Log only once every 10 seconds to avoid flooding
                 if "Unknown" != self.last_logged_name or (now - self.last_logged_time > 10):
                     self.add_log("Security", "Access Denied: Unknown face detected. Door locked.")
@@ -452,7 +449,7 @@ class InterfaceMonitorApp(QMainWindow):
                         labId="default-lab", clusterId="default-cluster", nodeId="default-node",
                         userId="", universityId="", displayName="Unknown", method="face",
                         result="denied", reason="Access Denied: Unknown face detected. Door locked.",
-                        confidence=0.0, livenessScore=0.0, pinFallbackUsed=0
+                        confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
                     )
             
             self.last_detection_time = now
@@ -515,14 +512,14 @@ class InterfaceMonitorApp(QMainWindow):
                                     self.last_logged_name = f"Spoof warning: {name}"
                                     self.last_logged_time = now
                                     try:
-                                        self.door_app.db.log_access_event(
-                                            labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                                            userId="", universityId="", displayName=name, method="face",
-                                            result="denied", reason=f"Spoof detected: {liveness_msg}",
-                                            confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
-                                        )
-                                    except Exception as e:
-                                        logger.error(f"[DB LOG ERROR] {e}")
+                                    self.log_event_async(
+                                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
+                                        userId="", universityId="", displayName=name, method="face",
+                                        result="denied", reason=f"Spoof detected: {liveness_msg}",
+                                        confidence=float(valid_user.get("confidence", 0.0) * 100), livenessScore=float(liveness_score), pinFallbackUsed=0
+                                    )
+                                except Exception as e:
+                                    logger.error(f"[DB LOG ERROR] {e}")
                                 self.last_detection_time = now
                                 return
                         
@@ -553,7 +550,7 @@ class InterfaceMonitorApp(QMainWindow):
                                 labId="default-lab", clusterId="default-cluster", nodeId="default-node",
                                 userId="", universityId=university_id, displayName=name, method="face",
                                 result="granted", reason=f"Face ID + Liveness: {schedule_msg}",
-                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                                confidence=float(valid_user.get("confidence", 0.0) * 100), livenessScore=float(liveness_score), pinFallbackUsed=0
                             )
                         else:
                             self.tabAccess.lblScanStatus.setText("🚫 ACCESS DENIED")
@@ -578,7 +575,7 @@ class InterfaceMonitorApp(QMainWindow):
                                 labId="default-lab", clusterId="default-cluster", nodeId="default-node",
                                 userId="", universityId=university_id, displayName=name, method="face",
                                 result="denied", reason=schedule_msg,
-                                confidence=1.0, livenessScore=float(liveness_score), pinFallbackUsed=0
+                                confidence=float(valid_user.get("confidence", 0.0) * 100), livenessScore=float(liveness_score), pinFallbackUsed=0
                             )
                 else:
                     # Show remaining progress countdown
