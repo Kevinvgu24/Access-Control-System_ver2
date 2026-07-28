@@ -967,35 +967,43 @@ def get_latest_sensors(lab_id):
 
     now_dt = datetime.now().astimezone()
 
-    # Update freshness for each subnode in registry
+    # Aggregate approved subnodes across all labs (deduplicate by node_id)
     subnodes_list = []
+    seen_subnode_ids = set()
     any_online = False
-    for node_id, node_info in list(subnodes_registry.items()):
-        node_copy = node_info.copy()
-        if node_copy.get("maintenance_mode", False):
-            node_copy["online"] = False
-            node_copy["sensor_ok"] = False
-            node_copy["error_msg"] = "Disconnected for Maintenance"
-        elif node_copy.get("last_updated"):
-            try:
-                last_dt = datetime.fromisoformat(node_copy["last_updated"])
-                if last_dt.tzinfo is None:
-                    last_dt = last_dt.astimezone()
-                if (now_dt - last_dt).total_seconds() > 15.0:
-                    node_copy["online"] = False
-                    node_copy["sensor_ok"] = False
-                    node_copy["error_msg"] = "Connection Timeout (>15s)"
-            except Exception:
+
+    for lid, lstate in list(labs_registry.items()):
+        subnodes_reg = lstate.get("subnodes", {})
+        for node_id, node_info in list(subnodes_reg.items()):
+            if node_id in seen_subnode_ids:
+                continue
+            seen_subnode_ids.add(node_id)
+            
+            node_copy = node_info.copy()
+            if node_copy.get("maintenance_mode", False):
                 node_copy["online"] = False
-        else:
-            node_copy["online"] = False
-            node_copy["sensor_ok"] = False
-            node_copy["error_msg"] = "Never Connected"
+                node_copy["sensor_ok"] = False
+                node_copy["error_msg"] = "Disconnected for Maintenance"
+            elif node_copy.get("last_updated"):
+                try:
+                    last_dt = datetime.fromisoformat(node_copy["last_updated"])
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.astimezone()
+                    if (now_dt - last_dt).total_seconds() > 15.0:
+                        node_copy["online"] = False
+                        node_copy["sensor_ok"] = False
+                        node_copy["error_msg"] = "Connection Timeout (>15s)"
+                except Exception:
+                    node_copy["online"] = False
+            else:
+                node_copy["online"] = False
+                node_copy["sensor_ok"] = False
+                node_copy["error_msg"] = "Never Connected"
 
-        if node_copy["online"]:
-            any_online = True
+            if node_copy["online"]:
+                any_online = True
 
-        subnodes_list.append(node_copy)
+            subnodes_list.append(node_copy)
 
     # Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 120 seconds)
     active_pending = []

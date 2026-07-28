@@ -636,7 +636,7 @@ class FaceDatabase:
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         try:
-            c.execute("DELETE FROM subnodes WHERE id = ? AND labId = ?", (node_id, lab_id))
+            c.execute("DELETE FROM subnodes WHERE id = ? OR (id = ? AND labId = ?)", (node_id, node_id, lab_id))
             conn.commit()
         except Exception as e:
             logger.error(f"Error deleting subnode: {e}")
