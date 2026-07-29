@@ -1015,7 +1015,7 @@ def get_latest_sensors(lab_id):
 
         subnodes_list.append(node_copy)
 
-    # 2. Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 120 seconds)
+    # 2. Active Pending Nodes filter (Aggregate from all labs, purge if inactive > 15 seconds)
     active_pending = []
     seen_pending_ids = set()
     now_ts = time.time()
@@ -1023,7 +1023,7 @@ def get_latest_sensors(lab_id):
         pending_queue = lstate.get("pending_subnodes", {})
         for pid, pnode in list(pending_queue.items()):
             last_seen = pnode.get("last_seen_ts", 0)
-            if last_seen > 0 and (now_ts - last_seen) <= 120.0:
+            if last_seen > 0 and (now_ts - last_seen) <= 15.0:
                 if pid not in seen_pending_ids:
                     seen_pending_ids.add(pid)
                     active_pending.append(pnode)

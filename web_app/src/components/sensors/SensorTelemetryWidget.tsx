@@ -711,7 +711,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
       {showPairingModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white border-b border-slate-800">
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2 font-mono">
                 <Radio className="w-5 h-5 text-orange-500 animate-pulse" />
                 <h3 className="font-extrabold text-sm uppercase tracking-wider">
@@ -726,8 +726,8 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex flex-col gap-4">
-              <p className="text-xs font-mono text-slate-600">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4 flex-1">
+              <p className="text-xs font-mono text-slate-600 shrink-0">
                 The following unapproved ESP32 hardware subnodes were discovered via MQTT. Click <strong className="text-emerald-700">Approve & Pair</strong> to authorize a device into system registry.
               </p>
 
@@ -742,7 +742,7 @@ export function SensorTelemetryWidget({ compact = false }: { compact?: boolean }
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3.5 max-h-[380px] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-3.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-2.5">
                   {pendingNodes.map((pNode) => (
                     <div key={pNode.id} className="border-2 border-slate-200 hover:border-orange-300 rounded-xl p-4 bg-slate-50 flex flex-col gap-3 transition-all shadow-sm overflow-hidden">
                       <div className="flex items-center justify-between gap-2 overflow-hidden">

@@ -117,12 +117,12 @@ class MQTTTelemetryService:
             for lab_id, state in list(labs_registry.items()):
                 any_subnode_online = False
 
-                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (120s timeout)
+                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (15s timeout)
                 for pending_id, pending_node in list(state["pending_subnodes"].items()):
                     last_seen = pending_node.get("last_seen_ts", 0)
-                    if last_seen > 0 and (now - last_seen) > 120.0:
+                    if last_seen > 0 and (now - last_seen) > 15.0:
                         del state["pending_subnodes"][pending_id]
-                        logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 120s)")
+                        logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 15s)")
 
                 # 2. Check telemetry timeouts for approved subnodes
                 for node_id, node in list(state["subnodes"].items()):
@@ -226,10 +226,16 @@ class MQTTTelemetryService:
         now_iso = datetime.now().astimezone().isoformat()
         now_ts = time.time()
 
-        # Extract exact node ID sent by ESP32
-        raw_node_id = str(data.get("node_id", data.get("subnode_id", "")))
-        if not raw_node_id:
-            raw_node_id = "unknown_esp32_device"
+        # Extract exact node ID sent by ESP32, fallback to topic segment
+        raw_node_id = str(data.get("node_id", data.get("subnode_id", ""))).strip()
+        if not raw_node_id or raw_node_id == "unknown_esp32_device":
+            topic_parts = topic.split('/')
+            if len(topic_parts) >= 3 and topic_parts[1] == "subnodes":
+                raw_node_id = topic_parts[2]
+            elif len(topic_parts) >= 4 and topic_parts[2] == "subnodes":
+                raw_node_id = topic_parts[3]
+            else:
+                raw_node_id = "unknown_esp32_device"
 
         # Query SQLite to check if node was approved in database
         db_node = self.db.get_subnode_globally(raw_node_id) if self.db else None
