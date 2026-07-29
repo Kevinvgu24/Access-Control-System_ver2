@@ -432,7 +432,7 @@ class MQTTTelemetryService:
         # Save telemetry event to database
         if self.db:
             self.db.save_sensor_telemetry(
-                lab_id=lab_id,
+                lab_id=target_lab_id,
                 temperature=latest_data["temperature"],
                 humidity=latest_data["humidity"],
                 latitude=latest_data["latitude"],
@@ -447,10 +447,10 @@ class MQTTTelemetryService:
             
             # Save individual node telemetry history
             self.db.save_individual_node_telemetry(
-                lab_id=lab_id,
-                node_id=subnode_id,
+                lab_id=target_lab_id,
+                node_id=raw_node_id,
                 metrics=target_node["data"],
                 raw_payload=json.dumps(data)
             )
 
-        logger.info(f"[{lab_id}] Ingested dynamic subnode '{subnode_id}' metrics: {target_node['data']}")
+        logger.info(f"[{target_lab_id}] Ingested dynamic subnode '{raw_node_id}' metrics: {target_node['data']}")

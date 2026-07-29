@@ -1227,8 +1227,11 @@ def get_sensor_history(lab_id):
 def export_sensor_history(lab_id):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry WHERE labId = ? ORDER BY id DESC LIMIT 10000", (lab_id,))
+    c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry WHERE LOWER(labId) = LOWER(?) OR labId = 'default-lab' ORDER BY id DESC LIMIT 10000", (lab_id,))
     rows = c.fetchall()
+    if not rows:
+        c.execute("SELECT id, receivedAt, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok FROM environment_telemetry ORDER BY id DESC LIMIT 10000")
+        rows = c.fetchall()
     conn.close()
 
     import csv
@@ -1246,8 +1249,11 @@ def export_sensor_history(lab_id):
 def export_individual_node_history(lab_id, node_id):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE node_id = ? AND labId = ? ORDER BY id DESC LIMIT 10000", (node_id, lab_id))
+    c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE (LOWER(node_id) = LOWER(?) OR LOWER(node_id) LIKE LOWER(?)) AND (LOWER(labId) = LOWER(?) OR labId = 'default-lab') ORDER BY id DESC LIMIT 10000", (node_id, f"%{node_id}%", lab_id))
     rows = c.fetchall()
+    if not rows:
+        c.execute("SELECT id, receivedAt, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok FROM node_telemetry_history WHERE LOWER(node_id) = LOWER(?) OR LOWER(node_id) LIKE LOWER(?) ORDER BY id DESC LIMIT 10000", (node_id, f"%{node_id}%"))
+        rows = c.fetchall()
     conn.close()
 
     import csv
