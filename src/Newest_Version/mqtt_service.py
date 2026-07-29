@@ -185,9 +185,17 @@ class MQTTTelemetryService:
 
     def process_manifest_payload(self, topic, data):
         lab_id = extract_lab_id(topic)
-        state = get_lab_state(lab_id)
         
-        node_id = data.get("node_id", "subnode_unknown")
+        node_id = str(data.get("node_id", data.get("subnode_id", ""))).strip()
+        if not node_id or node_id == "subnode_unknown":
+            topic_parts = topic.split('/')
+            if len(topic_parts) >= 3 and topic_parts[1] == "subnodes":
+                node_id = topic_parts[2]
+            elif len(topic_parts) >= 4 and topic_parts[2] == "subnodes":
+                node_id = topic_parts[3]
+            else:
+                node_id = "subnode_unknown"
+
         device_name = data.get("device_name", f"ESP32 Subnode ({node_id})")
         capabilities = data.get("capabilities", [])
 
@@ -196,12 +204,19 @@ class MQTTTelemetryService:
 
         # Check if node is approved in memory OR SQLite DB
         db_node = self.db.get_subnode_globally(node_id) if self.db else None
+        target_lab_id = (db_node.get("labId") if db_node else None) or lab_id
+        state = get_lab_state(target_lab_id)
+
         is_approved = bool(db_node) or node_id in state["subnodes"]
         if not is_approved:
             for lid, lstate in list(labs_registry.items()):
-                if node_id in lstate.get("subnodes", {}):
-                    is_approved = True
-                    state = lstate
+                for sid in lstate.get("subnodes", {}):
+                    if sid.lower().strip() == node_id.lower().strip():
+                        is_approved = True
+                        state = lstate
+                        node_id = sid
+                        break
+                if is_approved:
                     break
 
         if not is_approved:
@@ -209,16 +224,35 @@ class MQTTTelemetryService:
             self.process_telemetry_payload(topic, data)
             return
 
-        # Always purge approved subnodes from any pending queues
+        # Always purge approved subnodes from any pending queues across all labs
         for lid, lstate in list(labs_registry.items()):
-            lstate.get("pending_subnodes", {}).pop(node_id, None)
+            p_queue = lstate.get("pending_subnodes", {})
+            for pk in list(p_queue.keys()):
+                if pk.lower().strip() in [node_id.lower().strip(), node_id.lower().replace('-', '_'), node_id.lower().replace('_', '-')]:
+                    p_queue.pop(pk, None)
 
-        if not state["subnodes"][node_id].get("name"):
-            state["subnodes"][node_id]["name"] = device_name
-        state["subnodes"][node_id]["sensors"] = sensors_str
-        state["subnodes"][node_id]["capabilities"] = capabilities
+        if node_id not in state["subnodes"]:
+            state["subnodes"][node_id] = {
+                "id": node_id,
+                "name": (db_node.get("name") if db_node else device_name),
+                "sensors": (db_node.get("sensors") if db_node else sensors_str),
+                "online": True,
+                "sensor_ok": True,
+                "maintenance_mode": False,
+                "error_msg": None,
+                "last_updated": datetime.now().astimezone().isoformat(),
+                "last_updated_ts": time.time(),
+                "connected_at_ts": time.time(),
+                "capabilities": capabilities,
+                "data": {}
+            }
+        else:
+            if not state["subnodes"][node_id].get("name"):
+                state["subnodes"][node_id]["name"] = device_name
+            state["subnodes"][node_id]["sensors"] = sensors_str
+            state["subnodes"][node_id]["capabilities"] = capabilities
 
-        logger.info(f"[{lab_id}] Updated ESP32 Manifest for approved subnode '{node_id}': {sensors_str}")
+        logger.info(f"[{target_lab_id}] Updated ESP32 Manifest for approved subnode '{node_id}': {sensors_str}")
 
     def process_telemetry_payload(self, topic, data):
         lab_id = extract_lab_id(topic)
@@ -267,15 +301,22 @@ class MQTTTelemetryService:
         else:
             # Check other labs in memory
             for lid, lstate in list(labs_registry.items()):
-                if raw_node_id in lstate["subnodes"]:
-                    is_approved = True
-                    state = lstate
+                for sid in lstate.get("subnodes", {}):
+                    if sid.lower().strip() == raw_node_id.lower().strip():
+                        is_approved = True
+                        state = lstate
+                        raw_node_id = sid
+                        break
+                if is_approved:
                     break
 
         if is_approved:
-            # Always purge approved subnodes from any pending queues across all labs
+            # Always purge approved subnodes and case variants from pending queues across all labs
             for lid, lstate in list(labs_registry.items()):
-                lstate.get("pending_subnodes", {}).pop(raw_node_id, None)
+                p_queue = lstate.get("pending_subnodes", {})
+                for pk in list(p_queue.keys()):
+                    if pk.lower().strip() in [raw_node_id.lower().strip(), raw_node_id.lower().replace('-', '_'), raw_node_id.lower().replace('_', '-')]:
+                        p_queue.pop(pk, None)
 
         if not is_approved:
             # If node was rejected by admin, ignore telemetry payload and do not re-add to pairing queue

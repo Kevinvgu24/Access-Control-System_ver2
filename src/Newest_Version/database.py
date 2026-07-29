@@ -631,12 +631,26 @@ class FaceDatabase:
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         try:
-            c.execute("SELECT * FROM subnodes WHERE labId = ?", (lab_id,))
+            c.execute("SELECT * FROM subnodes WHERE LOWER(labId) = LOWER(?) OR labId = 'default-lab'", (lab_id,))
             rows = c.fetchall()
             return {row["id"]: dict(row) for row in rows}
         except Exception as e:
             logger.error(f"Error reading subnodes: {e}")
             return {}
+        finally:
+            conn.close()
+
+    def get_all_subnodes_globally(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes")
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"Error reading all subnodes globally: {e}")
+            return []
         finally:
             conn.close()
 
@@ -652,11 +666,15 @@ class FaceDatabase:
             conn.close()
 
     def get_subnode_globally(self, node_id):
+        if not node_id:
+            return None
+        node_id_clean = str(node_id).strip()
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         try:
-            c.execute("SELECT * FROM subnodes WHERE id = ?", (node_id,))
+            c.execute("SELECT * FROM subnodes WHERE LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?)", 
+                      (node_id_clean, node_id_clean.replace('-', '_'), node_id_clean.replace('_', '-')))
             row = c.fetchone()
             return dict(row) if row else None
         except Exception as e:
