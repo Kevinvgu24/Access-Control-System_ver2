@@ -1121,13 +1121,15 @@ def approve_subnode(lab_id):
     
     # Save to SQLite database so it persists across restarts
     db.save_subnode(lab_id, node_id, name, sensors)
+    from mqtt_service import rejected_subnodes
+    rejected_subnodes.discard(node_id)
 
     logger.info(f"Approved and paired new ESP32 Subnode '{node_id}' ({name}).")
     return jsonify({"success": True, "message": f"Subnode '{name}' paired successfully", "subnode": subnodes_registry[node_id]})
 
 @app.route("/api/labs/<path:lab_id>/subnodes/reject", methods=["POST"])
 def reject_subnode(lab_id):
-    from mqtt_service import labs_registry
+    from mqtt_service import labs_registry, rejected_subnodes
     
     req_data = request.json or {}
     node_id = req_data.get("node_id")
@@ -1135,10 +1137,11 @@ def reject_subnode(lab_id):
     if not node_id:
         return jsonify({"success": False, "message": "Missing node_id"}), 400
 
+    rejected_subnodes.add(node_id)
     for lid, lstate in list(labs_registry.items()):
         lstate["pending_subnodes"].pop(node_id, None)
 
-    logger.info(f"Rejected pending ESP32 Subnode pairing request '{node_id}'.")
+    logger.info(f"Rejected pending ESP32 Subnode pairing request '{node_id}'. Added to blacklist.")
     return jsonify({"success": True, "message": "Pending subnode pairing rejected"})
 
 @app.route("/api/labs/<path:lab_id>/subnodes/<node_id>/toggle-maintenance", methods=["POST"])

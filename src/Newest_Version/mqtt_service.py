@@ -9,6 +9,7 @@ logger = get_logger("mqtt_service")
 
 # Global in-memory cache for Multi-Lab state
 labs_registry = {}
+rejected_subnodes = set()
 
 def get_lab_state(lab_id):
     if lab_id not in labs_registry:
@@ -117,10 +118,10 @@ class MQTTTelemetryService:
             for lab_id, state in list(labs_registry.items()):
                 any_subnode_online = False
 
-                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (15s timeout)
+                # 1. Clean up pending pairing requests if ESP32 is turned off / disconnects before approval (15s timeout or invalid last_seen)
                 for pending_id, pending_node in list(state["pending_subnodes"].items()):
                     last_seen = pending_node.get("last_seen_ts", 0)
-                    if last_seen > 0 and (now - last_seen) > 15.0:
+                    if last_seen <= 0 or (now - last_seen) > 15.0:
                         del state["pending_subnodes"][pending_id]
                         logger.info(f"[{lab_id}] Purged expired pending ESP32 pairing request for '{pending_id}' (timeout > 15s)")
 
@@ -277,6 +278,10 @@ class MQTTTelemetryService:
                 lstate.get("pending_subnodes", {}).pop(raw_node_id, None)
 
         if not is_approved:
+            # If node was rejected by admin, ignore telemetry payload and do not re-add to pairing queue
+            if raw_node_id in rejected_subnodes:
+                return
+
             # Unrecognized / unapproved ESP32 subnode: MUST go into pending queue!
             pending_lab_id = target_lab_id
             pending_state = state
