@@ -224,7 +224,7 @@ export function LabSelectorPage() {
                 </div>
                 <p className="text-xl font-extrabold text-[#0f172a] leading-tight">{lab.name}</p>
                 <p className="font-mono text-[11px] text-[#64748b] mt-1.5 flex items-center gap-1.5">
-                  <span>📍 {[lab.location, lab.manager ? `Quản lý: ${lab.manager}` : ''].filter(Boolean).join(' · ') || '—'}</span>
+                  <span>📍 {[lab.location, lab.manager ? `Manager: ${lab.manager}` : ''].filter(Boolean).join(' · ') || '—'}</span>
                 </p>
               </div>
 
@@ -244,10 +244,10 @@ export function LabSelectorPage() {
                       e.stopPropagation()
                       const codeToCopy = lab.activationCode || `ACT-${(lab.code || '304').toUpperCase()}`
                       navigator.clipboard.writeText(codeToCopy)
-                      alert(`Đã sao chép mã kích hoạt RPi5: ${codeToCopy}`)
+                      alert(`Copied RPi5 activation code: ${codeToCopy}`)
                     }}
                     className="text-[11px] font-mono bg-orange-500/20 hover:bg-orange-500/30 text-orange-700 font-bold px-2.5 py-1 rounded border border-orange-500/30 transition-colors shrink-0 cursor-pointer active:scale-95"
-                    title="Sao chép mã kích hoạt"
+                    title="Copy activation code"
                   >
                     📋 Copy
                   </button>
@@ -255,7 +255,7 @@ export function LabSelectorPage() {
 
                 {lab.nodeActivatedAt && (
                   <div className="flex flex-col gap-0.5 px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[10px] font-mono text-emerald-700">
-                    <span className="font-bold truncate">🕒 Kích hoạt: {lab.nodeActivatedAt}</span>
+                    <span className="font-bold truncate">🕒 Activated: {lab.nodeActivatedAt}</span>
                     <span className="truncate">👤 Admin: {lab.nodeActivatedBy || 'Kevin'}</span>
                   </div>
                 )}

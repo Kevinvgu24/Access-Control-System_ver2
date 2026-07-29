@@ -80,13 +80,13 @@ class LabWidget(QWidget):
         layout.addWidget(lbl_instruct)
 
         # Field 1: Lab Name
-        lbl_name = QLabel("Tên Phòng Lab (Lab Name):")
+        lbl_name = QLabel("Lab Name:")
         lbl_name.setStyleSheet("color: #334155; font-size: 12px; font-weight: bold;")
         layout.addWidget(lbl_name)
 
         self.inputLabName = QLineEdit()
         self.inputLabName.setText(cfg.get('lab_name', ''))
-        self.inputLabName.setPlaceholderText("Ví dụ: Phòng Thí Nghiệm 304 / IoT Lab")
+        self.inputLabName.setPlaceholderText("e.g., Lab Room 304 / IoT Lab")
         self.inputLabName.setMinimumHeight(38)
         self.inputLabName.setStyleSheet("""
             QLineEdit {
@@ -103,13 +103,13 @@ class LabWidget(QWidget):
         layout.addWidget(self.inputLabName)
 
         # Field 2: Lab Code
-        lbl_code = QLabel("Mã Code Phòng Lab (Lab Code):")
+        lbl_code = QLabel("Lab Code:")
         lbl_code.setStyleSheet("color: #334155; font-size: 12px; font-weight: bold;")
         layout.addWidget(lbl_code)
 
         self.inputLabCode = QLineEdit()
         self.inputLabCode.setText(cfg.get('lab_code', ''))
-        self.inputLabCode.setPlaceholderText("Ví dụ: 304 hoặc Lab_1")
+        self.inputLabCode.setPlaceholderText("e.g., 304 or Lab_1")
         self.inputLabCode.setMinimumHeight(38)
         self.inputLabCode.setStyleSheet("""
             QLineEdit {
@@ -126,13 +126,13 @@ class LabWidget(QWidget):
         layout.addWidget(self.inputLabCode)
 
         # Field 3: Admin Activation Code
-        lbl_act = QLabel("Mã Kích Hoạt Quản Lý (Admin Activation Code):")
+        lbl_act = QLabel("Admin Activation Code:")
         lbl_act.setStyleSheet("color: #ea580c; font-size: 12px; font-weight: bold;")
         layout.addWidget(lbl_act)
 
         self.inputActivationCode = QLineEdit()
         self.inputActivationCode.setText(cfg.get('activation_code', ''))
-        self.inputActivationCode.setPlaceholderText("Ví dụ: ACT-8F3K9A (xem trên Web App)")
+        self.inputActivationCode.setPlaceholderText("e.g., ACT-8F3K9A (see Web App)")
         self.inputActivationCode.setMinimumHeight(38)
         self.inputActivationCode.setStyleSheet("""
             QLineEdit {
@@ -187,8 +187,8 @@ class LabWidget(QWidget):
 
         if not lab_code or not act_code:
             QMessageBox.warning(
-                self, "Thiếu Thông Tin",
-                "Vui lòng nhập đầy đủ Mã Code Phòng Lab và Mã Kích Hoạt (Activation Code)!"
+                self, "Missing Information",
+                "Please enter both Lab Code and Activation Code!"
             )
             return
 
@@ -229,7 +229,7 @@ class LabWidget(QWidget):
 
                     self.lblCurrentLab.setText(
                         f"LAB: {confirmed_code} | STATUS: ✓ ACTIVATED\n"
-                        f"🕒 Kích hoạt: {act_at} | 👤 Người kích hoạt: {act_by}"
+                        f"🕒 Activated: {act_at} | 👤 Activated by: {act_by}"
                     )
                     self.lblCurrentLab.setStyleSheet("""
                         background-color: #f0fdf4;
@@ -244,16 +244,16 @@ class LabWidget(QWidget):
                     self.lab_code_changed.emit(confirmed_code)
 
                     QMessageBox.information(
-                        self, "Kích Hoạt Thành Công",
-                        f"🎉 Raspberry Pi 5 đã được kích hoạt thành công!\n\n"
-                        f"🏫 Phòng Lab: {confirmed_name} ({confirmed_code})\n"
-                        f"🕒 Ngày giờ kích hoạt: {act_at}\n"
-                        f"👤 Người kích hoạt (Admin): {act_by}\n\n"
-                        "Cấu hình đã được lưu trữ lâu dài."
+                        self, "Activation Successful",
+                        f"🎉 Raspberry Pi 5 node activated successfully!\n\n"
+                        f"🏫 Lab Room: {confirmed_name} ({confirmed_code})\n"
+                        f"🕒 Activation Date/Time: {act_at}\n"
+                        f"👤 Activated By (Admin): {act_by}\n\n"
+                        "Configuration saved permanently."
                     )
                 else:
-                    err_msg = result.get("error", "Kích hoạt thất bại! Mã activation code không khớp.")
-                    QMessageBox.critical(self, "Lỗi Kích Hoạt", err_msg)
+                    err_msg = result.get("error", "Activation failed! Activation code does not match.")
+                    QMessageBox.critical(self, "Activation Error", err_msg)
         except Exception as e:
             # Fallback local bypass for offline setup or master pin override
             if act_code == "ADMIN123":

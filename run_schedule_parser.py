@@ -1228,80 +1228,80 @@ class UniversalScheduleParser:
 
 def print_menu():
     print("\n" + "="*50)
-    print("      HỆ THỐNG TRA CỨU LỊCH TRÌNH PHÒNG LAB      ")
+    print("      LAB SCHEDULE LOOKUP SYSTEM      ")
     print("="*50)
-    print(" [1] Hiển thị tất cả lịch đi Lab (Rút gọn 30 dòng đầu)")
-    print(" [2] Tra cứu lịch theo Tên sinh viên hoặc MSSV")
-    print(" [3] Tra cứu danh sách lên lab theo Ngày (YYYY-MM-DD)")
-    print(" [4] Xuất toàn bộ dữ liệu ra tệp tin CSV")
-    print(" [5] Thoát chương trình")
+    print(" [1] Display all lab schedules (First 30 rows)")
+    print(" [2] Search schedule by Student Name or ID")
+    print(" [3] Search lab schedule by Date (YYYY-MM-DD)")
+    print(" [4] Export all data to CSV file")
+    print(" [5] Exit program")
     print("="*50)
 
 def main():
     default_path = r"c:\Users\Phant\Downloads\ECE2024_ICT & MSE major_Com. Eng Lab_Schedule & Group_20260401.xlsx"
     
-    print("Chào mừng bạn đến với chương trình đọc lịch trình đi Lab.")
-    print(f"Đường dẫn mặc định gợi ý:\n  {default_path}")
-    path_input = input("Nhập đường dẫn file (hoặc nhấn Enter để dùng mặc định): ").strip()
+    print("Welcome to Lab Schedule Parser Tool.")
+    print(f"Default path suggestion:\n  {default_path}")
+    path_input = input("Enter file path (or press Enter for default): ").strip()
     
     if not path_input:
         path_input = default_path
 
     if not os.path.exists(path_input):
-        print(f"Lỗi: Đường dẫn '{path_input}' không tồn tại. Vui lòng kiểm tra lại.")
+        print(f"Error: Path '{path_input}' does not exist. Please try again.")
         return
 
     try:
         parser = UniversalScheduleParser(path_input)
         records = parser.parse()
-        print(f"\nPhân tích thành công! Tìm thấy:")
-        print(f"  - Số sinh viên: {len(parser.students)}")
-        print(f"  - Số lượt đi Lab: {len(records)}")
+        print(f"\nParsing successful! Found:")
+        print(f"  - Total students: {len(parser.students)}")
+        print(f"  - Total lab visits: {len(records)}")
     except Exception as e:
-        print(f"\nLỗi khi phân tích tệp: {e}")
+        print(f"\nError parsing file: {e}")
         return
 
     while True:
         print_menu()
-        choice = input("Lựa chọn của bạn (1-5): ").strip()
+        choice = input("Your choice (1-5): ").strip()
         
         if choice == '1':
-            print(f"\n--- 30 LƯỢT ĐI LAB ĐẦU TIÊN (Tổng số: {len(records)} lượt) ---")
-            print(f"{'MSSV':<10} | {'Họ và Tên':<25} | {'Nhóm':<5} | {'Ngày':<10} | {'Thứ':<4} | {'Buổi':<5} | {'Phiên':<5} | {'Bài thí nghiệm'}")
+            print(f"\n--- FIRST 30 LAB VISITS (Total: {len(records)}) ---")
+            print(f"{'ID':<10} | {'Full Name':<25} | {'Group':<5} | {'Date':<10} | {'Day':<4} | {'M/A':<5} | {'Sess':<5} | {'Experiment'}")
             print("-" * 90)
             for r in records[:30]:
                 print(f"{r['student_id']:<10} | {r['student_name']:<25} | {r['group_nr']:<5} | {r['date']:<10} | {r['day_of_week']:<4} | {r['ma']:<5} | {r['session_num']:<5} | {r['experiment']}")
             if len(records) > 30:
-                print(f"... và còn {len(records) - 30} lượt khác.")
+                print(f"... and {len(records) - 30} more entries.")
 
         elif choice == '2':
-            query = input("Nhập Tên sinh viên hoặc MSSV cần tra cứu: ").strip().lower()
+            query = input("Enter Student Name or ID to search: ").strip().lower()
             if not query:
                 continue
             
             results = [r for r in records if query in r['student_name'].lower() or query == r['student_id'].lower()]
             
             if not results:
-                print(f"\nKhông tìm thấy lịch trình nào cho sinh viên: '{query}'")
+                print(f"\nNo schedule found for student: '{query}'")
             else:
-                print(f"\n--- KẾT QUẢ TRA CỨU SINH VIÊN: {results[0]['student_name']} (MSSV: {results[0]['student_id']}) ---")
-                print(f"{'Ngày':<10} | {'Thứ':<4} | {'Buổi':<5} | {'Phiên':<5} | {'Bài thí nghiệm'}")
+                print(f"\n--- STUDENT LOOKUP RESULT: {results[0]['student_name']} (ID: {results[0]['student_id']}) ---")
+                print(f"{'Date':<10} | {'Day':<4} | {'M/A':<5} | {'Sess':<5} | {'Experiment'}")
                 print("-" * 50)
                 for r in results:
                     print(f"{r['date']:<10} | {r['day_of_week']:<4} | {r['ma']:<5} | {r['session_num']:<5} | {r['experiment']}")
 
         elif choice == '3':
-            date_query = input("Nhập ngày cần tra cứu (Định dạng YYYY-MM-DD, VD: 2026-04-17): ").strip()
+            date_query = input("Enter date to search (Format YYYY-MM-DD, e.g. 2026-04-17): ").strip()
             if not date_query:
                 continue
             
             results = [r for r in records if r['date'] == date_query]
             
             if not results:
-                print(f"\nKhông có sinh viên nào lịch lên lab vào ngày '{date_query}'.")
+                print(f"\nNo students scheduled for lab on '{date_query}'.")
             else:
-                print(f"\n--- DANH SÁCH LÊN LAB NGÀY: {date_query} (Tổng số: {len(results)} sinh viên) ---")
-                print(f"{'MSSV':<10} | {'Họ và Tên':<25} | {'Nhóm':<5} | {'Buổi':<5} | {'Phiên':<5} | {'Bài thí nghiệm'}")
+                print(f"\n--- LAB ATTENDANCE FOR DATE: {date_query} (Total: {len(results)} students) ---")
+                print(f"{'ID':<10} | {'Full Name':<25} | {'Group':<5} | {'M/A':<5} | {'Sess':<5} | {'Experiment'}")
                 print("-" * 80)
                 for r in results:
                     print(f"{r['student_id']:<10} | {r['student_name']:<25} | {r['group_nr']:<5} | {r['ma']:<5} | {r['session_num']:<5} | {r['experiment']}")
@@ -1316,15 +1316,15 @@ def main():
                     writer.writeheader()
                     for r in records:
                         writer.writerow(r)
-                print(f"\nXuất dữ liệu thành công ra file: '{os.path.abspath(output_csv)}'")
+                print(f"\nData successfully exported to: '{os.path.abspath(output_csv)}'")
             except Exception as e:
-                print(f"\nLỗi khi xuất file CSV: {e}")
+                print(f"\nError exporting CSV file: {e}")
 
         elif choice == '5':
-            print("Cảm ơn bạn đã sử dụng chương trình!")
+            print("Thank you for using the program!")
             break
         else:
-            print("Lựa chọn không hợp lệ, vui lòng chọn lại (1-5).")
+            print("Invalid choice, please select 1-5.")
 
 if __name__ == "__main__":
     main()

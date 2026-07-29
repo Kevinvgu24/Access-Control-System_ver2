@@ -1619,7 +1619,7 @@ def verify_lab_activation():
     activation_code = data.get("activation_code", "").strip()
     
     if not lab_code or not activation_code:
-        return jsonify({"success": False, "error": "Vui lòng nhập đầy đủ Mã Code Phòng và Mã Kích Hoạt (Activation Code)!"}), 400
+        return jsonify({"success": False, "error": "Please enter both Lab Code and Activation Code!"}), 400
         
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -1635,7 +1635,7 @@ def verify_lab_activation():
         conn.close()
         return jsonify({
             "success": False, 
-            "error": f"Phòng Lab có mã/tên '{lab_code}' chưa được tạo trên Web App! Vui lòng tạo phòng Lab trên giao diện Web trước."
+            "error": f"Lab room with code/name '{lab_code}' has not been created on the Web App! Please create the Lab room on the Web interface first."
         }), 404
         
     lab_dict = dict(row)
@@ -1645,7 +1645,7 @@ def verify_lab_activation():
         conn.close()
         return jsonify({
             "success": False,
-            "error": "Mã kích hoạt (Activation Code) không chính xác! Chỉ người quản lý phòng lab mới có mã kích hoạt này."
+            "error": "Activation Code is incorrect! Only the lab manager possesses this activation code."
         }), 403
 
     # Record activation timestamp and admin details
@@ -1668,7 +1668,7 @@ def verify_lab_activation():
     conn.close()
     return jsonify({
         "success": True,
-        "message": f"Kích hoạt nút Raspberry Pi 5 thành công cho phòng Lab '{lab_dict.get('name')}'!",
+        "message": f"Raspberry Pi 5 node successfully activated for Lab room '{lab_dict.get('name')}'!",
         "lab": {
             "id": lab_dict.get("id"),
             "name": lab_dict.get("name"),
