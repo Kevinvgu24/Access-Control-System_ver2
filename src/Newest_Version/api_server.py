@@ -1072,16 +1072,39 @@ def approve_subnode(lab_id):
     subnodes_registry = state["subnodes"]
     
     req_data = request.json or {}
-    node_id = req_data.get("node_id")
+    node_id = str(req_data.get("node_id", "")).strip()
 
     if not node_id:
         return jsonify({"success": False, "message": "Missing node_id"}), 400
 
+    # 1. STRICT CROSS-LAB DUPLICATE SUBNODE CHECK: Ensure node_id is not already paired to another lab
+    existing_db_node = db.get_subnode_globally(node_id)
+    if existing_db_node and existing_db_node.get("labId"):
+        existing_lab = existing_db_node["labId"]
+        if existing_lab.lower().strip() != lab_id.lower().strip():
+            return jsonify({
+                "success": False, 
+                "message": f"Subnode '{node_id}' is ALREADY paired to Lab '{existing_lab}'! A hardware subnode cannot belong to multiple labs."
+            }), 400
+
+    # Check memory registry across all labs for duplicate node_id
+    for lid, lstate in list(labs_registry.items()):
+        if lid.lower().strip() != lab_id.lower().strip():
+            if node_id in lstate.get("subnodes", {}):
+                return jsonify({
+                    "success": False, 
+                    "message": f"Subnode '{node_id}' is ALREADY paired to Lab '{lid}' in active memory!"
+                }), 400
+
     # Pop node from pending queue of target lab OR any lab in labs_registry
     pending_node = None
     for lid, lstate in list(labs_registry.items()):
-        if node_id in lstate["pending_subnodes"]:
-            pending_node = lstate["pending_subnodes"].pop(node_id)
+        p_queue = lstate.get("pending_subnodes", {})
+        for pid in list(p_queue.keys()):
+            if pid.lower().strip() == node_id.lower().strip():
+                pending_node = p_queue.pop(pid)
+                break
+        if pending_node:
             break
 
     if not pending_node and node_id not in subnodes_registry:
@@ -1096,13 +1119,29 @@ def approve_subnode(lab_id):
         existing_count = len(subnodes_registry) + 1
         name = f"Subnode {existing_count} ({node_id})"
 
-    # Check for name duplication
-    existing_names = [node["name"].lower().strip() for node in subnodes_registry.values() if node["id"] != node_id]
+    # 2. STRICT CROSS-LAB NAME DUPLICATION CHECK across all labs in SQLite DB & memory
+    existing_names = set()
+    all_db_subnodes = db.get_all_subnodes_globally()
+    for row in all_db_subnodes:
+        if row["id"].lower().strip() != node_id.lower().strip() and row.get("name"):
+            existing_names.add(row["name"].lower().strip())
+
+    for lid, lstate in list(labs_registry.items()):
+        for sid, snode in lstate.get("subnodes", {}).items():
+            if sid.lower().strip() != node_id.lower().strip() and snode.get("name"):
+                existing_names.add(snode["name"].lower().strip())
+
     if name.lower().strip() in existing_names:
         if pending_node:
             state["pending_subnodes"][node_id] = pending_node
-        return jsonify({"success": False, "message": f"Subnode name '{name}' already exists! Please choose a different name."}), 400
+        return jsonify({"success": False, "message": f"Subnode name '{name}' is already used by another node in the system! Please choose a unique name."}), 400
+
     sensors = pending_node.get("sensors", "Dynamic MQTT Sensors") if pending_node else "Approved Dynamic Cluster"
+
+    # Purge node from any other lab's subnodes registry in memory if re-assigned
+    for lid, lstate in list(labs_registry.items()):
+        if lid.lower().strip() != lab_id.lower().strip():
+            lstate.get("subnodes", {}).pop(node_id, None)
 
     subnodes_registry[node_id] = {
         "id": node_id,
