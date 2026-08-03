@@ -331,9 +331,12 @@ class FaceDatabase:
         # Admin mặc định (Email: dawnnkevin9@gmail.com, Pass: admin123)
         c.execute("SELECT COUNT(*) FROM admins")
         if c.fetchone()[0] == 0:
-            import hashlib
-            # Sử dụng SHA256 để mã hóa mật khẩu đơn giản
-            pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
+            try:
+                from werkzeug.security import generate_password_hash
+                pw_hash = generate_password_hash("admin123")
+            except ImportError:
+                import hashlib
+                pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
             c.execute("INSERT INTO admins (id, email, password, displayName, type, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)",
                       ("default-admin", "dawnnkevin9@gmail.com", pw_hash, "Kevin", "super_admin", "active", now_str))
 

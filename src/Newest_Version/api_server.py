@@ -8,9 +8,18 @@ import time
 import threading
 import zipfile
 import xml.etree.ElementTree as ET
-from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, Response
+from datetime import datetime, timedelta
+from functools import wraps
+from flask import Flask, request, jsonify, send_from_directory, Response, make_response
 from flask_cors import CORS
+import jwt
+from werkzeug.security import check_password_hash, generate_password_hash
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 def parse_xlsx(file_stream):
     """
@@ -81,8 +90,93 @@ from mqtt_service import MQTTTelemetryService
 
 logger = get_logger("api_server")
 
+# Security Configuration & Keys from environment
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "vgulab_jwt_super_secret_key_2026_prod_x89a0")
+DEVICE_API_KEY = os.environ.get("DEVICE_API_KEY", "vgulab_device_api_secret_key_2026")
+allowed_origins_raw = os.environ.get("ALLOWED_ORIGINS", "https://smartdoor.vgulabmanagement.site,http://localhost:3000,http://localhost:5000")
+allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
+
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend development
+# Limit maximum payload size to 16MB to prevent Out-Of-Memory (OOM) DoS crashes
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+CORS(app, origins=allowed_origins, supports_credentials=True)
+
+# Rate Limiter
+limiter = None
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per day", "300 per hour"])
+except Exception as e:
+    logger.warning(f"Could not initialize Flask-Limiter: {e}")
+
+# Global Error Handlers to prevent server crashes
+@app.errorhandler(413)
+def handle_payload_too_large(error):
+    return jsonify({"error": "Payload size exceeds maximum allowed limit (16MB)"}), 413
+
+@app.errorhandler(429)
+def handle_rate_limit_exceeded(error):
+    return jsonify({"error": "Rate limit exceeded. Please slow down your requests."}), 429
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    logger.error(f"Unhandled Exception in API Server: {error}", exc_info=True)
+    return jsonify({
+        "error": "An internal server error occurred",
+        "details": str(error) if app.debug else "Internal Server Error"
+    }), 500
+
+# Security Decorators
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == "OPTIONS":
+            return f(*args, **kwargs)
+        
+        token = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+        elif request.cookies.get("access_token"):
+            token = request.cookies.get("access_token")
+            
+        if not token:
+            return jsonify({"error": "Authentication token required"}), 401
+            
+        try:
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+            request.current_user = payload
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token has expired"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Invalid authentication token"}), 401
+            
+        return f(*args, **kwargs)
+    return decorated
+
+def require_device_token(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == "OPTIONS":
+            return f(*args, **kwargs)
+            
+        token = request.headers.get("X-Device-Token") or request.args.get("device_key")
+        if token and token == DEVICE_API_KEY:
+            return f(*args, **kwargs)
+            
+        # Fallback to Admin JWT
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                jwt.decode(auth_header.split(" ")[1], JWT_SECRET_KEY, algorithms=["HS256"])
+                return f(*args, **kwargs)
+            except Exception:
+                pass
+                
+        return jsonify({"error": "Valid Device API Key (X-Device-Token) or Authorization Token required"}), 401
+    return decorated
 
 # Paths resolution
 project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
@@ -209,33 +303,46 @@ def api_login():
     if not email or not password:
         return jsonify({"error": "Email and Password are required"}), 400
         
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT id, displayName, type, status FROM admins WHERE email = ? AND password = ?", (email, pw_hash))
+    c.execute("SELECT id, password, displayName, type, status FROM admins WHERE email = ?", (email,))
     row = c.fetchone()
     conn.close()
     
     if not row:
-        # Fallback for initial login before first admin entry or master credential
-        if email == "dawnnkevin9@gmail.com" and password == "admin123":
-            return jsonify({
-                "firebaseUid": "default-admin",
-                "userId": "default-admin",
-                "email": email,
-                "displayName": "Kevin",
-                "type": "super_admin",
-                "role": "super_admin",
-                "status": "active"
-            })
         return jsonify({"error": "Invalid email or password"}), 401
         
-    admin_id, display_name, admin_type, status = row
+    admin_id, stored_pw, display_name, admin_type, status = row
+    
     if status != "active":
         return jsonify({"error": "Account is suspended"}), 403
         
-    return jsonify({
+    # Verify password with werkzeug check_password_hash or SHA256 fallback
+    valid_password = False
+    try:
+        if stored_pw.startswith("pbkdf2:") or stored_pw.startswith("scrypt:") or stored_pw.startswith("argon2:"):
+            valid_password = check_password_hash(stored_pw, password)
+        else:
+            legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+            valid_password = (legacy_hash == stored_pw)
+    except Exception:
+        legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+        valid_password = (legacy_hash == stored_pw)
+        
+    if not valid_password:
+        return jsonify({"error": "Invalid email or password"}), 401
+        
+    # Generate signed JWT token
+    token_payload = {
+        "userId": admin_id,
+        "email": email,
+        "role": admin_type,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
+    
+    response_data = {
+        "token": token,
         "firebaseUid": admin_id,
         "userId": admin_id,
         "email": email,
@@ -243,7 +350,19 @@ def api_login():
         "type": admin_type,
         "role": admin_type,
         "status": status
-    })
+    }
+    
+    resp = make_response(jsonify(response_data))
+    # Set HttpOnly Cookie for Secure session handling
+    resp.set_cookie(
+        "access_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=86400
+    )
+    return resp
 
 # 2. Labs List
 @app.route("/api/labs", methods=["GET"])

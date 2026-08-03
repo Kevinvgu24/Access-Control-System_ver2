@@ -1,0 +1,26 @@
+\contentsline {section}{Abstract}{2}{section*.2}%
+\contentsline {section}{\numberline {1}Introduction \& Problem Statement}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Background}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Limitations of Existing Solutions}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Project Objectives}{3}{subsection.1.3}%
+\contentsline {section}{\numberline {2}System Architecture \& Data Communication}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Three-Tier Architecture Model}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}MQTT Protocol \& JSON Payload Format}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Edge Hardware \& ESP32 Firmware Design}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Subnode \#1: Environmental Sensing (\texttt {ESP1\_DHT11\_Transmitter.cpp})}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Subnode \#2: Satellite Positioning (\texttt {ESP2\_LC76G\_Receiver.cpp})}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Edge Host Telemetry: Raspberry Pi 5}{6}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Central Backend, Database \& Security Mechanics}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}SQLite Database Architecture (\texttt {database.py})}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}MQTT Telemetry Service \& Data Sanitization (\texttt {mqtt\_service.py})}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Subnode Pairing Workflow (Admin Approval)}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Watchdog Timeout Circuit (15-Second Fault Detection)}{7}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Real-Time Frontend Web Dashboard}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Widget Component (\texttt {SensorTelemetryWidget.tsx})}{8}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}2.5-Second Polling \& Reactive UI Features}{8}{subsection.5.2}%
+\contentsline {section}{\numberline {6}Experimental Evaluation \& Results}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Empirical Benchmarks}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Fault Tolerance \& Disconnection Test}{8}{subsection.6.2}%
+\contentsline {section}{\numberline {7}Conclusion \& Future Directions}{9}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Conclusion}{9}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Future Work}{9}{subsection.7.2}%

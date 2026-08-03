@@ -5,3 +5,7 @@ paho-mqtt>=1.6.0
 qdrant-client>=1.7.0
 openpyxl>=3.1.0
 opencv-python>=4.8.0
+pyjwt>=2.8.0
+flask-limiter>=3.5.0
+python-dotenv>=1.0.0
+werkzeug>=3.0.0
