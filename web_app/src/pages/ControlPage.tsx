@@ -130,10 +130,10 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
               <tr key={lab.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-4">
                   <p className="text-sm font-semibold text-[#0f172a]">{lab.name}</p>
-                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{lab.location || '—'}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{lab.location || '-'}</p>
                 </td>
                 <td className="px-5 py-4 text-sm text-[#475569]">
-                  {[lab.code, lab.manager].filter(Boolean).join(' · ') || '—'}
+                  {[lab.code, lab.manager].filter(Boolean).join(' · ') || '-'}
                 </td>
                 <td className="px-5 py-4">
                   <Badge tone={lab.status === 'active' ? 'green' : lab.status === 'maintenance' ? 'amber' : 'neutral'}>{lab.status}</Badge>
@@ -153,7 +153,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           </tbody>
         </table>
         {labs.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No labs yet — create the first one.</p>
+          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No labs yet - create the first one.</p>
         )}
       </Panel>
 
@@ -166,7 +166,7 @@ function LabsTab({ labs, onRefresh }: { labs: Lab[]; onRefresh: () => void }) {
           {err && <p className="text-sm text-red">{err}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editLab ? 'Save Changes' : 'Create Lab'}</Button>
+            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editLab ? 'Save Changes' : 'Create Lab'}</Button>
           </div>
         </Modal>
       )}
@@ -273,16 +273,16 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
           <select value={selectedLabId} onChange={e => setSelectedLabId(e.target.value)}
             className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer">
             {activeLabs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            {activeLabs.length === 0 && <option value="">No labs — create one first</option>}
+            {activeLabs.length === 0 && <option value="">No labs - create one first</option>}
           </select>
         </div>
         <Button variant="primary" size="sm" onClick={openAdd} disabled={!selectedLabId}>+ Add Device</Button>
       </div>
 
       {loadingDevices ? (
-        <p className="font-mono text-[11px] text-[#94a3b8]">Loading devices…</p>
+        <p className="font-mono text-[11px] text-[#94a3b8]">Loading devices...</p>
       ) : clusters.length === 0 ? (
-        <Panel><p className="font-mono text-xs text-[#94a3b8]">No clusters yet — add a device to create the first cluster.</p></Panel>
+        <Panel><p className="font-mono text-xs text-[#94a3b8]">No clusters yet - add a device to create the first cluster.</p></Panel>
       ) : (
         clusters.map(cluster => (
           <Panel key={cluster.id}>
@@ -309,8 +309,8 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
                         <p className="text-sm font-semibold text-[#0f172a]">{node.name}</p>
                         <p className="font-mono text-[11px] text-[#94a3b8]">{node.id.slice(0, 8)}</p>
                       </td>
-                      <td className="py-3 pr-5 font-mono text-xs text-[#475569]">{node.deviceId || '—'}</td>
-                      <td className="py-3 pr-5 text-sm text-[#475569]">{node.location || '—'}</td>
+                      <td className="py-3 pr-5 font-mono text-xs text-[#475569]">{node.deviceId || '-'}</td>
+                      <td className="py-3 pr-5 text-sm text-[#475569]">{node.location || '-'}</td>
                       <td className="py-3 pr-5">
                         <Badge tone={node.status === 'online' ? 'green' : 'neutral'}>{node.status ?? 'offline'}</Badge>
                       </td>
@@ -358,7 +358,7 @@ function DevicesTab({ labs }: { labs: Lab[] }) {
           {err && <p className="text-sm text-red">{err}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editNode ? 'Save Changes' : 'Add Device'}</Button>
+            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editNode ? 'Save Changes' : 'Add Device'}</Button>
           </div>
         </Modal>
       )}
@@ -428,7 +428,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
   }
 
   const handleDelete = async (a: AdminDoc) => {
-    if (!confirm(`Remove admin "${a.displayName}"? Their auth account stays — only the admin record is deleted.`)) return
+    if (!confirm(`Remove admin "${a.displayName}"? Their auth account stays - only the admin record is deleted.`)) return
     await deleteAdminDoc(a.id)
     await load()
   }
@@ -453,7 +453,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-5 py-8 font-mono text-xs text-[#94a3b8]">Loading…</td></tr>
+              <tr><td colSpan={4} className="px-5 py-8 font-mono text-xs text-[#94a3b8]">Loading...</td></tr>
             ) : admins.map(a => (
               <tr key={a.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-4">
@@ -494,7 +494,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
       </Panel>
 
       {showForm && (
-        <Modal title={editAdmin ? `Edit Lab Access — ${editAdmin.displayName}` : 'Add Lab Admin'} onClose={() => setShowForm(false)}>
+        <Modal title={editAdmin ? `Edit Lab Access - ${editAdmin.displayName}` : 'Add Lab Admin'} onClose={() => setShowForm(false)}>
           {!editAdmin && (
             <>
               <Field label="Email"><input type="email" value={fEmail} onChange={e => setFEmail(e.target.value)} placeholder="labadmin@university.edu" className={inputCls} /></Field>
@@ -504,7 +504,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           )}
           <Field label="Lab Access">
             <div className="flex flex-col gap-2">
-              {activeLabs.length === 0 && <p className="text-sm text-[#475569]">No active labs — create labs first.</p>}
+              {activeLabs.length === 0 && <p className="text-sm text-[#475569]">No active labs - create labs first.</p>}
               {activeLabs.map(lab => (
                 <label key={lab.id} className="flex items-center gap-3 cursor-pointer group">
                   <input type="checkbox" checked={fLabIds.includes(lab.id)} onChange={() => toggleLab(lab.id)}
@@ -518,7 +518,7 @@ function AdminsTab({ labs }: { labs: Lab[] }) {
           {err && <p className="text-sm text-red">{err}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editAdmin ? 'Update Access' : 'Create Admin'}</Button>
+            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editAdmin ? 'Update Access' : 'Create Admin'}</Button>
           </div>
         </Modal>
       )}
@@ -562,7 +562,7 @@ export function ControlPage() {
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-6 shadow-sm">
             <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] mb-3">{label}</p>
-            <p className={`text-5xl font-bold ${color}`}>{loadingLabs ? '—' : value}</p>
+            <p className={`text-5xl font-bold ${color}`}>{loadingLabs ? '-' : value}</p>
           </div>
         ))}
       </div>
@@ -575,7 +575,7 @@ export function ControlPage() {
         </div>
 
         {loadingLabs ? (
-          <p className="font-mono text-[11px] text-[#94a3b8]">Loading…</p>
+          <p className="font-mono text-[11px] text-[#94a3b8]">Loading...</p>
         ) : tab === 'labs' ? (
           <LabsTab labs={labs} onRefresh={fetchLabs} />
         ) : tab === 'devices' ? (

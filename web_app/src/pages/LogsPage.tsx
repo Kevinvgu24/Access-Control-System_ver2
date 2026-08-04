@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
@@ -72,7 +72,7 @@ export function LogsPage() {
         <PanelHeader eyebrow="Filter" title="Search & Filter" />
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <input type="text" placeholder="Search by name or university IDâ€¦" value={search}
+            <input type="text" placeholder="Search by name or university ID..." value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
             />
@@ -107,7 +107,7 @@ export function LogsPage() {
                 <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtTs(ev.occurredAt)}</td>
                 <td className="px-5 py-3.5">
                   <p className="text-sm font-semibold text-[#0f172a]">{ev.displayName ?? 'Unknown User'}</p>
-                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{ev.universityId ?? 'â€”'}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{ev.universityId ?? '-'}</p>
                 </td>
                 <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtMethod(ev.method)}</td>
                 <td className="px-5 py-3.5 font-mono text-sm font-semibold text-[#0f172a]">{fmtConf(ev.confidence)}</td>

@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -144,14 +144,14 @@ export function EnrollmentPage() {
                 : isDone  ? 'border-slate-200 bg-raised cursor-pointer'
                 : 'border-slate-100 bg-raised cursor-not-allowed opacity-40'
               }`}>
-              <span className={`font-mono text-[11px] ${isActive ? 'text-[#ea580c] font-extrabold' : 'text-slate-400 font-bold'}`}>{isDone ? 'âœ“ done' : s.num}</span>
+              <span className={`font-mono text-[11px] ${isActive ? 'text-[#ea580c] font-extrabold' : 'text-slate-400 font-bold'}`}>{isDone ? '✓ done' : s.num}</span>
               <span className={`text-sm font-semibold ${isActive ? 'text-[#ea580c] font-extrabold' : 'text-slate-600'}`}>{s.label}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Step 1 â€” Identity */}
+      {/* Step 1 - Identity */}
       {step === 'identity' && (
         <Panel>
           <PanelHeader eyebrow="Step 01" title="Identity Profile" />
@@ -185,7 +185,7 @@ export function EnrollmentPage() {
         </Panel>
       )}
 
-      {/* Step 2 â€” Photos */}
+      {/* Step 2 - Photos */}
       {step === 'photos' && (
         <Panel>
           <PanelHeader eyebrow="Step 02" title="Biometric Capture" />
@@ -222,14 +222,14 @@ export function EnrollmentPage() {
                       : photo.status === 'rejected'  ? 'bg-red/10 text-red'
                       : 'bg-slate-200 text-[#94a3b8]'
                     }`}>
-                      {photo.status === 'accepted' ? 'âœ“' : photo.status === 'uploading' ? 'â€¦' : photo.status === 'rejected' ? 'âœ•' : 'â†‘'}
+                      {photo.status === 'accepted' ? '✓' : photo.status === 'uploading' ? '...' : photo.status === 'rejected' ? 'x' : '↑'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-[#0f172a]">{photo.label}</p>
                       <p className="font-mono text-[11px] text-[#94a3b8] mt-1">
-                        {photo.status === 'accepted'  ? 'Uploaded â€” Click to choose different file'
-                         : photo.status === 'uploading' ? 'Uploadingâ€¦'
-                         : photo.status === 'rejected'  ? 'Upload failed â€” try again'
+                        {photo.status === 'accepted'  ? 'Uploaded - Click to choose different file'
+                         : photo.status === 'uploading' ? 'Uploading...'
+                         : photo.status === 'rejected'  ? 'Upload failed - try again'
                          : 'Click to choose file'}
                       </p>
                     </div>
@@ -247,38 +247,38 @@ export function EnrollmentPage() {
         </Panel>
       )}
 
-      {/* Step 3 â€” PIN */}
+      {/* Step 3 - PIN */}
       {step === 'pin' && (
         <Panel>
           <PanelHeader eyebrow="Step 03" title="PIN Provisioning" />
           <div className="flex flex-col gap-5 max-w-md">
-            <p className="text-sm text-[#475569] leading-relaxed">Auto-generated 6-digit PIN. <strong className="text-[#0f172a]">Only shown once</strong> â€” deliver before saving.</p>
+            <p className="text-sm text-[#475569] leading-relaxed">Auto-generated 6-digit PIN. <strong className="text-[#0f172a]">Only shown once</strong> - deliver before saving.</p>
             <div className="border border-green/20 rounded-lg bg-green/5 px-7 py-6 flex flex-col gap-5">
               <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">Generated PIN</span>
               <strong className="font-mono text-6xl tracking-[0.3em] text-green leading-none">{pin}</strong>
               <div className="flex gap-2">
-                <Button variant="primary" onClick={copyPin}>{pinCopied ? 'âœ“ Copied!' : 'Copy PIN'}</Button>
+                <Button variant="primary" onClick={copyPin}>{pinCopied ? '✓ Copied!' : 'Copy PIN'}</Button>
               </div>
             </div>
             <div className="flex items-start gap-3 px-4 py-3.5 bg-amber/5 border border-amber/20 rounded text-sm text-amber">
-              <span className="shrink-0">âš </span> PIN cannot be viewed again once saved. The node manifest must be regenerated via Cloud Function to activate it.
+              <span className="shrink-0">⚠️</span> PIN cannot be viewed again once saved. The node manifest must be regenerated via Cloud Function to activate it.
             </div>
           </div>
         </Panel>
       )}
 
-      {/* Step 4 â€” Review */}
+      {/* Step 4 - Review */}
       {step === 'review' && (
         <Panel>
           <PanelHeader eyebrow="Step 04" title="Review & Confirm" />
           <div className="flex flex-col gap-3 max-w-lg">
             {[
-              { label: 'Full Name',     value: `${draft.firstName} ${draft.lastName}`.trim() || 'â€”' },
-              { label: 'University ID', value: draft.universityId || 'â€”' },
-              { label: 'Email',         value: draft.email || 'â€”' },
+              { label: 'Full Name',     value: `${draft.firstName} ${draft.lastName}`.trim() || '-' },
+              { label: 'University ID', value: draft.universityId || '-' },
+              { label: 'Email',         value: draft.email || '-' },
               { label: 'Role',          value: draft.role.charAt(0).toUpperCase() + draft.role.slice(1) },
               { label: 'Photos',        value: `${photos.filter(p => p.status === 'accepted').length} / 3 uploaded` },
-              { label: 'PIN',           value: 'â€¢â€¢â€¢â€¢â€¢â€¢' },
+              { label: 'PIN',           value: '••••••' },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-center gap-4 px-5 py-3.5 bg-raised border border-line rounded">
                 <span className="font-mono text-[11px] uppercase tracking-widest text-[#475569]">{label}</span>
@@ -287,21 +287,21 @@ export function EnrollmentPage() {
             ))}
             {error && (
               <div className="flex items-start gap-2 px-4 py-3 bg-red/5 border border-red/20 rounded text-sm text-red">
-                <span>âš </span> {error}
+                <span>⚠️</span> {error}
               </div>
             )}
             <Button variant="primary" className="mt-3 w-fit" onClick={handleConfirm} disabled={submitting}>
-              {submitting ? 'Enrollingâ€¦' : 'Confirm & Enroll Administrator'}
+              {submitting ? 'Enrolling...' : 'Confirm & Enroll Administrator'}
             </Button>
           </div>
         </Panel>
       )}
 
       <div className="flex justify-between">
-        <Button variant="ghost" onClick={() => idx > 0 && setStep(STEPS[idx - 1].id)} disabled={idx === 0}>â† Back</Button>
+        <Button variant="ghost" onClick={() => idx > 0 && setStep(STEPS[idx - 1].id)} disabled={idx === 0}>← Back</Button>
         {idx < STEPS.length - 1 && (
           <Button variant="primary" onClick={() => setStep(STEPS[idx + 1].id)} disabled={isUploading || !canContinue()}>
-            {isUploading ? 'Uploadingâ€¦' : 'Continue â†’'}
+            {isUploading ? 'Uploading...' : 'Continue →'}
           </Button>
         )}
       </div>

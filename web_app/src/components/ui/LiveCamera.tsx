@@ -96,7 +96,7 @@ export function LiveCamera({ labId, nodeId }: LiveCameraProps) {
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/90">
                 <span className="blink w-2.5 h-2.5 rounded-full bg-green" />
                 <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
-                  {cameraState === 'connected' ? 'Awaiting Edge Feed…' : 'Connecting to Node…'}
+                  {cameraState === 'connected' ? 'Awaiting Edge Feed...' : 'Connecting to Node...'}
                 </span>
               </div>
             )}

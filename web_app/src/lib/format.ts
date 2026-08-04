@@ -1,4 +1,4 @@
-﻿import type { AccessResult, NodeOnlineState, AccessMethod } from '@/types/admin'
+import type { AccessResult, NodeOnlineState, AccessMethod } from '@/types/admin'
 
 type Tone = 'green' | 'red' | 'amber' | 'blue' | 'neutral'
 

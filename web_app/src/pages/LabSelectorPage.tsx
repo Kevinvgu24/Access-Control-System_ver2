@@ -156,7 +156,7 @@ export function LabSelectorPage() {
           <p className="font-mono text-[11px] tracking-widest uppercase text-[#94a3b8] mb-3">Select</p>
           <h1 className="text-4xl font-bold tracking-tight text-[#0f172a]">Choose Lab</h1>
           <p className="text-sm text-[#475569] mt-2">
-            {admin?.type === 'super_admin' ? 'All labs — super admin view.' : `You have access to ${labs.length} lab(s).`}
+            {admin?.type === 'super_admin' ? 'All labs - super admin view.' : `You have access to ${labs.length} lab(s).`}
           </p>
         </div>
         {admin?.type === 'super_admin' && (
@@ -165,7 +165,7 @@ export function LabSelectorPage() {
       </div>
 
       {loading ? (
-        <p className="font-mono text-xs text-[#94a3b8]">Loading labs…</p>
+        <p className="font-mono text-xs text-[#94a3b8]">Loading labs...</p>
       ) : error ? (
         <div className="bg-surface border border-red/20 rounded-lg p-8 text-center shadow-sm">
           <p className="font-mono text-xs text-red">Failed to load labs: {error}</p>
@@ -224,7 +224,7 @@ export function LabSelectorPage() {
                 </div>
                 <p className="text-xl font-extrabold text-[#0f172a] leading-tight">{lab.name}</p>
                 <p className="font-mono text-[11px] text-[#64748b] mt-1.5 flex items-center gap-1.5">
-                  <span>📍 {[lab.location, lab.manager ? `Manager: ${lab.manager}` : ''].filter(Boolean).join(' · ') || '—'}</span>
+                  <span>📍 {[lab.location, lab.manager ? `Manager: ${lab.manager}` : ''].filter(Boolean).join(' · ') || '-'}</span>
                 </p>
               </div>
 

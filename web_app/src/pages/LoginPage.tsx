@@ -62,7 +62,7 @@ export function LoginPage() {
             disabled={loading}
             className="bg-green text-white hover:bg-green/95 active:scale-[0.98] transition-transform font-semibold text-sm px-4 py-2.5 rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed mt-1"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 

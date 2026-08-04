@@ -135,7 +135,7 @@ export function SystemPage() {
         {/* Left Column (4/6 Width): IR Live View Stream & Hardware Performance */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <Panel>
-            <PanelHeader eyebrow="Camera Monitoring" title={`IR Live View Stream — LAB: ${selectedLabId || '304'}`} />
+            <PanelHeader eyebrow="Camera Monitoring" title={`IR Live View Stream - LAB: ${selectedLabId || '304'}`} />
             {selectedLabId && selectedNodeId ? (
               <LiveCamera labId={selectedLabId} nodeId={selectedNodeId} />
             ) : (
@@ -157,7 +157,7 @@ export function SystemPage() {
                 <Stat label="Temp" value={temp}           unit="°C"  tone={temp > 70 ? 'red' : temp > 55 ? 'amber' : 'green'} />
               </div>
             ) : (
-              <p className="font-mono text-[11px] text-[#94a3b8]">No telemetry — node offline or no active node found.</p>
+              <p className="font-mono text-[11px] text-[#94a3b8]">No telemetry - node offline or no active node found.</p>
             )}
           </Panel>
         </div>
@@ -168,7 +168,7 @@ export function SystemPage() {
             <PanelHeader eyebrow="Model Tuning" title="Recognition Thresholds"
               action={
                 <Button variant="primary" size="sm" onClick={save} disabled={saving}>
-                  {saved ? '✓ Saved' : saving ? 'Saving…' : 'Apply Changes'}
+                  {saved ? '✓ Saved' : saving ? 'Saving...' : 'Apply Changes'}
                 </Button>
               }
             />
@@ -190,7 +190,7 @@ export function SystemPage() {
             )}
             {!nodeConfig && (
               <p className="font-mono text-[11px] text-[#94a3b8] mt-7 pt-5 border-t border-line">
-                No config found — defaults shown. Apply to create initial config.
+                No config found - defaults shown. Apply to create initial config.
               </p>
             )}
           </Panel>

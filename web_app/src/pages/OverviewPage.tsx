@@ -1,4 +1,4 @@
-﻿import { useAdminStore } from '@/store/adminStore'
+import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'

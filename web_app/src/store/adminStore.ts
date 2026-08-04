@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import {
   subscribeAccessEvents, subscribeIncidents, subscribeNodeState,
   getFirstLabNode, getLabUsers, getNodeConfig, deleteUser,
@@ -8,7 +8,7 @@ import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig }
 import { fmtTs } from '@/lib/format'
 import { useLabStore } from '@/store/labStore'
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 function isToday(ts: any): boolean {
   if (!ts) return false
@@ -39,7 +39,7 @@ function computeStats(events: AccessEvent[]) {
 }
 
 function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemStatus {
-  if (!state || !state.onlineState) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: 'â€”', nodeLabel }
+  if (!state || !state.onlineState) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: '-', nodeLabel }
   const syncState = state.onlineState === 'online' ? 'live'
     : state.onlineState === 'grace_period' ? 'delayed'
     : 'offline'
@@ -52,7 +52,7 @@ function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemS
   }
 }
 
-// â”€â”€ Store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Store ────────────────────────────────────────────────────────────────────
 
 interface AdminStore {
   systemStatus: SystemStatus
@@ -77,10 +77,10 @@ interface AdminStore {
 
 const defaultStatus: SystemStatus = {
   overall: 'offline', cameraState: 'disconnected',
-  syncState: 'offline', lastSyncAt: 'â€”', nodeLabel: 'â€”',
+  syncState: 'offline', lastSyncAt: '-', nodeLabel: '-',
 }
 
-// Monotonically-increasing counter â€” guards stale async results after lab switch
+// Monotonically-increasing counter - guards stale async results after lab switch
 let _subscribeVersion = 0
 
 export const useAdminStore = create<AdminStore>((set) => ({
