@@ -442,6 +442,19 @@ export function EquipmentPage() {
       return
     }
 
+    // Check for duplicate equipment model name when creating a new equipment type from main button
+    const isDuplicateName = !editingItem && !isGroupAdd && (equipment || []).some(
+      item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()
+    )
+
+    if (isDuplicateName) {
+      showToast(
+        `An equipment model named "${name.trim()}" already exists in this lab. Please use "+ Add Serial Unit" on its group card to add more units.`,
+        'error'
+      )
+      return
+    }
+
     const numericQty = typeof quantity === 'number' && quantity > 0 ? quantity : 1
     const itemQty = entryMode === 'batch' ? numericQty : 1
 
@@ -1542,15 +1555,31 @@ export function EquipmentPage() {
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Name *</label>
+                <div className="flex items-center justify-between">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Name *</label>
+                  {!editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()) && (
+                    <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 animate-pulse">
+                      ⚠️ Duplicate Name
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
                   placeholder="e.g. ESP32 WROOM Development Module"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
+                  className={`bg-raised border rounded px-3 py-2 text-sm text-[#0f172a] outline-none w-full transition-colors ${
+                    !editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase())
+                      ? 'border-rose-400 focus:border-rose-500 bg-rose-50/30'
+                      : 'border-line focus:border-[#ea580c]/50'
+                  }`}
                 />
+                {!editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()) && (
+                  <p className="text-[11px] font-medium text-rose-700 bg-rose-50 p-2.5 rounded-md border border-rose-200 leading-tight">
+                    ⚠️ An equipment model named <strong>"{name.trim()}"</strong> already exists in this lab. To add another unit instance to this model, please cancel and use the <strong>"+ Add Serial Unit"</strong> button on its group card instead.
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -1636,7 +1665,16 @@ export function EquipmentPage() {
 
               <div className="flex gap-2 justify-end mt-3 pt-3 border-t border-line">
                 <Button variant="ghost" type="button" onClick={() => (setShowAddModal(false), setEditingItem(null))} disabled={submitting}>Cancel</Button>
-                <Button variant="primary" type="submit" disabled={submitting || !serialNumber.trim() || !name.trim()}>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={
+                    submitting ||
+                    !serialNumber.trim() ||
+                    !name.trim() ||
+                    (!editingItem && !isGroupAdd && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()))
+                  }
+                >
                   {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Equipment / Device'}
                 </Button>
               </div>
