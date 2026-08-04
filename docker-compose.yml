@@ -16,7 +16,6 @@ services:
       - MQTT_BROKER_PORT=1883
       - QWEN_API_BASE=http://qwen-ai:11434/v1
       - QWEN_MODEL_NAME=qwen2.5-coder:1.5b
-
     depends_on:
       - qdrant
       - qwen-ai
@@ -40,10 +39,6 @@ services:
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
-      - OLLAMA_NUM_THREADS=4
-    deploy:
-      resources:
-        limits:
-          cpus: '3.5'
+      - OLLAMA_NUM_THREADS=5
     volumes:
       - /mnt/smart-door/ollama_storage:/root/.ollama
