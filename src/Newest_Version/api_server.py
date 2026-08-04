@@ -1896,6 +1896,50 @@ def import_mapped_schedule(lab_id):
         logger.error(f"Failed to import mapped schedules: {e}")
         return jsonify({"error": f"Failed to parse and save schedules: {str(e)}"}), 500
 
+# Helper to extract human-readable text from uploaded Excel (.xlsx), HTML, CSV, or TXT file
+def extract_clean_text_from_file(temp_path: str, filename: str) -> str:
+    ext = filename.lower().split('.')[-1] if '.' in filename else ''
+    if ext in ['xlsx', 'xls']:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(temp_path, data_only=True)
+            lines = []
+            for sheetname in wb.sheetnames:
+                ws = wb[sheetname]
+                lines.append(f"=== Sheet: {sheetname} ===")
+                for row in ws.iter_rows(values_only=True):
+                    vals = [str(v).strip() for v in row if v is not None and str(v).strip()]
+                    if vals:
+                        lines.append(" | ".join(vals))
+            text_out = "\n".join(lines[:300])
+            if text_out.strip():
+                return text_out
+        except Exception as e:
+            logger.debug(f"openpyxl text extraction notice: {e}")
+
+        try:
+            parser = UniversalScheduleParser(temp_path)
+            parser.is_xlsx = True
+            parser.parse()
+            if parser.grid:
+                lines = []
+                for row in parser.grid[:100]:
+                    row_vals = [cell.get('text') for cell in row if isinstance(cell, dict) and cell.get('text')]
+                    if row_vals:
+                        lines.append(" | ".join(row_vals))
+                text_out = "\n".join(lines)
+                if text_out.strip():
+                    return text_out
+        except Exception as e:
+            logger.debug(f"Grid text extraction notice: {e}")
+
+    try:
+        with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read(8000)
+    except Exception as e:
+        logger.error(f"Error reading text file: {e}")
+        return ""
+
 # 20d. AI-Powered Auto-Parse Schedule Endpoint
 @app.route("/api/labs/<lab_id>/schedules/ai_parse", methods=["POST"])
 def ai_parse_schedule(lab_id):
@@ -1914,7 +1958,7 @@ def ai_parse_schedule(lab_id):
                     parser = UniversalScheduleParser(temp_path)
                     parser.is_xlsx = filename.lower().endswith(".xlsx")
                     records = parser.parse()
-                    if records:
+                    if records and len(records) > 0:
                         conn = sqlite3.connect(db_path)
                         c = conn.cursor()
                         c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
@@ -1935,20 +1979,16 @@ def ai_parse_schedule(lab_id):
                 except Exception as ex:
                     logger.debug(f"Standard parser fallback to AI: {ex}")
 
-        # 2. Extract text and feed to Qwen AI Assistant
+        # 2. Extract clean human-readable text rows from Excel/HTML/CSV file
         if not raw_text and file_token:
             temp_path = os.path.join(tempfile.gettempdir(), file_token)
             if os.path.exists(temp_path):
-                try:
-                    with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
-                        raw_text = f.read(5000)
-                except Exception:
-                    pass
+                raw_text = extract_clean_text_from_file(temp_path, filename)
 
         if not raw_text:
             return jsonify({"error": "No schedule content available for AI parsing"}), 400
 
-        prompt = f"""You are a Lab Schedule Parser AI. Convert the raw schedule content into a valid JSON array of schedule objects.
+        prompt = f"""You are a Lab Schedule Parser AI. Convert the raw schedule text below into a valid JSON array of schedule objects.
 JSON Schema required:
 [
   {{
@@ -1964,8 +2004,8 @@ JSON Schema required:
   }}
 ]
 Rules:
-- Extract all students, dates, group numbers, student IDs, and experiments.
-- Output ONLY the raw JSON array. Do not include introductory text.
+- Extract all students, dates, group numbers, student IDs (MSSV), and experiments.
+- Output ONLY valid JSON array inside ```json ``` code block. Do not include introductory text.
 
 Raw Schedule Data:
 {raw_text[:4000]}
@@ -1977,9 +2017,16 @@ Raw Schedule Data:
         import re
         m = re.search(r'\[.*\]', ai_reply, re.DOTALL)
         if not m:
-            return jsonify({"error": "AI could not structure schedule into JSON format"}), 422
+            # Fallback regex search for JSON inside codeblock
+            m = re.search(r'```json\s*(.*?)\s*```', ai_reply, re.DOTALL)
+            if m:
+                json_str = m.group(1)
+            else:
+                return jsonify({"error": f"AI response could not be parsed into JSON array: {ai_reply[:200]}"}), 422
+        else:
+            json_str = m.group(0)
 
-        extracted_json = json.loads(m.group(0))
+        extracted_json = json.loads(json_str)
         if not isinstance(extracted_json, list) or len(extracted_json) == 0:
             return jsonify({"error": "AI returned empty schedule array"}), 422
 
