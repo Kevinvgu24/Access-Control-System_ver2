@@ -398,7 +398,7 @@ export function EquipmentPage() {
           { label: 'Maintenance / Issues', value: issueCount, color: 'text-amber' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-5 shadow-sm">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] mb-2">{label}</p>
+            <p className="font-mono text-xs uppercase tracking-wider font-bold text-[#475569] mb-2">{label}</p>
             <p className={`text-4xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
