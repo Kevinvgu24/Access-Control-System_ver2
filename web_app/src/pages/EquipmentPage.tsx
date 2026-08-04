@@ -122,6 +122,24 @@ export function EquipmentPage() {
   const [returnDate, setReturnDate] = useState(getNextWeekStr())
   const [borrowNotes, setBorrowNotes] = useState('')
 
+  // Toast Notification state
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+  }
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => {
+      setToast(null)
+    }, 4000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
   useEffect(() => {
     if (selectedLabId) {
       fetchEquipment(selectedLabId)
@@ -255,7 +273,7 @@ export function EquipmentPage() {
     e.preventDefault()
     if (!selectedLabId) return
     if (!serialNumber.trim() || !name.trim()) {
-      alert('Serial Number and Name are required.')
+      showToast('Serial Number and Name are required.', 'error')
       return
     }
 
@@ -272,7 +290,7 @@ export function EquipmentPage() {
           notes: notes.trim(),
           image
         })
-        alert('Equipment updated successfully!')
+        showToast(`Equipment [${serialNumber.trim()}] updated successfully!`, 'success')
         setEditingItem(null)
       } else {
         await addEquipment(selectedLabId, {
@@ -285,11 +303,11 @@ export function EquipmentPage() {
           notes: notes.trim(),
           image
         })
-        alert('Equipment added successfully!')
+        showToast(`Equipment [${serialNumber.trim()}] added successfully to lab!`, 'success')
         setShowAddModal(false)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save equipment')
+      showToast(err instanceof Error ? err.message : 'Failed to save equipment', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -299,7 +317,7 @@ export function EquipmentPage() {
     e.preventDefault()
     if (!selectedLabId || !borrowingItem) return
     if (!borrowerName.trim() || !borrowerId.trim()) {
-      alert('Student Name and Student ID are required to checkout equipment.')
+      showToast('Student Name and Student ID are required to checkout equipment.', 'error')
       return
     }
 
@@ -318,10 +336,10 @@ export function EquipmentPage() {
         borrowingItem.name,
         borrowingItem.serialNumber
       )
-      alert(`Equipment [${borrowingItem.serialNumber}] successfully checked out to ${borrowerName.trim()}! Notification pushed to Dashboard.`)
+      showToast(`Equipment [${borrowingItem.serialNumber}] successfully checked out to ${borrowerName.trim()}!`, 'success')
       setBorrowingItem(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to process equipment borrowing')
+      showToast(err instanceof Error ? err.message : 'Failed to process equipment borrowing', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -332,9 +350,9 @@ export function EquipmentPage() {
     if (confirm(`Confirm return of equipment "${item.name}" [${item.serialNumber}] to lab storage?`)) {
       try {
         await returnEquipment(selectedLabId, item.id, item.name, item.serialNumber)
-        alert(`Equipment [${item.serialNumber}] returned to available inventory! Notification pushed to Dashboard.`)
+        showToast(`Equipment [${item.serialNumber}] returned to available inventory!`, 'success')
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to return equipment')
+        showToast(err instanceof Error ? err.message : 'Failed to return equipment', 'error')
       }
     }
   }
@@ -344,9 +362,9 @@ export function EquipmentPage() {
     if (confirm(`Are you sure you want to delete equipment [${serial}]?`)) {
       try {
         await deleteEquipment(selectedLabId, id)
-        alert('Equipment deleted successfully!')
+        showToast(`Equipment [${serial}] deleted successfully!`, 'success')
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to delete equipment')
+        showToast(err instanceof Error ? err.message : 'Failed to delete equipment', 'error')
       }
     }
   }
@@ -842,6 +860,31 @@ export function EquipmentPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification Banner - Bottom Left Corner */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 left-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-md ${
+            toast.type === 'success'
+              ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/30'
+              : 'bg-rose-600 text-white border-rose-500 shadow-rose-900/30'
+          }`}
+        >
+          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 font-bold text-sm">
+            {toast.type === 'success' ? '✓' : '✕'}
+          </div>
+          <div className="flex-1 text-xs font-semibold leading-relaxed pr-1">
+            {toast.message}
+          </div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-white/70 hover:text-white font-bold text-sm p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
