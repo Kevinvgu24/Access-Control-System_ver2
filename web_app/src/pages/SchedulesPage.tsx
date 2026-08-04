@@ -540,102 +540,157 @@ export function SchedulesPage() {
             </div>
 
             {viewMode === 'grouped' ? (
-              <div className="grid grid-cols-1 gap-5">
-                {groupedSchedules.map(group => (
-                  <div
-                    key={group.group_nr}
-                    className="bg-white border border-orange-200/90 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
-                  >
-                    {/* Group Header Banner */}
-                    <div className="flex items-center justify-between border-b border-orange-100 pb-3 flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-bold font-mono text-base flex items-center justify-center shadow-xs border border-white/20">
-                          G{group.group_nr.replace(/Group\s*/i, '')}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                            Group {group.group_nr.replace(/Group\s*/i, '')}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-mono">
-                            Assigned Lab Unit (Sorted Ascending)
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-orange-800 bg-orange-100/80 px-3 py-1 rounded-full border border-orange-200 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-orange-600" />
-                          <span>{group.students.length} Members</span>
-                        </span>
-                        <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                          <span>{group.sessions.length} Scheduled Sessions</span>
-                        </span>
-                      </div>
-                    </div>
+              <div>
+                {/* Selection Toolbar Header */}
+                {groupedSchedules.length > 0 && (
+                  <div className="flex items-center justify-between bg-orange-50/80 border border-orange-200/80 rounded-xl px-4 py-3 mb-5 flex-wrap gap-2 shadow-2xs">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={paginatedGroups.length > 0 && paginatedGroups.every(g => selectedGroupNrs.includes(g.group_nr))}
+                        onChange={handleSelectAllOnPage}
+                        className="w-4 h-4 rounded border-orange-300 text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-600"
+                      />
+                      <span className="text-xs font-extrabold text-orange-950 font-mono">
+                        Select All 5 Groups on Page ({currentPage})
+                      </span>
+                    </label>
 
-                    {/* Group Content Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                      {/* Left Box: 4 Group Members */}
-                      <div className="md:col-span-5 bg-slate-50/90 border border-slate-200/80 rounded-xl p-4">
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-orange-600" /> Group Members ({group.students.length}):
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          {group.students.map((st, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-white border border-slate-200/90 rounded-lg p-2.5 flex items-center justify-between shadow-2xs hover:border-orange-300 transition-colors"
-                            >
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-800 font-bold text-xs flex items-center justify-center shrink-0 font-mono">
-                                  {idx + 1}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-orange-900 bg-orange-100/90 px-3 py-1 rounded-full border border-orange-200">
+                        Selected {selectedGroupNrs.length} / {groupedSchedules.length} Groups
+                      </span>
+                      {selectedGroupNrs.length > 0 && (
+                        <button
+                          onClick={() => setSelectedGroupNrs([])}
+                          className="text-xs text-orange-700 hover:text-orange-900 underline font-medium"
+                        >
+                          Deselect All
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Paginated 5 Group Cards Grid */}
+                <div className="grid grid-cols-1 gap-5 mb-5">
+                  {paginatedGroups.map(group => {
+                    const isSelected = selectedGroupNrs.includes(group.group_nr)
+                    return (
+                      <div
+                        key={group.group_nr}
+                        className={`bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 ${
+                          isSelected ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/20' : 'border-orange-200/90'
+                        }`}
+                      >
+                        {/* Group Header Banner with Selection Checkbox */}
+                        <div className="flex items-center justify-between border-b border-orange-100 pb-3 flex-wrap gap-2">
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectGroup(group.group_nr)}
+                              className="w-5 h-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-600 shrink-0"
+                            />
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-bold font-mono text-base flex items-center justify-center shadow-xs border border-white/20">
+                              G{group.group_nr.replace(/Group\s*/i, '')}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                Group {group.group_nr.replace(/Group\s*/i, '')}
+                              </h3>
+                              <p className="text-xs text-slate-500 font-mono">
+                                Assigned Lab Unit (Sorted Ascending)
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold text-orange-800 bg-orange-100/80 px-3 py-1 rounded-full border border-orange-200 flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-orange-600" />
+                              <span>{group.students.length} Members</span>
+                            </span>
+                            <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                              <span>{group.sessions.length} Scheduled Sessions</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Group Content Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                          {/* Left Box: 4 Group Members */}
+                          <div className="md:col-span-5 bg-slate-50/90 border border-slate-200/80 rounded-xl p-4">
+                            <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-orange-600" /> Group Members ({group.students.length}):
+                            </p>
+                            <div className="flex flex-col gap-2">
+                              {group.students.map((st, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-white border border-slate-200/90 rounded-lg p-2.5 flex items-center justify-between shadow-2xs hover:border-orange-300 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-800 font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                                      {idx + 1}
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-800 truncate max-w-[160px]" title={st.name}>
+                                      {st.name}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                    {st.id}
+                                  </span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-800 truncate max-w-[160px]" title={st.name}>
-                                  {st.name}
-                                </span>
-                              </div>
-                              <span className="font-mono text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                                {st.id}
-                              </span>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
 
-                      {/* Right Box: All Sessions & Experiments */}
-                      <div className="md:col-span-7 bg-orange-50/40 border border-orange-200/70 rounded-xl p-4">
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-orange-600" /> All Lab Sessions & Experiments ({group.sessions.length}):
-                        </p>
-                        <div className="flex flex-col gap-2.5 max-h-[260px] overflow-y-auto pr-1">
-                          {group.sessions.map((sess, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-white border border-orange-200/90 rounded-lg p-3 flex items-center justify-between flex-wrap gap-2 shadow-2xs"
-                            >
-                              <div className="flex items-center gap-2 font-mono text-xs text-slate-800">
-                                <span className="font-bold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-md border border-orange-200">
-                                  📅 {sess.date} ({sess.day_of_week})
-                                </span>
-                                <span className="text-[11px] text-slate-700 bg-slate-100 px-2 py-1 rounded-md font-medium">
-                                  Session {sess.session_num} ({sess.ma})
-                                </span>
-                              </div>
-                              <span className="text-xs font-extrabold text-orange-950 bg-amber-100 px-3 py-1 rounded-md border border-amber-300">
-                                🧪 {sess.experiment}
-                              </span>
+                          {/* Right Box: All Sessions & Experiments */}
+                          <div className="md:col-span-7 bg-orange-50/40 border border-orange-200/70 rounded-xl p-4">
+                            <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-orange-600" /> All Lab Sessions & Experiments ({group.sessions.length}):
+                            </p>
+                            <div className="flex flex-col gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+                              {group.sessions.map((sess, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-white border border-orange-200/90 rounded-lg p-3 flex items-center justify-between flex-wrap gap-2 shadow-2xs"
+                                >
+                                  <div className="flex items-center gap-2 font-mono text-xs text-slate-800">
+                                    <span className="font-bold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-md border border-orange-200">
+                                      📅 {sess.date} ({sess.day_of_week})
+                                    </span>
+                                    <span className="text-[11px] text-slate-700 bg-slate-100 px-2 py-1 rounded-md font-medium">
+                                      Session {sess.session_num} ({sess.ma})
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-extrabold text-orange-950 bg-amber-100 px-3 py-1 rounded-md border border-amber-300">
+                                    🧪 {sess.experiment}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
+                    )
+                  })}
+
+                  {groupedSchedules.length === 0 && (
+                    <div className="py-16 text-center bg-surface border border-line rounded-lg">
+                      <p className="font-mono text-xs text-[#94a3b8] mb-2">No grouped schedule records match the filter.</p>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
 
-                {groupedSchedules.length === 0 && (
-                  <div className="py-16 text-center bg-surface border border-line rounded-lg">
-                    <p className="font-mono text-xs text-[#94a3b8] mb-2">No grouped schedule records match the filter.</p>
-                  </div>
+                {/* Group Pagination Controls (Pages 1, 2, 3...) */}
+                {groupedSchedules.length > GROUPS_PER_PAGE && (
+                  <Pagination 
+                    currentPage={currentPage} 
+                    totalItems={groupedSchedules.length} 
+                    pageSize={GROUPS_PER_PAGE} 
+                    onPageChange={setCurrentPage} 
+                  />
                 )}
               </div>
             ) : (
