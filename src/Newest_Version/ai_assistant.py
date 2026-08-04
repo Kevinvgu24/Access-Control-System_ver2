@@ -282,8 +282,9 @@ Check the actual table data below carefully before responding. If data is missin
             "model": self.model_name,
             "messages": messages,
             "temperature": 0.0,  # Zero temperature to enforce factual grounding and eliminate hallucinations
-            "max_tokens": 1024
+            "max_tokens": 512
         }
+
 
         try:
             req_url = f"{self.api_base}/chat/completions"
