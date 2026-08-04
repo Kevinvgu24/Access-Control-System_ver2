@@ -34,6 +34,7 @@ class QwenAIAssistant:
         self._status_cache: Optional[Dict[str, Any]] = None
         self._last_status_check: float = 0.0
         self._status_cache_ttl: float = 30.0  # Check Ollama status max once per 30s
+        self._semantic_qa_cache: Dict[str, Dict[str, Any]] = {}  # Semantic Q&A cache
         
         # Pre-cache documentation text in RAM to eliminate disk I/O on chat prompts
         self._doc_cache: Dict[str, str] = self._preload_knowledge_docs()
@@ -401,9 +402,6 @@ RULES:
                     messages.append({"role": role, "content": content})
 
         messages.append({"role": "user", "content": user_prompt})
-
-        # Item 2: Instant Semantic Cache for repeated questions (5 min TTL)
-        self._semantic_qa_cache: Dict[str, Dict[str, Any]] = {}
 
         # Item 5: Max Tokens 700 & Low Temperature 0.15 Tuning
         payload = {
