@@ -274,7 +274,7 @@ export function EquipmentPage() {
           <p className="font-mono text-xs uppercase tracking-widest text-[#ea580c] font-bold mb-1">INVENTORY</p>
           <h1 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">Lab Equipment & Modules</h1>
           <p className="text-sm text-[#475569] mt-1">
-            Right-click any equipment row to <strong>Borrow (Mượn)</strong>, <strong>Return (Trả)</strong>, or <strong>Delete (Xóa)</strong>.
+            Right-click any equipment row to <strong>Borrow</strong>, <strong>Return</strong>, or <strong>Delete</strong> it.
           </p>
         </div>
         <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Module</Button>
@@ -441,7 +441,7 @@ export function EquipmentPage() {
               }}
               className="w-full text-left px-4 py-2 text-xs font-semibold text-blue hover:bg-blue-50 transition-colors flex items-center gap-2 cursor-pointer"
             >
-              🔄 Return Equipment (Trả)
+              🔄 Return Equipment
             </button>
           ) : (
             <button
@@ -452,7 +452,7 @@ export function EquipmentPage() {
               }}
               className="w-full text-left px-4 py-2 text-xs font-semibold text-[#ea580c] hover:bg-orange-50 transition-colors flex items-center gap-2 cursor-pointer"
             >
-              📦 Borrow Equipment (Mượn)
+              📦 Borrow Equipment
             </button>
           )}
 
@@ -464,7 +464,7 @@ export function EquipmentPage() {
             }}
             className="w-full text-left px-4 py-2 text-xs font-medium text-[#475569] hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            ✏️ Edit Details (Sửa)
+            ✏️ Edit Details
           </button>
 
           <button
@@ -475,7 +475,7 @@ export function EquipmentPage() {
             }}
             className="w-full text-left px-4 py-2 text-xs font-semibold text-red hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            🗑️ Delete Equipment (Xóa)
+            🗑️ Delete Equipment
           </button>
         </div>
       )}
