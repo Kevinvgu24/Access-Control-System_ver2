@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
@@ -309,7 +309,7 @@ export function SchedulesPage() {
               className="hidden" 
             />
             <Button variant="primary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? 'Importing...' : '📥 Upload New Schedule (Excel/HTML)'}
+              {importing ? 'Importing...' : 'ðŸ“¥ Upload New Schedule (Excel/HTML)'}
             </Button>
           </div>
         </div>
@@ -320,7 +320,7 @@ export function SchedulesPage() {
             <div className="flex flex-col gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">Active Schedule List</span>
               <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2 flex-wrap">
-                📄 {selectedFileKey.split('|')[0]}
+                ðŸ“„ {selectedFileKey.split('|')[0]}
                 <span className="text-[11px] font-mono font-normal text-green bg-green/5 px-2 py-0.5 rounded border border-green/10">
                   Lab: {scheduleFiles.find(f => `${f.filename}|${f.labId}` === selectedFileKey)?.labName}
                 </span>
@@ -340,7 +340,7 @@ export function SchedulesPage() {
                 </select>
               </div>
               <Button variant="ghost" onClick={() => fetchSchedules(selectedFileKey)} disabled={loading}>
-                {loading ? 'Refreshing...' : '↻ Refresh'}
+                {loading ? 'Refreshing...' : 'â†» Refresh'}
               </Button>
               <input 
                 type="file" 
@@ -350,16 +350,16 @@ export function SchedulesPage() {
                 className="hidden" 
               />
               <Button variant="primary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-                {importing ? 'Importing...' : '📥 Upload New List'}
+                {importing ? 'Importing...' : 'ðŸ“¥ Upload New List'}
               </Button>
               <Button variant="ghost" onClick={handleClearCurrentFile} className="text-red hover:bg-red/5">
-                🗑️ Delete List
+                ðŸ—‘ï¸ Delete List
               </Button>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: 'Total Schedule Entries', value: totalSessions, color: 'text-[#0f172a]' },
               { label: 'Unique Students', value: uniqueStudents, color: 'text-green' },
@@ -373,11 +373,11 @@ export function SchedulesPage() {
           </div>
 
           {/* Search and Table */}
-          <Panel pad={false}>
+          <Panel pad={false} className="overflow-x-auto">
             <div className="flex gap-3 items-center p-5 border-b border-line">
               <input 
                 type="text" 
-                placeholder="Search by student, MSSV, date (YYYY-MM-DD), or experiment…" 
+                placeholder="Search by student, MSSV, date (YYYY-MM-DD), or experimentâ€¦" 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
@@ -426,7 +426,7 @@ export function SchedulesPage() {
             {filtered.length > currentPage * ITEMS_PER_PAGE && (
               <div className="p-5 border-t border-line text-center bg-raised">
                 <Button variant="ghost" onClick={() => setCurrentPage(p => p + 1)}>
-                  ➕ Load More ({filtered.length - currentPage * ITEMS_PER_PAGE} rows hidden)
+                  âž• Load More ({filtered.length - currentPage * ITEMS_PER_PAGE} rows hidden)
                 </Button>
               </div>
             )}
@@ -493,7 +493,7 @@ export function SchedulesPage() {
               <div className="p-6 border-b border-line flex justify-between items-center bg-raised">
                 <div>
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    🗺️ Interactive Excel Mapping Layout
+                    ðŸ—ºï¸ Interactive Excel Mapping Layout
                   </h2>
                   <p className="text-xs text-[#475569] mt-1">
                     Loading file: <span className="font-mono font-bold text-green">{previewData.filename}</span>. Click cells on the grid to set their corresponding rows and columns.
@@ -575,7 +575,7 @@ export function SchedulesPage() {
                     </table>
                   </div>
                   <div className="mt-4 p-4 bg-raised border border-line rounded-lg text-xs text-[#475569] flex flex-col gap-1">
-                    <p className="font-semibold text-[#0f172a] mb-1">💡 Quick Guide:</p>
+                    <p className="font-semibold text-[#0f172a] mb-1">ðŸ’¡ Quick Guide:</p>
                     <p>1. <strong>Select Cell:</strong> Click any cell on the preview grid.</p>
                     <p>2. <strong>Map Row:</strong> Select a cell in the desired row on the left, then click "Map" next to the corresponding row config on the right.</p>
                     <p>3. <strong>Map Column:</strong> Select a cell in the desired column on the left, then click "Map" next to the corresponding column config on the right.</p>
@@ -593,7 +593,7 @@ export function SchedulesPage() {
                     {/* Rows Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-green uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        📅 Map Schedule Rows
+                        ðŸ“… Map Schedule Rows
                       </h4>
                       
                       {rowMappings.map(mapping => {
@@ -623,7 +623,7 @@ export function SchedulesPage() {
                     {/* Columns Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-blue uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        👤 Map Student Columns
+                        ðŸ‘¤ Map Student Columns
                       </h4>
                       
                       {colMappings.map(mapping => {
@@ -653,7 +653,7 @@ export function SchedulesPage() {
                     {/* Boundaries Config */}
                     <div className="bg-surface border border-line rounded-lg p-4 flex flex-col gap-3 shadow-sm">
                       <h4 className="text-xs font-bold text-[#ffab00] uppercase tracking-wide border-b border-line pb-1.5 flex items-center gap-1.5">
-                        🏁 Data Start Point
+                        ðŸ Data Start Point
                       </h4>
                       
                       <div className="flex justify-between items-center gap-2 text-xs">
@@ -701,7 +701,7 @@ export function SchedulesPage() {
                       onClick={handleConfirmMappingImport}
                       disabled={importing}
                     >
-                      {importing ? 'Importing...' : '🚀 Confirm & Import Schedule'}
+                      {importing ? 'Importing...' : 'ðŸš€ Confirm & Import Schedule'}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -720,3 +720,4 @@ export function SchedulesPage() {
     </div>
   )
 }
+

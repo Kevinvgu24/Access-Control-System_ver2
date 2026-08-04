@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import {
   subscribeAccessEvents, subscribeIncidents, subscribeNodeState,
   getFirstLabNode, getLabUsers, getNodeConfig, deleteUser,
@@ -8,7 +8,7 @@ import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig }
 import { fmtTs } from '@/lib/format'
 import { useLabStore } from '@/store/labStore'
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isToday(ts: any): boolean {
   if (!ts) return false
@@ -28,18 +28,18 @@ function isToday(ts: any): boolean {
 }
 
 function computeStats(events: AccessEvent[]) {
-  const today = events.filter(e => isToday(e.occurredAt))
+  const today = (events || []).filter(e => isToday(e.occurredAt))
   const todayEntries  = today.filter(e => e.result === 'granted').length
   const failedAttempts = today.filter(e => e.result === 'denied' || e.result === 'liveness_failed' || e.result === 'pin_failed').length
   const withConf = events.filter(e => e.confidence != null).slice(0, 30)
   const averageConfidence = withConf.length
-    ? withConf.reduce((s, e) => s + e.confidence, 0) / withConf.length
+    ? withConf.reduce((s, e) => s + (Number(e.confidence) || 0), 0) / withConf.length
     : null
   return { todayEntries, failedAttempts, averageConfidence }
 }
 
 function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemStatus {
-  if (!state || !state.onlineState) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: '—', nodeLabel }
+  if (!state || !state.onlineState) return { overall: 'offline', cameraState: 'unknown', syncState: 'offline', lastSyncAt: 'â€”', nodeLabel }
   const syncState = state.onlineState === 'online' ? 'live'
     : state.onlineState === 'grace_period' ? 'delayed'
     : 'offline'
@@ -52,7 +52,7 @@ function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemS
   }
 }
 
-// ── Store ────────────────────────────────────────────────────────────────────
+// â”€â”€ Store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface AdminStore {
   systemStatus: SystemStatus
@@ -77,10 +77,10 @@ interface AdminStore {
 
 const defaultStatus: SystemStatus = {
   overall: 'offline', cameraState: 'disconnected',
-  syncState: 'offline', lastSyncAt: '—', nodeLabel: '—',
+  syncState: 'offline', lastSyncAt: 'â€”', nodeLabel: 'â€”',
 }
 
-// Monotonically-increasing counter — guards stale async results after lab switch
+// Monotonically-increasing counter â€” guards stale async results after lab switch
 let _subscribeVersion = 0
 
 export const useAdminStore = create<AdminStore>((set) => ({
@@ -107,7 +107,7 @@ export const useAdminStore = create<AdminStore>((set) => ({
     let unsubNode: (() => void) | undefined
 
     const setupNode = (clusterId: string, nodeId: string) => {
-      const nodeLabel = `${labName} / Node ${nodeId.slice(0, 4).toUpperCase()}`
+      const nodeLabel = `${labName} / Node ${(nodeId || "").slice(0, 4).toUpperCase()}`
       unsubNode = subscribeNodeState(labId, clusterId, nodeId, state => {
         set({ nodeState: state, systemStatus: deriveSystemStatus(state, nodeLabel) })
       })
@@ -174,3 +174,4 @@ export const useAdminStore = create<AdminStore>((set) => ({
     set({ users })
   },
 }))
+

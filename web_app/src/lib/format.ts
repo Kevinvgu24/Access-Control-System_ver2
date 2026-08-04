@@ -1,8 +1,9 @@
-import type { AccessResult, NodeOnlineState, AccessMethod } from '@/types/admin'
+﻿import type { AccessResult, NodeOnlineState, AccessMethod } from '@/types/admin'
 
 type Tone = 'green' | 'red' | 'amber' | 'blue' | 'neutral'
 
 export function resultLabel(r: AccessResult): string {
+  if (!r) return 'Unknown'
   const m: Record<AccessResult, string> = {
     granted:         'Granted',
     denied:          'Denied',
@@ -11,10 +12,11 @@ export function resultLabel(r: AccessResult): string {
     pin_failed:      'PIN Failed',
     system_error:    'System Error',
   }
-  return m[r] ?? r
+  return m[r] ?? String(r)
 }
 
 export function resultTone(r: AccessResult): Tone {
+  if (!r) return 'neutral'
   const m: Record<AccessResult, Tone> = {
     granted:         'green',
     denied:          'red',
@@ -34,24 +36,27 @@ export function fmtMethod(m: AccessMethod): string {
   return m === 'face' ? 'Face ID' : 'Face + PIN'
 }
 
-export function fmtConf(v: number | null | undefined): string {
-  return v == null ? 'N/A' : `${v.toFixed(1)}%`
+export function fmtConf(v: number | string | null | undefined): string {
+  if (v == null) return 'N/A'
+  const num = Number(v)
+  if (isNaN(num)) return 'N/A'
+  return `${num.toFixed(1)}%`
 }
 
 export function fmtTs(ts: any): string {
-  if (!ts) return '—'
+  if (!ts) return '-'
   if (typeof ts.toDate === 'function') {
-    return ts.toDate().toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+    try { return ts.toDate().toLocaleString('sv-SE').replace('T', ' ').slice(0, 16) } catch { return '-' }
   }
   if (ts instanceof Date) {
-    return ts.toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
+    try { return ts.toLocaleString('sv-SE').replace('T', ' ').slice(0, 16) } catch { return '-' }
   }
   try {
     const d = new Date(ts)
     if (!isNaN(d.getTime())) {
       return d.toLocaleString('sv-SE').replace('T', ' ').slice(0, 16)
     }
-  } catch (e) {
+  } catch {
     // fallback
   }
   return String(ts).slice(0, 16)

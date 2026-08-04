@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Sidebar }         from '@/components/shell/Sidebar'
@@ -11,28 +11,39 @@ import { EnrollmentPage }  from '@/pages/EnrollmentPage'
 import { SchedulesPage }   from '@/pages/SchedulesPage'
 import { LogsPage }        from '@/pages/LogsPage'
 import { SystemPage }      from '@/pages/SystemPage'
-import { SensorsPage }     from '@/pages/SensorsPage'
 import { useAuthStore }    from '@/store/authStore'
 import { useLabStore }     from '@/store/labStore'
 import { useAdminStore }   from '@/store/adminStore'
-// import { MockPanel }       from '@/components/dev/MockPanel'
 
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-dark flex items-center justify-center">
       <div className="flex items-center gap-3">
         <span className="blink w-2 h-2 rounded-full bg-green" />
-        <span className="font-mono text-xs text-[#94a3b8] uppercase tracking-widest">Initializing…</span>
+        <span className="font-mono text-xs text-[#94a3b8] uppercase tracking-widest">Initializing...</span>
       </div>
     </div>
   )
 }
 
 function AuthenticatedApp() {
-  const { selectedLabId, selectedLabName } = useLabStore()
+  const { selectedLabId, selectedLabName, closeMobileMenu } = useLabStore()
   const { admin, error, signOut } = useAuthStore()
   const subscribe = useAdminStore(s => s.subscribe)
   const systemStatus = useAdminStore(s => s.systemStatus)
+
+  // Immediately optimize layout on initial page load and window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        closeMobileMenu()
+      }
+    }
+    // Run on initial mount immediately
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [closeMobileMenu])
 
   useEffect(() => {
     if (selectedLabId && selectedLabName) {
@@ -64,36 +75,35 @@ function AuthenticatedApp() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar />
         
         {systemStatus.overall === 'offline' ? (
-          <div className="bg-[#fce8e8] border-b border-[#e06666]/30 px-8 py-4 flex items-center justify-between text-[#e06666] shrink-0">
-            <div className="flex items-center gap-4">
-              <AlertTriangle className="w-[30px] h-[30px] text-[#e06666]" />
-              <span className="text-lg font-extrabold uppercase tracking-wider font-mono text-[#e06666]">System Alert:</span>
-              <span className="text-lg font-bold text-[#e06666]">Device is currently offline. Please check power source or network connection.</span>
+          <div className="bg-[#fce8e8] border-b border-[#e06666]/30 px-4 sm:px-8 py-3.5 flex items-center justify-between text-[#e06666] shrink-0 gap-3">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-[#e06666] shrink-0" />
+              <span className="text-sm sm:text-lg font-extrabold uppercase tracking-wider font-mono text-[#e06666] hidden sm:inline">System Alert:</span>
+              <span className="text-xs sm:text-base font-bold text-[#e06666]">Device is currently offline. Please check power source or network connection.</span>
             </div>
-            <div className="text-sm font-mono uppercase px-3.5 py-1.5 bg-[#e06666] text-[#fce8e8] rounded font-black border border-[#e06666] shadow-sm animate-pulse">
+            <div className="text-[10px] sm:text-xs font-mono uppercase px-2.5 py-1 sm:px-3.5 sm:py-1.5 bg-[#e06666] text-[#fce8e8] rounded font-black border border-[#e06666] shadow-sm animate-pulse shrink-0">
               SYSTEM OFFLINE
             </div>
           </div>
         ) : systemStatus.cameraState === 'disconnected' ? (
-          <div className="bg-amber-50 border-b border-amber-300 px-8 py-3 flex items-center justify-between text-amber-900 shrink-0">
+          <div className="bg-amber-50 border-b border-amber-300 px-4 sm:px-8 py-2.5 flex items-center justify-between text-amber-900 shrink-0 gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="text-base">⚠️</span>
-              <span className="text-xs font-extrabold uppercase tracking-wider font-mono text-amber-800">Service Alert:</span>
-              <span className="text-xs font-bold text-amber-800">Face recognition process is stopped. Please check or restart the application.</span>
+              <span className="text-xs sm:text-base font-extrabold uppercase tracking-wider font-mono text-amber-800">Service Alert:</span>
+              <span className="text-xs sm:text-sm font-bold text-amber-800">Face recognition process is stopped. Please check or restart the application.</span>
             </div>
-            <div className="text-[10px] font-mono uppercase px-2.5 py-1 bg-amber-500 text-white rounded font-bold border border-amber-600">
+            <div className="text-[10px] font-mono uppercase px-2.5 py-1 bg-amber-500 text-white rounded font-bold border border-amber-600 shrink-0">
               CAMERA STOPPED
             </div>
           </div>
         ) : null}
 
-        <main className="flex-1 overflow-y-auto p-8 pb-16">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-16 min-w-0 transition-all duration-300">
           <Routes>
             <Route path="/labs"    element={<LabSelectorPage />} />
             {selectedLabId ? (
@@ -128,7 +138,6 @@ export default function App() {
   return (
     <BrowserRouter>
       {user ? <AuthenticatedApp /> : <LoginPage />}
-      {/* <MockPanel /> */}
     </BrowserRouter>
   )
 }

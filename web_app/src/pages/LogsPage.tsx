@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
@@ -56,7 +56,7 @@ export function LogsPage() {
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
           <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">The Ledger</p>
           <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Access Log</h1>
@@ -71,8 +71,8 @@ export function LogsPage() {
       <Panel>
         <PanelHeader eyebrow="Filter" title="Search & Filter" />
         <div className="flex flex-col gap-3">
-          <div className="flex gap-3 items-center">
-            <input type="text" placeholder="Search by name or university ID…" value={search}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <input type="text" placeholder="Search by name or university IDâ€¦" value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
             />
@@ -92,7 +92,7 @@ export function LogsPage() {
         </div>
       </Panel>
 
-      <Panel pad={false}>
+      <Panel pad={false} className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-raised">
@@ -107,7 +107,7 @@ export function LogsPage() {
                 <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtTs(ev.occurredAt)}</td>
                 <td className="px-5 py-3.5">
                   <p className="text-sm font-semibold text-[#0f172a]">{ev.displayName ?? 'Unknown User'}</p>
-                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{ev.universityId ?? '—'}</p>
+                  <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{ev.universityId ?? 'â€”'}</p>
                 </td>
                 <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtMethod(ev.method)}</td>
                 <td className="px-5 py-3.5 font-mono text-sm font-semibold text-[#0f172a]">{fmtConf(ev.confidence)}</td>
@@ -124,3 +124,4 @@ export function LogsPage() {
     </div>
   )
 }
+

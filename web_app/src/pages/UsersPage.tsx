@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
@@ -126,19 +126,19 @@ export function UsersPage() {
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
           <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">Management</p>
           <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Administrators</h1>
           <p className="text-sm text-[#475569] mt-2">Administrators authorized to manage this lab.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => selectedLabId && refreshUsers(selectedLabId)}>↻ Refresh</Button>
+          <Button variant="ghost" onClick={() => selectedLabId && refreshUsers(selectedLabId)}>â†» Refresh</Button>
           <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add Administrator</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total',     value: users.length,                                       color: 'text-[#0f172a]' },
           { label: 'Active',    value: users.filter(u => u.status === 'active').length,    color: 'text-green'     },
@@ -151,9 +151,9 @@ export function UsersPage() {
         ))}
       </div>
 
-      <Panel pad={false}>
+      <Panel pad={false} className="overflow-x-auto">
         <div className="flex gap-3 items-center p-5 border-b border-line flex-wrap">
-          <input type="text" placeholder="Search name or university ID…" value={search}
+          <input type="text" placeholder="Search name or university IDâ€¦" value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-[160px] bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
           />
@@ -212,7 +212,7 @@ export function UsersPage() {
                 <td className="px-5 py-4"><Badge tone={STATUS_TONE[u.status]}>{u.status}</Badge></td>
                 <td className="px-5 py-4 relative">
                   <button onClick={() => setMenuOpen(menuOpen === u.id ? null : u.id)}
-                    className="w-8 h-8 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#0f172a] hover:bg-slate-100 transition-colors cursor-pointer text-lg">⋯</button>
+                    className="w-8 h-8 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#0f172a] hover:bg-slate-100 transition-colors cursor-pointer text-lg">â‹¯</button>
                   {menuOpen === u.id && (
                     <div className="absolute right-4 top-12 z-20 bg-white border border-line rounded shadow-lg min-w-[150px] overflow-hidden py-1">
                       <button 
@@ -252,7 +252,7 @@ export function UsersPage() {
           <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-[#0f172a]">Edit Administrator Profile</h3>
-              <button onClick={() => !updatingProfile && setEditingUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
+              <button onClick={() => !updatingProfile && setEditingUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">âœ•</button>
             </div>
             
             <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4">
@@ -317,7 +317,7 @@ export function UsersPage() {
           <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-[#0f172a]">Reset Access PIN</h3>
-              <button onClick={() => !updatingPin && setPinUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">✕</button>
+              <button onClick={() => !updatingPin && setPinUser(null)} className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer">âœ•</button>
             </div>
             
             <form onSubmit={handleUpdatePin} className="flex flex-col gap-4">
@@ -350,3 +350,4 @@ export function UsersPage() {
     </div>
   )
 }
+
