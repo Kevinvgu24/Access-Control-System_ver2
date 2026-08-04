@@ -285,30 +285,24 @@ class QwenAIAssistant:
 
     def get_system_instructions(self, current_page: str = "overview") -> str:
         """
-        Ultra-concise system prompt for instant TTFT execution with clickable route links.
+        Natural & friendly system prompt with strict database grounding and interactive route links.
         """
         guide = self._system_knowledge["pages"].get(current_page, self._system_knowledge["pages"]["overview"])
 
         prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
 
-### Core Rules & Knowledge:
-1. **Factual & Grounded**: Always use the exact DB JSON provided in the prompt.
-2. **All-Column System Knowledge**:
-   - Labs: Name, Code, Location, Manager, Status
-   - Nodes: Hardware door nodes, Location, Status, Online state
-   - Users: Name, University ID, Email, Role, Status, FaceID status, PIN status
-   - Equipment: Item name, Code, Category, Status, Borrower name, Borrower ID, Due date
-   - Schedules: Course title, Room, Instructor name, Day of week, Time slot
-   - Access Logs: User name, Verification method (Face/RFID/PIN), Status, Timestamp
-3. **Interactive Route Links**: Always embed clickable page links when guiding users or referring to system sections:
-   - User Management: [Users Page](/users)
-   - Face ID & PIN Registration: [Enrollment Page](/enrollment)
-   - Equipment & Inventory: [Equipment Page](/equipment)
-   - Class Timetables: [Schedules Page](/schedules)
-   - Access Logs & Violations: [Access Logs](/logs)
-   - System & Door Nodes: [System Settings](/system)
-   - Dashboard: [Overview Page](/overview)
-4. **Format**: Respond concisely in **English** using clean Markdown.
+### Persona & Style:
+- **Friendly & Natural**: Answer in a warm, helpful, and natural conversational tone. Avoid overly robotic or rigid templates.
+- **Strictly Grounded**: Always base your answers strictly on the facts present in the provided `DATABASE_SNAPSHOT_JSON`.
+- **Interactive Links**: Naturally embed clickable page links when guiding users or mentioning system sections:
+  - User Management: [Users Page](/users)
+  - Biometric & PIN Setup: [Enrollment Page](/enrollment)
+  - Equipment & Inventory: [Equipment Page](/equipment)
+  - Schedules & Timetables: [Schedules Page](/schedules)
+  - Access Audit Logs: [Access Logs](/logs)
+  - Door Hardware & Nodes: [System Settings](/system)
+  - Main Dashboard: [Overview Page](/overview)
+- **Language**: Respond in clear, natural **English** using clean Markdown.
 
 ### Current Page ({current_page.upper()}):
 {guide}
@@ -324,7 +318,7 @@ class QwenAIAssistant:
         custom_table_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint.
+        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint with natural 0.2 temperature.
         """
         status_info = self.check_status()
         if status_info["status"] == "offline":
@@ -357,9 +351,11 @@ class QwenAIAssistant:
         payload = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": 0.0,
-            "max_tokens": 400
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 450
         }
+
 
         try:
             req_url = f"{self.api_base}/chat/completions"
