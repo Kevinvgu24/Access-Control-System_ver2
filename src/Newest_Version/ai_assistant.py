@@ -127,18 +127,24 @@ class QwenAIAssistant:
                 for r in u_rows
             ]
 
-            # 4. Equipment & Borrowing Snapshot
-            c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment")
-            eq_rows = c.fetchall()
+            # 4. Equipment & Borrowing Snapshot per Lab
+            try:
+                c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment")
+                eq_rows = c.fetchall()
+            except Exception:
+                c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, borrowerId, borrowDate, returnDate as dueDate, location FROM lab_equipment")
+                eq_rows = c.fetchall()
+
             equipment_list = []
             overdue_list = []
             for r in eq_rows:
-                status_str = f"Item: '{r['name']}' [Code: {r['code']}, Category: {r['category']}, Status: {r['status']}]"
+                status_str = f"Item: '{r['name']}' [Code: {r['code'] or 'N/A'}, Lab/Loc: {r['location'] or 'Main Lab'}, Category: {r['category'] or 'Module'}, Status: {r['status']}]"
                 if r['borrowedByName']:
                     status_str += f" (Borrowed by: {r['borrowedByName']} [ID: {r['borrowerId'] or 'N/A'}], Due: {r['dueDate'] or 'N/A'})"
                 equipment_list.append(status_str)
                 if r['status'] in ['overdue', 'Overdue']:
-                    overdue_list.append(f"'{r['name']}' (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
+                    overdue_list.append(f"'{r['name']}' in {r['location'] or 'Main Lab'} (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
+
 
             # 5. Access Events Snapshot (Recent 10 Logs)
             c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 10")
@@ -230,20 +236,26 @@ class QwenAIAssistant:
             except Exception as e:
                 logger.error(f"Error querying access events log: {e}")
 
-        # 3. Intent: Equipment, Inventory, Borrowing, Overdue
-        if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
+        # 3. Intent: Equipment, Inventory, Borrowing, Overdue in Labs
+        if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món", "có gì", "có những gì", "dụng cụ", "vật dụng"]):
             try:
                 conn = self._get_db_connection()
                 c = conn.cursor()
-                c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment LIMIT 25")
-                rows = c.fetchall()
+                try:
+                    c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment LIMIT 30")
+                    rows = c.fetchall()
+                except Exception:
+                    c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, borrowerId, borrowDate, returnDate as dueDate, location FROM lab_equipment LIMIT 30")
+                    rows = c.fetchall()
+
                 data["equipment_inventory_list"] = [
-                    f"Item: {r['name']} | Code: {r['code']} | Category: {r['category']} | Status: {r['status']} | Borrower: {r['borrowedByName'] or 'None'} | Due: {r['dueDate'] or 'N/A'}"
+                    f"Item: '{r['name']}' | Code: {r['code'] or 'N/A'} | Category: {r['category'] or 'Module'} | Lab/Location: {r['location'] or 'Main Lab'} | Status: {r['status']} | Borrower: {r['borrowedByName'] or 'None'} | Due: {r['dueDate'] or 'N/A'}"
                     for r in rows
                 ]
                 conn.close()
             except Exception as e:
                 logger.error(f"Error querying equipment: {e}")
+
 
         # 4. Intent: Users, Roles, Student/Staff, Registration Status
         if any(w in prompt_lower for w in ["user", "student", "staff", "admin", "người dùng", "sinh viên", "giảng viên", "role", "danh sách"]):
