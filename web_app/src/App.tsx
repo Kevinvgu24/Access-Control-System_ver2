@@ -75,7 +75,7 @@ function AuthenticatedApp() {
   }
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
+    <div className="flex h-screen w-full max-w-full overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar />
