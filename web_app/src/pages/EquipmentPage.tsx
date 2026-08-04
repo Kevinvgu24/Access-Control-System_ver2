@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { useAuthStore }  from '@/store/authStore'
@@ -699,7 +699,7 @@ export function EquipmentPage() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  ðŸ“‹ Flat View
+                   Flat View
                 </button>
                 <button
                   type="button"
@@ -715,7 +715,7 @@ export function EquipmentPage() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  ðŸ“¦ Grouped View ({groupedEquipment.length})
+                   Grouped View ({groupedEquipment.length})
                 </button>
               </div>
             </div>
@@ -765,7 +765,7 @@ export function EquipmentPage() {
                         <img src={group.image} alt={group.name} className="w-11 h-11 rounded-lg object-cover border border-line shadow-sm shrink-0" />
                       ) : (
                         <div className="w-11 h-11 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-500 font-bold text-lg shrink-0">
-                          ðŸ“¦
+                          
                         </div>
                       )}
                       <div>
@@ -817,7 +817,7 @@ export function EquipmentPage() {
                       </button>
 
                       <span className="text-slate-400 font-bold text-sm ml-1">
-                        {isExpanded ? 'â–²' : 'â–¼'}
+                        {isExpanded ? '▲' : '▼'}
                       </span>
                     </div>
                   </div>
@@ -892,7 +892,7 @@ export function EquipmentPage() {
                                         ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
                                         : 'bg-amber-100/80 text-amber-900 border-amber-300/80'
                                     }`}>
-                                      ðŸ“… {item.returnDate}
+                                       {item.returnDate}
                                     </span>
                                   ) : (
                                     <span className="text-slate-300 font-mono">-</span>
@@ -992,7 +992,7 @@ export function EquipmentPage() {
                             <img src={item.image} alt={item.name} className="w-8 h-8 rounded object-cover border border-line shadow-sm shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
-                              ðŸ“·
+                              
                             </div>
                           )}
                           <div>
@@ -1079,7 +1079,7 @@ export function EquipmentPage() {
             <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover rounded-lg shadow-sm" />
           ) : (
             <div className="flex flex-col items-center justify-center gap-1.5 text-slate-400 w-full h-full bg-slate-50 rounded-lg">
-              <span className="text-3xl">ðŸ“·</span>
+              <span className="text-3xl"></span>
               <span className="font-mono text-[9px] uppercase tracking-wider">No Image</span>
             </div>
           )}
@@ -1107,7 +1107,7 @@ export function EquipmentPage() {
               }}
               className="w-full text-left px-4 py-2 text-xs font-semibold text-blue hover:bg-blue-50 transition-colors flex items-center gap-2 cursor-pointer"
             >
-              ðŸ”„ Return Equipment
+               Return Equipment
             </button>
           ) : (
             <button
@@ -1118,7 +1118,7 @@ export function EquipmentPage() {
               }}
               className="w-full text-left px-4 py-2 text-xs font-semibold text-[#ea580c] hover:bg-orange-50 transition-colors flex items-center gap-2 cursor-pointer"
             >
-              ðŸ“¦ Borrow Equipment
+               Borrow Equipment
             </button>
           )}
 
@@ -1130,7 +1130,7 @@ export function EquipmentPage() {
             }}
             className="w-full text-left px-4 py-2 text-xs font-medium text-[#475569] hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            âœï¸ Edit Details
+             Edit Details
           </button>
 
           <button
@@ -1141,7 +1141,7 @@ export function EquipmentPage() {
             }}
             className="w-full text-left px-4 py-2 text-xs font-semibold text-red hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            ðŸ—‘ï¸ Delete Equipment
+             Delete Equipment
           </button>
         </div>
       )}
@@ -1286,7 +1286,7 @@ export function EquipmentPage() {
             <div className="flex justify-between items-center border-b border-line pb-3">
               <div>
                 <h3 className="text-lg font-bold text-[#0f172a] flex items-center gap-2">
-                  <span>ðŸ—‘ï¸</span> Remove or Relocate Equipment
+                  <span></span> Remove or Relocate Equipment
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5 font-mono">
                   Asset Tag: <span className="text-[#ea580c] font-bold">{deletingItem.serialNumber}</span> ({deletingItem.name})
@@ -1323,7 +1323,7 @@ export function EquipmentPage() {
                     />
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        ðŸ› ï¸ Broken / Damaged Beyond Repair
+                         Broken / Damaged Beyond Repair
                       </span>
                       <span className="text-[11px] text-slate-500 mt-0.5">
                         Mark equipment as defective/damaged and remove it from active lab inventory.
@@ -1349,7 +1349,7 @@ export function EquipmentPage() {
                     />
                     <div className="flex flex-col w-full">
                       <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        ðŸ”„ Relocate / Transfer to Another Lab
+                         Relocate / Transfer to Another Lab
                       </span>
                       <span className="text-[11px] text-slate-500 mt-0.5">
                         Transfer this equipment unit directly to a different lab facility.
@@ -1463,7 +1463,7 @@ export function EquipmentPage() {
                           : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
                       }`}
                     >
-                      ðŸ“Œ Individual Asset Tag
+                       Individual Asset Tag
                     </button>
                     <button
                       type="button"
@@ -1474,7 +1474,7 @@ export function EquipmentPage() {
                           : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
                       }`}
                     >
-                      ðŸ“¦ Bulk Batch Item
+                       Bulk Batch Item
                     </button>
                   </div>
                 </div>
@@ -1497,7 +1497,7 @@ export function EquipmentPage() {
                     </div>
                   ) : (
                     <div className="w-20 h-20 rounded-lg bg-raised border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0">
-                      <span className="text-2xl">ðŸ“·</span>
+                      <span className="text-2xl"></span>
                       <span className="text-[9px] font-mono uppercase">No Image</span>
                     </div>
                   )}
@@ -1584,7 +1584,7 @@ export function EquipmentPage() {
                   <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Name *</label>
                   {isDuplicateName && (
                     <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 animate-pulse">
-                      âš ï¸ Duplicate Name
+                       Duplicate Name
                     </span>
                   )}
                 </div>
@@ -1602,7 +1602,7 @@ export function EquipmentPage() {
                 />
                 {isDuplicateName && (
                   <p className="text-[11px] font-medium text-rose-700 bg-rose-50 p-2.5 rounded-md border border-rose-200 leading-tight">
-                    âš ï¸ An equipment model named <strong>"{name.trim()}"</strong> already exists in this lab. To add another unit instance to this model, please cancel and use the <strong>"+ Add Serial Unit"</strong> button on its group card instead.
+                     An equipment model named <strong>"{name.trim()}"</strong> already exists in this lab. To add another unit instance to this model, please cancel and use the <strong>"+ Add Serial Unit"</strong> button on its group card instead.
                   </p>
                 )}
               </div>
@@ -1718,7 +1718,7 @@ export function EquipmentPage() {
           }`}
         >
           <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 font-bold text-sm">
-            {toast.type === 'success' ? 'âœ“' : 'âœ•'}
+            {toast.type === 'success' ? '✓' : '✕'}
           </div>
           <div className="flex-1 text-xs font-semibold leading-relaxed pr-1">
             {toast.message}
@@ -1728,7 +1728,7 @@ export function EquipmentPage() {
             onClick={() => setToast(null)}
             className="text-white/70 hover:text-white font-bold text-sm p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
           >
-            âœ•
+            
           </button>
         </div>
       )}
