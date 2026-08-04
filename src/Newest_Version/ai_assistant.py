@@ -24,9 +24,18 @@ class QwenAIAssistant:
         self._last_cache_update: float = 0.0
         self._cache_ttl_seconds: float = 15.0  # Auto-refresh every 15s
 
-        # Pre-load system static knowledge base into memory
+        # Comprehensive Database Schema Knowledge for AI
         self._system_knowledge = {
             "app_name": "Access Control System v2",
+            "db_schema": {
+                "labs": ["id", "name", "code", "location", "manager", "status", "activationCode"],
+                "nodes": ["id", "clusterId", "labId", "name", "code", "deviceId", "location", "status", "onlineState"],
+                "users": ["id", "name", "university_id", "email", "role", "status", "faceStatus", "pinStatus"],
+                "equipment": ["id", "name", "code", "category", "status", "borrowedByName", "borrowerId", "borrowDate", "dueDate", "location"],
+                "schedules": ["id", "title", "room", "instructor", "dayOfWeek", "startTime", "endTime", "status"],
+                "access_events": ["id", "userName", "universityId", "accessMethod", "status", "isAuthorized", "confidence", "timestamp"],
+                "incidents": ["id", "type", "severity", "status", "summary", "createdAt"]
+            },
             "pages": {
                 "overview": "System summary, active labs count, managers, traffic analytics, real-time live feed, connection alerts.",
                 "users": "User management, add student/staff/admin, role assignment, pin/status toggles.",
@@ -83,7 +92,7 @@ class QwenAIAssistant:
 
     def sync_db_cache(self, force: bool = False):
         """
-        Synchronize in-memory snapshot of SQLite DB tables (Labs including Manager, Nodes, Users, Equipment, Logs, Schedules).
+        Synchronize full in-memory snapshot of ALL SQLite DB tables and columns.
         """
         now = time.time()
         if not force and (now - self._last_cache_update) < self._cache_ttl_seconds:
@@ -93,46 +102,67 @@ class QwenAIAssistant:
             conn = self._get_db_connection()
             c = conn.cursor()
 
-            # 0. Labs & Nodes Snapshot (Including Manager field)
+            # 1. Labs Snapshot (with Manager, Code, Location, Status)
             c.execute("SELECT id, name, code, location, manager, status FROM labs")
             lab_rows = c.fetchall()
             labs_list = [
-                f"{r['name']} (Code: {r['code']}, Manager: {r['manager'] or 'N/A'}, Location: {r['location']}, Status: {r['status']})"
+                f"Lab: '{r['name']}' | Code: {r['code']} | Manager: {r['manager'] or 'N/A'} | Location: {r['location'] or 'N/A'} | Status: {r['status']}"
                 for r in lab_rows
             ]
             active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
 
-            c.execute("SELECT id, name, status FROM nodes")
+            # 2. Nodes Snapshot (Door Hardware Devices)
+            c.execute("SELECT id, name, code, deviceId, location, status, onlineState FROM nodes")
             node_rows = c.fetchall()
-            nodes_list = [f"{r['name']} [{r['status']}]" for r in node_rows]
+            nodes_list = [
+                f"Node: '{r['name']}' | Code: {r['code']} | Location: {r['location']} | Status: {r['status']} ({r['onlineState']})"
+                for r in node_rows
+            ]
 
-            # 1. Users Snapshot
-            c.execute("SELECT id, name, role, status FROM users LIMIT 20")
+            # 3. Users Snapshot (with University ID, Email, Role, Status, Face/PIN Status)
+            c.execute("SELECT id, name, university_id, email, role, status, faceStatus, pinStatus FROM users LIMIT 30")
             u_rows = c.fetchall()
-            users_list = [f"{r['name']} ({r['role']}/{r['status']})" for r in u_rows]
+            users_list = [
+                f"User: '{r['name']}' | ID: {r['university_id'] or r['id']} | Email: {r['email'] or 'N/A'} | Role: {r['role']} | Status: {r['status']} | Face: {r['faceStatus']} | PIN: {r['pinStatus']}"
+                for r in u_rows
+            ]
 
-            # 2. Equipment Snapshot
-            c.execute("SELECT name, code, status, borrowedByName, dueDate FROM equipment")
+            # 4. Equipment & Borrowing Snapshot
+            c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment")
             eq_rows = c.fetchall()
             equipment_list = []
             overdue_list = []
             for r in eq_rows:
-                status_str = f"{r['name']} [{r['status']}]"
+                status_str = f"Item: '{r['name']}' [Code: {r['code']}, Category: {r['category']}, Status: {r['status']}]"
                 if r['borrowedByName']:
-                    status_str += f" (Borrower: {r['borrowedByName']})"
+                    status_str += f" (Borrowed by: {r['borrowedByName']} [ID: {r['borrowerId'] or 'N/A'}], Due: {r['dueDate'] or 'N/A'})"
                 equipment_list.append(status_str)
                 if r['status'] in ['overdue', 'Overdue']:
-                    overdue_list.append(f"{r['name']} (Borrowed by {r['borrowedByName']})")
+                    overdue_list.append(f"'{r['name']}' (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
 
-            # 3. Access Events Snapshot (Recent 5)
-            c.execute("SELECT userName, accessMethod, status, timestamp FROM access_events ORDER BY id DESC LIMIT 5")
+            # 5. Access Events Snapshot (Recent 10 Logs)
+            c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 10")
             log_rows = c.fetchall()
-            logs_list = [f"{r['userName']} ({r['accessMethod']}/{r['status']} at {r['timestamp']})" for r in log_rows]
+            logs_list = [
+                f"Log: '{r['userName']}' | Method: {r['accessMethod']} | Status: {r['status']} | Authorized: {r['isAuthorized']} | Time: {r['timestamp']}"
+                for r in log_rows
+            ]
 
-            # 4. Schedules Snapshot
+            # 6. Schedules & Timetables Snapshot
             c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 10")
             sch_rows = c.fetchall()
-            schedules_list = [f"{r['title']} ({r['room']} - Instructor: {r['instructor']} - {r['dayOfWeek']} {r['startTime']}-{r['endTime']})" for r in sch_rows]
+            schedules_list = [
+                f"Schedule: '{r['title']}' | Room: {r['room']} | Instructor: {r['instructor']} | Day: {r['dayOfWeek']} {r['startTime']}-{r['endTime']}"
+                for r in sch_rows
+            ]
+
+            # 7. Security Incidents Snapshot
+            c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 5")
+            inc_rows = c.fetchall()
+            incidents_list = [
+                f"Incident: '{r['type']}' [{r['severity']}] | Status: {r['status']} | Summary: {r['summary']} | Time: {r['createdAt']}"
+                for r in inc_rows
+            ]
 
             conn.close()
 
@@ -147,6 +177,7 @@ class QwenAIAssistant:
                 "overdue_items": overdue_list,
                 "recent_logs": logs_list,
                 "schedules_summary": schedules_list,
+                "incidents_summary": incidents_list,
                 "synced_at": time.strftime("%H:%M:%S")
             }
             self._last_cache_update = now
@@ -155,14 +186,14 @@ class QwenAIAssistant:
 
     def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview", user_prompt: str = "") -> str:
         """
-        Smart Context Extractor: Dynamically searches SQLite DB including Manager field for labs, users, equipment, or access log queries.
+        Smart Context Extractor: Dynamically searches ALL SQLite tables and columns for exact user prompts.
         """
         self.sync_db_cache()
         prompt_lower = user_prompt.lower()
 
         data: Dict[str, Any] = {}
 
-        # 1. Intent Detection: Labs & Rooms & Managers & Active Status Query
+        # 1. Intent: Labs, Rooms, Managers, Active Status, Nodes
         if any(w in prompt_lower for w in ["lab", "phòng", "room", "active", "hoạt động", "bao nhiêu", "how many", "count", "trạm", "node", "quản lý", "manager", "phụ trách"]):
             try:
                 conn = self._get_db_connection()
@@ -170,28 +201,28 @@ class QwenAIAssistant:
                 c.execute("SELECT id, name, code, location, manager, status FROM labs")
                 lab_rows = c.fetchall()
                 data["labs_list"] = [
-                    f"{r['name']} (Code: {r['code']}, Manager: {r['manager'] or 'N/A'}, Location: {r['location']}, Status: {r['status']})"
+                    f"Name: {r['name']} | Code: {r['code']} | Manager: {r['manager'] or 'N/A'} | Location: {r['location'] or 'N/A'} | Status: {r['status']}"
                     for r in lab_rows
                 ]
                 data["total_labs_count"] = len(lab_rows)
                 data["active_labs_count"] = sum(1 for r in lab_rows if r['status'] == 'active')
 
-                c.execute("SELECT id, name, status FROM nodes")
+                c.execute("SELECT id, name, code, location, status, onlineState FROM nodes")
                 node_rows = c.fetchall()
-                data["nodes_list"] = [f"{r['name']} ({r['status']})" for r in node_rows]
+                data["nodes_list"] = [f"Node: {r['name']} ({r['location']}) - Status: {r['status']}" for r in node_rows]
                 conn.close()
             except Exception as e:
                 logger.error(f"Error querying labs & managers: {e}")
 
-        # 2. Intent Detection: User asking about logins / access events / who entered today
+        # 2. Intent: Logins, Door Access Events, Who Entered Today
         if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai", "tới", "đến", "ghé"]):
             try:
                 conn = self._get_db_connection()
                 c = conn.cursor()
-                c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 15")
+                c.execute("SELECT userName, accessMethod, status, isAuthorized, confidence, timestamp FROM access_events ORDER BY id DESC LIMIT 15")
                 rows = c.fetchall()
                 data["today_access_events_log"] = [
-                    f"{r['userName']} ({r['accessMethod']}/Authorized:{r['isAuthorized']}) at {r['timestamp']}"
+                    f"User: {r['userName']} | Method: {r['accessMethod']} | Authorized: {r['isAuthorized']} | Confidence: {r['confidence']}% | Time: {r['timestamp']}"
                     for r in rows
                 ]
                 data["total_entries_count"] = len(rows)
@@ -199,23 +230,38 @@ class QwenAIAssistant:
             except Exception as e:
                 logger.error(f"Error querying access events log: {e}")
 
-        # 3. Intent Detection: User asking about equipment / items / borrowing / overdue
+        # 3. Intent: Equipment, Inventory, Borrowing, Overdue
         if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
             try:
                 conn = self._get_db_connection()
                 c = conn.cursor()
-                c.execute("SELECT name, code, category, status, borrowedByName, dueDate FROM equipment LIMIT 20")
+                c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment LIMIT 25")
                 rows = c.fetchall()
                 data["equipment_inventory_list"] = [
-                    f"{r['name']} [Code: {r['code']}, Status: {r['status']}, Borrower: {r['borrowedByName'] or 'None'}, Due: {r['dueDate'] or 'N/A'}]"
+                    f"Item: {r['name']} | Code: {r['code']} | Category: {r['category']} | Status: {r['status']} | Borrower: {r['borrowedByName'] or 'None'} | Due: {r['dueDate'] or 'N/A'}"
                     for r in rows
                 ]
                 conn.close()
             except Exception as e:
                 logger.error(f"Error querying equipment: {e}")
 
+        # 4. Intent: Users, Roles, Student/Staff, Registration Status
+        if any(w in prompt_lower for w in ["user", "student", "staff", "admin", "người dùng", "sinh viên", "giảng viên", "role", "danh sách"]):
+            try:
+                conn = self._get_db_connection()
+                c = conn.cursor()
+                c.execute("SELECT name, university_id, email, role, status, faceStatus, pinStatus FROM users LIMIT 30")
+                rows = c.fetchall()
+                data["users_list"] = [
+                    f"Name: {r['name']} | UniID: {r['university_id'] or 'N/A'} | Role: {r['role']} | Status: {r['status']} | FaceID: {r['faceStatus']} | PIN: {r['pinStatus']}"
+                    for r in rows
+                ]
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error querying users: {e}")
+
         # Default fallback to page cache
-        if page in ["users", "enrollment"]:
+        if page in ["users", "enrollment"] and "users_list" not in data:
             data["users"] = self._memory_cache.get("users_summary", [])
         elif page == "equipment" and "equipment_inventory_list" not in data:
             data["equipment"] = self._memory_cache.get("equipment_summary", [])
@@ -229,9 +275,10 @@ class QwenAIAssistant:
                 "total_labs": self._memory_cache.get("total_labs", 0),
                 "active_labs": self._memory_cache.get("active_labs_count", 0),
                 "labs": self._memory_cache.get("labs_summary", []),
-                "active_users": self._memory_cache.get("total_users", 0),
-                "overdue": self._memory_cache.get("overdue_items", []),
-                "latest_access": self._memory_cache.get("recent_logs", [])[:3]
+                "nodes": self._memory_cache.get("nodes_summary", []),
+                "total_users": self._memory_cache.get("total_users", 0),
+                "overdue_equipment": self._memory_cache.get("overdue_items", []),
+                "latest_access_logs": self._memory_cache.get("recent_logs", [])[:3]
             }
 
         return json.dumps(data, ensure_ascii=False)
@@ -244,9 +291,15 @@ class QwenAIAssistant:
 
         prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
 
-### Core Rules:
-1. **Factual & Accurate**: Read the database JSON carefully. If asked about lab managers, check the `Manager` field in `labs` data.
-2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
+### Core Rules & Knowledge:
+1. **Factual & Grounded**: Always use the exact DB JSON provided in the prompt.
+2. **All-Column System Knowledge**:
+   - Labs: Name, Code, Location, Manager, Status
+   - Nodes: Hardware door nodes, Location, Status, Online state
+   - Users: Name, University ID, Email, Role, Status, FaceID status, PIN status
+   - Equipment: Item name, Code, Category, Status, Borrower name, Borrower ID, Due date
+   - Schedules: Course title, Room, Instructor name, Day of week, Time slot
+   - Access Logs: User name, Verification method (Face/RFID/PIN), Status, Timestamp
 3. **Interactive Route Links**: Always embed clickable page links when guiding users or referring to system sections:
    - User Management: [Users Page](/users)
    - Face ID & PIN Registration: [Enrollment Page](/enrollment)
@@ -298,14 +351,14 @@ class QwenAIAssistant:
                 if role in ["user", "assistant"] and content:
                     messages.append({"role": role, "content": content})
 
-        full_user_content = f"DATABASE_SNAPSHOT_JSON: {table_context}\n\nUser Question: {user_prompt}"
+        full_user_content = f"FULL_DATABASE_SNAPSHOT_JSON: {table_context}\n\nUser Question: {user_prompt}"
         messages.append({"role": "user", "content": full_user_content})
 
         payload = {
             "model": self.model_name,
             "messages": messages,
             "temperature": 0.0,
-            "max_tokens": 350
+            "max_tokens": 400
         }
 
         try:
