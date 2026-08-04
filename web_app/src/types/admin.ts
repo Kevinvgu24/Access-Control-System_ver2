@@ -136,3 +136,30 @@ export interface LabMembership {
   createdAt:         Timestamp | null
   updatedAt:         Timestamp | null
 }
+
+export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'broken'
+
+export interface Equipment {
+  id: string
+  labId: string
+  serialNumber: string
+  name: string
+  category: string
+  status: EquipmentStatus
+  assignedTo?: string
+  location?: string
+  specs?: string
+  notes?: string
+  contractNumber?: string
+  invoiceNumber?: string
+  purchaseDate?: string
+  batchNumber?: string
+  borrowerName?: string
+  borrowerId?: string
+  borrowDate?: string
+  returnDate?: string
+  borrowNotes?: string
+  image?: string
+  createdAt?: string
+  updatedAt?: string
+}

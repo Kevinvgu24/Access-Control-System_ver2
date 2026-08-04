@@ -489,6 +489,10 @@ class FaceDatabase:
             ("location", "TEXT"),
             ("specs", "TEXT"),
             ("notes", "TEXT"),
+            ("purchase_contract", "TEXT"),
+            ("invoice_number", "TEXT"),
+            ("purchase_date", "TEXT"),
+            ("batch_number", "TEXT"),
             ("borrower_name", "TEXT"),
             ("borrower_id", "TEXT"),
             ("borrow_date", "TEXT"),
@@ -511,7 +515,8 @@ class FaceDatabase:
         c = conn.cursor()
         c.execute('''
             SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
-                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt
+                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt,
+                   purchase_contract, invoice_number, purchase_date, batch_number
             FROM equipment WHERE labId = ? ORDER BY serial_number ASC
         ''', (lab_id,))
         rows = c.fetchall()
@@ -536,7 +541,11 @@ class FaceDatabase:
                 "borrowNotes": r[14] or "",
                 "image": r[15] or "",
                 "createdAt": r[16] or "",
-                "updatedAt": r[17] or ""
+                "updatedAt": r[17] or "",
+                "contractNumber": r[18] or "" if len(r) > 18 else "",
+                "invoiceNumber": r[19] or "" if len(r) > 19 else "",
+                "purchaseDate": r[20] or "" if len(r) > 20 else "",
+                "batchNumber": r[21] or "" if len(r) > 21 else ""
             })
         return items
 
@@ -553,8 +562,9 @@ class FaceDatabase:
         try:
             c.execute('''
                 INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
+                                       purchase_contract, invoice_number, purchase_date, batch_number,
                                        borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 eq_id,
                 lab_id,
@@ -566,6 +576,10 @@ class FaceDatabase:
                 eq_data.get("location", ""),
                 eq_data.get("specs", ""),
                 eq_data.get("notes", ""),
+                eq_data.get("contractNumber", ""),
+                eq_data.get("invoiceNumber", ""),
+                eq_data.get("purchaseDate", ""),
+                eq_data.get("batchNumber", ""),
                 eq_data.get("borrowerName", ""),
                 eq_data.get("borrowerId", ""),
                 eq_data.get("borrowDate", ""),
@@ -580,7 +594,8 @@ class FaceDatabase:
             # If item with same serialNumber already exists in this lab, update it
             c.execute('''
                 UPDATE equipment
-                SET name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?, image = ?, updatedAt = ?
+                SET name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
+                    purchase_contract = ?, invoice_number = ?, purchase_date = ?, batch_number = ?, image = ?, updatedAt = ?
                 WHERE labId = ? AND serial_number = ?
             ''', (
                 eq_data.get("name", ""),
@@ -590,6 +605,10 @@ class FaceDatabase:
                 eq_data.get("location", ""),
                 eq_data.get("specs", ""),
                 eq_data.get("notes", ""),
+                eq_data.get("contractNumber", ""),
+                eq_data.get("invoiceNumber", ""),
+                eq_data.get("purchaseDate", ""),
+                eq_data.get("batchNumber", ""),
                 eq_data.get("image", ""),
                 now,
                 lab_id,
@@ -616,6 +635,7 @@ class FaceDatabase:
         c.execute('''
             UPDATE equipment
             SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
+                purchase_contract = ?, invoice_number = ?, purchase_date = ?, batch_number = ?,
                 borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, image = ?, updatedAt = ?
             WHERE id = ?
         ''', (
@@ -627,6 +647,10 @@ class FaceDatabase:
             eq_data.get("location", ""),
             eq_data.get("specs", ""),
             eq_data.get("notes", ""),
+            eq_data.get("contractNumber", ""),
+            eq_data.get("invoiceNumber", ""),
+            eq_data.get("purchaseDate", ""),
+            eq_data.get("batchNumber", ""),
             eq_data.get("borrowerName", ""),
             eq_data.get("borrowerId", ""),
             eq_data.get("borrowDate", ""),

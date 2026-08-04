@@ -112,6 +112,10 @@ export function EquipmentPage() {
   const [location, setLocation] = useState('')
   const [specs, setSpecs] = useState('')
   const [notes, setNotes] = useState('')
+  const [contractNumber, setContractNumber] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState('')
+  const [batchNumber, setBatchNumber] = useState('')
   const [image, setImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -294,6 +298,10 @@ export function EquipmentPage() {
     setLocation('')
     setSpecs('')
     setNotes('')
+    setContractNumber('')
+    setInvoiceNumber('')
+    setPurchaseDate('')
+    setBatchNumber('')
     setImage('')
     setShowAddModal(true)
   }
@@ -306,6 +314,10 @@ export function EquipmentPage() {
     setLocation('')
     setSpecs('')
     setNotes('')
+    setContractNumber('')
+    setInvoiceNumber('')
+    setPurchaseDate('')
+    setBatchNumber('')
     setImage(groupImage || '')
     setShowAddModal(true)
   }
@@ -319,6 +331,10 @@ export function EquipmentPage() {
     setLocation(item.location || '')
     setSpecs(item.specs || '')
     setNotes(item.notes || '')
+    setContractNumber(item.contractNumber || '')
+    setInvoiceNumber(item.invoiceNumber || '')
+    setPurchaseDate(item.purchaseDate || '')
+    setBatchNumber(item.batchNumber || '')
     setImage(item.image || '')
   }
 
@@ -350,6 +366,10 @@ export function EquipmentPage() {
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim(),
+          contractNumber: contractNumber.trim(),
+          invoiceNumber: invoiceNumber.trim(),
+          purchaseDate,
+          batchNumber: batchNumber.trim(),
           image
         })
         showToast(`Equipment [${serialNumber.trim()}] updated successfully!`, 'success')
@@ -363,6 +383,10 @@ export function EquipmentPage() {
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim(),
+          contractNumber: contractNumber.trim(),
+          invoiceNumber: invoiceNumber.trim(),
+          purchaseDate,
+          batchNumber: batchNumber.trim(),
           image
         })
         showToast(`Equipment [${serialNumber.trim()}] added successfully to lab!`, 'success')
@@ -1099,6 +1123,57 @@ export function EquipmentPage() {
                   rows={2}
                   className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full resize-none"
                 />
+              </div>
+
+              {/* Procurement & Financial Details (Admin Only / Detailed) */}
+              <div className="border-t border-line pt-3 flex flex-col gap-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-[#ea580c] font-bold">
+                  Procurement & Asset Details (Optional / Admin Only)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Purchase Contract No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CTR-2026-LAB01"
+                      value={contractNumber}
+                      onChange={e => setContractNumber(e.target.value)}
+                      className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Invoice No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. INV-984021"
+                      value={invoiceNumber}
+                      onChange={e => setInvoiceNumber(e.target.value)}
+                      className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Purchase Date</label>
+                    <input
+                      type="date"
+                      value={purchaseDate}
+                      onChange={e => setPurchaseDate(e.target.value)}
+                      className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Batch / Lot No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. LOT-2026-B2"
+                      value={batchNumber}
+                      onChange={e => setBatchNumber(e.target.value)}
+                      className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 justify-end mt-3 pt-3 border-t border-line">
