@@ -371,6 +371,29 @@ export function SchedulesPage() {
     return Object.values(groupMap).sort((a, b) => parseGroupNum(a.group_nr) - parseGroupNum(b.group_nr))
   }, [filtered])
 
+  // Paginated Groups (5 groups per page)
+  const GROUPS_PER_PAGE = 5
+  const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * GROUPS_PER_PAGE
+    return groupedSchedules.slice(start, start + GROUPS_PER_PAGE)
+  }, [groupedSchedules, currentPage])
+
+  const handleToggleSelectGroup = (groupNr: string) => {
+    setSelectedGroupNrs(prev =>
+      prev.includes(groupNr) ? prev.filter(g => g !== groupNr) : [...prev, groupNr]
+    )
+  }
+
+  const handleSelectAllOnPage = () => {
+    const pageGroupNrs = paginatedGroups.map(g => g.group_nr)
+    const allSelected = pageGroupNrs.every(g => selectedGroupNrs.includes(g))
+    if (allSelected) {
+      setSelectedGroupNrs(prev => prev.filter(g => !pageGroupNrs.includes(g)))
+    } else {
+      setSelectedGroupNrs(prev => Array.from(new Set([...prev, ...pageGroupNrs])))
+    }
+  }
+
   // Compute stats safely
   const uniqueStudents = new Set((schedules || []).map(s => s?.student_id).filter(Boolean)).size
   const totalSessions = (schedules || []).length
