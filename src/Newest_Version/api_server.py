@@ -1949,35 +1949,36 @@ def ai_parse_schedule(lab_id):
         file_token = data.get("file_token")
         filename = data.get("filename", "ai_parsed_schedule.xlsx")
         
-        # 1. Try standard parser first if file_token provided
+        # 1. Try ultra-fast Python parsers first (Template 1 & Template 2)
         if file_token and not raw_text:
             import tempfile
             temp_path = os.path.join(tempfile.gettempdir(), file_token)
             if os.path.exists(temp_path):
-                try:
-                    parser = UniversalScheduleParser(temp_path)
-                    parser.is_xlsx = filename.lower().endswith(".xlsx")
-                    records = parser.parse()
-                    if records and len(records) > 0:
-                        conn = sqlite3.connect(db_path)
-                        c = conn.cursor()
-                        c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
-                        now_str = datetime.now().isoformat()
-                        insert_data = [
-                            (lab_id, r.get("student_id", ""), r.get("student_name", ""), r.get("group_nr", ""), r.get("student_nr", ""), r.get("date", ""), r.get("day_of_week", ""), r.get("ma", ""), r.get("session_num", ""), r.get("experiment", ""), now_str, filename)
-                            for r in records
-                        ]
-                        c.executemany("""
-                            INSERT INTO lab_schedules 
-                                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, insert_data)
-                        conn.commit()
-                        conn.close()
-                        ai_assistant.invalidate_cache()
-                        return jsonify({"success": True, "count": len(records), "filename": filename, "method": "parser"})
-                except Exception as ex:
-                    logger.debug(f"Standard parser fallback to AI: {ex}")
+                for t_type in ['type1', 'original']:
+                    try:
+                        parser = UniversalScheduleParser(temp_path, template_type=t_type)
+                        parser.is_xlsx = filename.lower().endswith(".xlsx")
+                        records = parser.parse()
+                        if records and len(records) > 0:
+                            conn = sqlite3.connect(db_path)
+                            c = conn.cursor()
+                            c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
+                            now_str = datetime.now().isoformat()
+                            insert_data = [
+                                (lab_id, r.get("student_id", ""), r.get("student_name", ""), r.get("group_nr", ""), r.get("student_nr", ""), r.get("date", ""), r.get("day_of_week", ""), r.get("ma", ""), r.get("session_num", ""), r.get("experiment", ""), now_str, filename)
+                                for r in records
+                            ]
+                            c.executemany("""
+                                INSERT INTO lab_schedules 
+                                    (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, insert_data)
+                            conn.commit()
+                            conn.close()
+                            ai_assistant.invalidate_cache()
+                            return jsonify({"success": True, "count": len(records), "filename": filename, "method": f"fast_parser_{t_type}"})
+                    except Exception as ex:
+                        logger.debug(f"Fast parser {t_type} notice: {ex}")
 
         # 2. Extract clean human-readable text rows from Excel/HTML/CSV file
         if not raw_text and file_token:
@@ -1988,7 +1989,8 @@ def ai_parse_schedule(lab_id):
         if not raw_text:
             return jsonify({"error": "No schedule content available for AI parsing"}), 400
 
-        prompt = f"""You are a Lab Schedule Parser AI. Convert the raw schedule text below into a valid JSON array of schedule objects.
+        # 3. Direct lightweight Ollama API call (Zero snapshot overhead, temperature = 0.0 for 3x speed)
+        clean_prompt = f"""Convert the schedule text below into a valid JSON array of schedule objects.
 JSON Schema required:
 [
   {{
@@ -2008,16 +2010,37 @@ Rules:
 - Output ONLY valid JSON array inside ```json ``` code block. Do not include introductory text.
 
 Raw Schedule Data:
-{raw_text[:4000]}
+{raw_text[:3500]}
 """
 
-        res = ai_assistant.generate_response(user_prompt=prompt, current_page="schedules")
-        ai_reply = res.get("response", "")
+        payload = {
+            "model": ai_assistant.model_name,
+            "messages": [
+                {"role": "system", "content": "You are a high-speed JSON parser. Output ONLY a valid JSON array."},
+                {"role": "user", "content": clean_prompt}
+            ],
+            "temperature": 0.0, # Greedy decoding = 3x faster response
+            "top_p": 0.9,
+            "max_tokens": 1200
+        }
+
+        req_url = f"{ai_assistant.api_base}/chat/completions"
+        data_bytes = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(req_url, data=data_bytes, headers={"Content-Type": "application/json"})
+        if ai_assistant.api_key:
+            req.add_header("Authorization", f"Bearer {ai_assistant.api_key}")
+
+        ai_reply = ""
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            if resp.status == 200:
+                resp_data = json.loads(resp.read().decode('utf-8'))
+                ai_reply = resp_data["choices"][0]["message"]["content"]
+            else:
+                return jsonify({"error": f"Ollama HTTP error {resp.status}"}), 500
         
         import re
         m = re.search(r'\[.*\]', ai_reply, re.DOTALL)
         if not m:
-            # Fallback regex search for JSON inside codeblock
             m = re.search(r'```json\s*(.*?)\s*```', ai_reply, re.DOTALL)
             if m:
                 json_str = m.group(1)
