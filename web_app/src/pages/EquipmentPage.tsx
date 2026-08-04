@@ -1111,7 +1111,7 @@ export function EquipmentPage() {
                         : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
                     }`}
                   >
-                    📌 Individual Unit (Mã tài sản trường)
+                    📌 Individual Asset Tag
                   </button>
                   <button
                     type="button"
@@ -1122,7 +1122,7 @@ export function EquipmentPage() {
                         : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
                     }`}
                   >
-                    📦 Bulk Batch (Lô số lượng lớn)
+                    📦 Bulk Batch Item
                   </button>
                 </div>
               </div>
