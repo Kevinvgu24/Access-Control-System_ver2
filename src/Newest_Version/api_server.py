@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import sqlite3
 import json
@@ -2301,7 +2301,8 @@ def add_lab_equipment(lab_id):
     try:
         data = request.json or {}
         data['labId'] = lab_id
-        if not data.get('serialNumber') or not data.get('name'):
+        serial_num = data.get('serialNumber') or data.get('serial_number')
+        if not serial_num or not data.get('name'):
             return jsonify({"error": "Serial Number and Equipment Name are required"}), 400
         eq_id = db.add_equipment(data)
         return jsonify({"message": "Equipment added successfully", "id": eq_id}), 201

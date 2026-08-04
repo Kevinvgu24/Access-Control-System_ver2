@@ -345,6 +345,7 @@ export function EquipmentPage() {
   }
 
   const openAddModal = () => {
+    setEditingItem(null)
     setIsGroupAdd(false)
     setIsGroupBatch(false)
     setEntryMode('individual')
@@ -365,6 +366,7 @@ export function EquipmentPage() {
   }
 
   const openAddModalForGroup = (groupName: string, groupCategory: string, groupImage: string) => {
+    setEditingItem(null)
     const groupItems = (equipment || []).filter(
       item => (item.name || '').trim().toLowerCase() === groupName.trim().toLowerCase()
     )
@@ -405,6 +407,7 @@ export function EquipmentPage() {
 
   const openEditModal = (item: Equipment) => {
     const isBatch = (item.quantity || 1) > 1 || !!item.batchNumber
+    setShowAddModal(false)
     setIsGroupAdd(false)
     setIsGroupBatch(isBatch)
     setEditingItem(item)
@@ -424,6 +427,12 @@ export function EquipmentPage() {
     setImage(item.image || '')
   }
 
+  const isDuplicateName = useMemo(() => {
+    if (editingItem || isGroupAdd || !name.trim()) return false
+    const target = name.trim().toLowerCase()
+    return (equipment || []).some(item => (item.name || '').trim().toLowerCase() === target)
+  }, [editingItem, isGroupAdd, name, equipment])
+
   const openBorrowModal = (item: Equipment) => {
     setBorrowingItem(item)
     setBorrowerName(item.borrowerName || '')
@@ -436,16 +445,14 @@ export function EquipmentPage() {
 
   const handleSaveAddEdit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedLabId) return
-    if (!serialNumber.trim() || !name.trim()) {
-      showToast('Serial Number / Batch Code and Name are required.', 'error')
+    if (!selectedLabId) {
+      showToast('Please select a active lab facility before managing equipment.', 'error')
       return
     }
-
-    // Check for duplicate equipment model name when creating a new equipment type from main button
-    const isDuplicateName = !editingItem && !isGroupAdd && (equipment || []).some(
-      item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()
-    )
+    if (!serialNumber.trim() || !name.trim()) {
+      showToast('Serial Number and Equipment Name are required.', 'error')
+      return
+    }
 
     if (isDuplicateName) {
       showToast(
@@ -461,7 +468,6 @@ export function EquipmentPage() {
     setSubmitting(true)
     try {
       if (editingItem) {
-        const prevQty = editingItem.quantity || 1
         const prevInUse = editingItem.inUseQty || 0
         const newAvail = Math.max(0, itemQty - prevInUse)
 
@@ -483,7 +489,6 @@ export function EquipmentPage() {
           image
         })
         showToast(`Equipment [${serialNumber.trim()}] updated successfully!`, 'success')
-        setEditingItem(null)
       } else {
         await addEquipment(selectedLabId, {
           serialNumber: serialNumber.trim(),
@@ -503,8 +508,9 @@ export function EquipmentPage() {
           image
         })
         showToast(`Equipment [${serialNumber.trim()}] (${itemQty} units) added successfully to lab!`, 'success')
-        setShowAddModal(false)
       }
+      setShowAddModal(false)
+      setEditingItem(null)
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to save equipment', 'error')
     } finally {
@@ -1574,7 +1580,7 @@ export function EquipmentPage() {
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Name *</label>
-                  {!editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()) && (
+                  {isDuplicateName && (
                     <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 animate-pulse">
                       ⚠️ Duplicate Name
                     </span>
@@ -1587,12 +1593,12 @@ export function EquipmentPage() {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   className={`bg-raised border rounded px-3 py-2 text-sm text-[#0f172a] outline-none w-full transition-colors ${
-                    !editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase())
+                    isDuplicateName
                       ? 'border-rose-400 focus:border-rose-500 bg-rose-50/30'
                       : 'border-line focus:border-[#ea580c]/50'
                   }`}
                 />
-                {!editingItem && !isGroupAdd && !!name.trim() && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()) && (
+                {isDuplicateName && (
                   <p className="text-[11px] font-medium text-rose-700 bg-rose-50 p-2.5 rounded-md border border-rose-200 leading-tight">
                     ⚠️ An equipment model named <strong>"{name.trim()}"</strong> already exists in this lab. To add another unit instance to this model, please cancel and use the <strong>"+ Add Serial Unit"</strong> button on its group card instead.
                   </p>
@@ -1689,7 +1695,7 @@ export function EquipmentPage() {
                     submitting ||
                     !serialNumber.trim() ||
                     !name.trim() ||
-                    (!editingItem && !isGroupAdd && (equipment || []).some(item => (item.name || '').trim().toLowerCase() === name.trim().toLowerCase()))
+                    isDuplicateName
                   }
                 >
                   {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Equipment / Device'}
