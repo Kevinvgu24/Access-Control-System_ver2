@@ -695,14 +695,7 @@ export function EquipmentPage() {
                                 }`}
                               >
                                 <td className="px-5 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <span>{item.serialNumber}</span>
-                                    {(item.quantity || 1) > 1 && (
-                                      <span className="bg-orange-100 text-[#ea580c] font-bold text-[10px] px-2 py-0.5 rounded-full border border-orange-300">
-                                        Avail: {item.availableQty ?? (item.status === 'available' ? item.quantity : 0)} / {item.quantity}
-                                      </span>
-                                    )}
-                                  </div>
+                                  {item.serialNumber}
                                 </td>
                                 <td className="px-5 py-3 text-xs text-slate-700 font-medium">
                                   {item.location ? `Bin: ${item.location}` : <span className="text-slate-300">-</span>}
@@ -733,16 +726,20 @@ export function EquipmentPage() {
                                     <span className="text-slate-300">-</span>
                                   )}
                                 </td>
-                                <td className="px-5 py-2.5 text-right whitespace-nowrap">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {(item.inUseQty || 0) > 0 && (
-                                      <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
-                                    )}
-                                    {(item.availableQty ?? 1) > 0 && (
-                                      <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
-                                    )}
-                                    <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
-                                    <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                                <td className="px-5 py-2 text-right whitespace-nowrap">
+                                  <div className="flex flex-col items-end gap-1">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {(item.inUseQty || 0) > 0 && (
+                                        <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px] font-semibold">Return</Button>
+                                      )}
+                                      {(item.availableQty ?? 1) > 0 && (
+                                        <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px] font-semibold">Borrow</Button>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
+                                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                                    </div>
                                   </div>
                                 </td>
                               </tr>
@@ -797,14 +794,7 @@ export function EquipmentPage() {
                       title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span>{item.serialNumber}</span>
-                          {(item.quantity || 1) > 1 && (
-                            <span className="bg-orange-100 text-[#ea580c] font-bold text-[10px] px-2 py-0.5 rounded-full border border-orange-300">
-                              Avail: {item.availableQty ?? (item.status === 'available' ? item.quantity : 0)} / {item.quantity}
-                            </span>
-                          )}
-                        </div>
+                        {item.serialNumber}
                       </td>
                       <td 
                         className="px-4 py-3 font-medium text-sm text-[#0f172a]"
@@ -861,18 +851,20 @@ export function EquipmentPage() {
                           <span className="text-[#cbd5e1]">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <td className="px-4 py-2 text-right whitespace-nowrap">
                         <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1">
                             {(item.inUseQty || 0) > 0 && (
-                              <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
+                              <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px] font-semibold">Return</Button>
                             )}
                             {(item.availableQty ?? 1) > 0 && (
-                              <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
+                              <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px] font-semibold">Borrow</Button>
                             )}
-                            <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
                           </div>
-                          <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                          </div>
                         </div>
                       </td>
                     </tr>
