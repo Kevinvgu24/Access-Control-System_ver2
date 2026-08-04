@@ -346,16 +346,23 @@ export function SchedulesPage() {
         })
       }
 
-      const expName = (s.experiment && s.experiment !== 'Có lịch (Ô gộp)') ? s.experiment : 'Scheduled Session'
-      const sessKey = `${s.date}_${s.session_num}_${expName}`
+      // Add session & experiment (Deduplicated strictly by date + session_num, showing each session ONLY ONCE per date)
+      const dateKey = `${s.date || 'N/A'}_${s.session_num || '1'}`
+      const isRealExp = s.experiment && s.experiment !== 'Có lịch (Ô gộp)' && s.experiment !== 'Scheduled Session'
+      const expTitle = isRealExp ? s.experiment : 'Lab Session'
 
-      if (!groupMap[gKey].sessions.some(se => `${se.date}_${se.session_num}_${se.experiment}` === sessKey)) {
+      const existingIdx = groupMap[gKey].sessions.findIndex(se => `${se.date}_${se.session_num}` === dateKey)
+      if (existingIdx >= 0) {
+        if (isRealExp && (groupMap[gKey].sessions[existingIdx].experiment === 'Lab Session' || groupMap[gKey].sessions[existingIdx].experiment === 'Có lịch (Ô gộp)' || groupMap[gKey].sessions[existingIdx].experiment === 'Scheduled Session')) {
+          groupMap[gKey].sessions[existingIdx].experiment = s.experiment
+        }
+      } else {
         groupMap[gKey].sessions.push({
           date: s.date || 'N/A',
           day_of_week: s.day_of_week || '',
           session_num: s.session_num || '1',
           ma: s.ma || '',
-          experiment: expName
+          experiment: expTitle
         })
       }
     }
