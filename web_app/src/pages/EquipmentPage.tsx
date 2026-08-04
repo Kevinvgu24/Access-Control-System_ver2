@@ -250,7 +250,8 @@ export function EquipmentPage() {
       total: number
       available: number
       inUse: number
-      issues: number
+      maintenance: number
+      broken: number
     }> = {}
 
     for (const item of filtered) {
@@ -264,7 +265,8 @@ export function EquipmentPage() {
           total: 0,
           available: 0,
           inUse: 0,
-          issues: 0
+          maintenance: 0,
+          broken: 0
         }
       }
 
@@ -276,8 +278,10 @@ export function EquipmentPage() {
       groups[key].total += itemQty
       groups[key].available += itemAvail
       groups[key].inUse += itemInUse
-      if (item.status === 'maintenance' || item.status === 'broken') {
-        groups[key].issues += itemQty
+      if (item.status === 'maintenance') {
+        groups[key].maintenance += itemQty
+      } else if (item.status === 'broken') {
+        groups[key].broken += itemQty
       }
       if (!groups[key].image && item.image) {
         groups[key].image = item.image
@@ -635,17 +639,24 @@ export function EquipmentPage() {
                     <div className="flex items-center gap-3 flex-wrap">
                       {/* Group Status Counters */}
                       <div className="flex items-center gap-2">
-                        <span className="bg-emerald-50 text-emerald-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-200">
-                          {group.available} Available
-                        </span>
+                        {group.available > 0 && (
+                          <span className="bg-emerald-100/90 text-emerald-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-300 shadow-2xs">
+                            {group.available} Available
+                          </span>
+                        )}
                         {group.inUse > 0 && (
-                          <span className="bg-blue-50 text-blue-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200">
+                          <span className="bg-blue-100/90 text-blue-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-blue-300 shadow-2xs">
                             {group.inUse} In Use
                           </span>
                         )}
-                        {group.issues > 0 && (
-                          <span className="bg-amber-50 text-amber-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-amber-200">
-                            {group.issues} Issues
+                        {group.maintenance > 0 && (
+                          <span className="bg-amber-100/90 text-amber-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-amber-300 shadow-2xs">
+                            {group.maintenance} Maintenance
+                          </span>
+                        )}
+                        {group.broken > 0 && (
+                          <span className="bg-rose-100/90 text-rose-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-rose-300 shadow-2xs">
+                            {group.broken} Broken
                           </span>
                         )}
                       </div>
@@ -719,11 +730,15 @@ export function EquipmentPage() {
                                 </td>
                                 <td className="px-5 py-3 text-xs font-mono text-[#475569] whitespace-nowrap">
                                   {item.returnDate ? (
-                                    <span className={isOverdue ? "bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[11px]" : "bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[11px]"}>
-                                      {item.returnDate}
+                                    <span className={`inline-flex items-center gap-1 font-mono font-bold text-[11px] px-2.5 py-1 rounded-md border shadow-2xs ${
+                                      isOverdue
+                                        ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
+                                        : 'bg-amber-100/80 text-amber-900 border-amber-300/80'
+                                    }`}>
+                                      📅 {item.returnDate}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-300">-</span>
+                                    <span className="text-slate-300 font-mono">-</span>
                                   )}
                                 </td>
                                 <td className="px-5 py-2 text-right whitespace-nowrap">
