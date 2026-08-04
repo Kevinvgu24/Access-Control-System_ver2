@@ -39,9 +39,14 @@ services:
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
-      - OLLAMA_NUM_THREADS=4
+      - OLLAMA_NUM_THREADS=10
+    deploy:
+      resources:
+        limits:
+          cpus: '3.5'
     volumes:
       - /mnt/smart-door/ollama_storage:/root/.ollama
+
 
 
 
