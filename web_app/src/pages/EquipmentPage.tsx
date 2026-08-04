@@ -337,30 +337,17 @@ export function EquipmentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Status</label>
-                  <select
-                    value={status}
-                    onChange={e => setStatus(e.target.value as EquipmentStatus)}
-                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full cursor-pointer"
-                  >
-                    {(['available', 'in_use', 'maintenance', 'broken'] as const).map(st => (
-                      <option key={st} value={st}>{STATUS_LABEL[st]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Assigned To (User ID / Name)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 20240012 or Student Name"
-                    value={assignedTo}
-                    onChange={e => setAssignedTo(e.target.value)}
-                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
-                  />
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Status</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value as EquipmentStatus)}
+                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full cursor-pointer"
+                >
+                  {(['available', 'in_use', 'maintenance', 'broken'] as const).map(st => (
+                    <option key={st} value={st}>{STATUS_LABEL[st]}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
