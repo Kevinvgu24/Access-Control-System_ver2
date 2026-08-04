@@ -114,6 +114,7 @@ function AuthenticatedApp() {
                 <Route path="/overview"   element={<OverviewPage />} />
                 <Route path="/users"      element={<UsersPage />} />
                 <Route path="/enrollment" element={<EnrollmentPage />} />
+                <Route path="/equipment"  element={<EquipmentPage />} />
                 <Route path="/schedules"  element={<SchedulesPage />} />
                 <Route path="/logs"       element={<LogsPage />} />
                 <Route path="/system"     element={<SystemPage />} />

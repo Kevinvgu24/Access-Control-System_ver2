@@ -4,7 +4,7 @@ import {
   getFirstLabNode, getLabUsers, getNodeConfig, deleteUser,
   updateUser, resetUserPin, updateUserStatus
 } from '@/lib/db'
-import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig } from '@/types/admin'
+import type { AccessEvent, User, Incident, SystemStatus, NodeState, NodeConfig, Equipment } from '@/types/admin'
 import { fmtTs } from '@/lib/format'
 import { useLabStore } from '@/store/labStore'
 
@@ -58,6 +58,11 @@ interface AdminStore {
   systemStatus: SystemStatus
   events: AccessEvent[]
   users: User[]
+  equipment: Equipment[]
+  fetchEquipment: (labId: string) => Promise<void>
+  addEquipment: (labId: string, data: Partial<Equipment>) => Promise<void>
+  updateEquipment: (labId: string, id: string, data: Partial<Equipment>) => Promise<void>
+  deleteEquipment: (labId: string, id: string) => Promise<void>
   nodeState: NodeState | null
   nodeConfig: NodeConfig | null
   incidents: Incident[]
@@ -87,6 +92,52 @@ export const useAdminStore = create<AdminStore>((set) => ({
   systemStatus: defaultStatus,
   events: [],
   users: [],
+  equipment: [],
+  fetchEquipment: async (labId: string) => {
+    try {
+      const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment`)
+      if (res.ok) {
+        const data = await res.json()
+        set({ equipment: data })
+      }
+    } catch (err) {
+      console.error('Failed to fetch equipment:', err)
+    }
+  },
+  addEquipment: async (labId: string, data: Partial<Equipment>) => {
+    const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.error || 'Failed to add equipment')
+    }
+    await get().fetchEquipment(labId)
+  },
+  updateEquipment: async (labId: string, id: string, data: Partial<Equipment>) => {
+    const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.error || 'Failed to update equipment')
+    }
+    await get().fetchEquipment(labId)
+  },
+  deleteEquipment: async (labId: string, id: string) => {
+    const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    })
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.error || 'Failed to delete equipment')
+    }
+    await get().fetchEquipment(labId)
+  },
   nodeState: null,
   nodeConfig: null,
   incidents: [],

@@ -2152,3 +2152,44 @@ if __name__ == "__main__":
     # Run with debug mode only if FLASK_DEBUG env var is set to 1
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+
+
+# ==========================================
+# EQUIPMENT / MODULE MANAGEMENT ENDPOINTS
+# ==========================================
+@app.route('/api/labs/<lab_id>/equipment', methods=['GET'])
+def get_lab_equipment(lab_id):
+    try:
+        items = db.get_equipment(lab_id)
+        return jsonify(items), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/labs/<lab_id>/equipment', methods=['POST'])
+def add_lab_equipment(lab_id):
+    try:
+        data = request.json or {}
+        data['labId'] = lab_id
+        if not data.get('serialNumber') or not data.get('name'):
+            return jsonify({"error": "Serial Number and Equipment Name are required"}), 400
+        eq_id = db.add_equipment(data)
+        return jsonify({"message": "Equipment added successfully", "id": eq_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/labs/<lab_id>/equipment/<eq_id>', methods=['PUT'])
+def update_lab_equipment(lab_id, eq_id):
+    try:
+        data = request.json or {}
+        db.update_equipment(eq_id, data)
+        return jsonify({"message": "Equipment updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/labs/<lab_id>/equipment/<eq_id>', methods=['DELETE'])
+def delete_lab_equipment(lab_id, eq_id):
+    try:
+        db.delete_equipment(eq_id)
+        return jsonify({"message": "Equipment deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
