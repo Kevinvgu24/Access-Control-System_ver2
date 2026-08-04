@@ -164,21 +164,30 @@ class QwenAIAssistant:
 
     def get_system_instructions(self, current_page: str = "overview") -> str:
         """
-        Ultra-concise system prompt for instant TTFT execution.
+        Ultra-concise system prompt for instant TTFT execution with clickable route links.
         """
         guide = self._system_knowledge["pages"].get(current_page, self._system_knowledge["pages"]["overview"])
 
         prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
 
-### Rules:
+### Core Rules:
 1. **Factual**: Answer using the cached DB JSON provided in user prompt.
 2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
-3. **Format**: Respond concisely in **English**.
+3. **Interactive Route Links**: Always embed clickable page links when guiding users:
+   - User Management: [Users Page](/users)
+   - Face ID & PIN Registration: [Enrollment Page](/enrollment)
+   - Equipment & Inventory: [Equipment Page](/equipment)
+   - Class Timetables: [Schedules Page](/schedules)
+   - Access Logs & Violations: [Access Logs](/logs)
+   - System & Door Nodes: [System Settings](/system)
+   - Dashboard: [Overview Page](/overview)
+4. **Format**: Respond concisely in **English** using clean Markdown.
 
-### Page ({current_page.upper()}):
+### Current Page ({current_page.upper()}):
 {guide}
 """
         return prompt
+
 
     def generate_response(
         self,

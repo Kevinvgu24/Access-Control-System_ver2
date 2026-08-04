@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Bot,
   User as UserIcon,
@@ -8,9 +8,11 @@ import {
   Table,
   HelpCircle,
   RefreshCw,
-  Zap
+  Zap,
+  ExternalLink
 } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
+
 
 interface Message {
   id: string
@@ -29,7 +31,9 @@ interface AIStatus {
 
 export const AiChatWidget: React.FC = () => {
   const location = useLocation()
+  const navigate = useNavigate()
   const { selectedLabId } = useLabStore()
+
   
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
@@ -306,7 +310,7 @@ export const AiChatWidget: React.FC = () => {
   }
 
   const formatBoldText = (text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g)
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={i} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>
@@ -314,9 +318,34 @@ export const AiChatWidget: React.FC = () => {
       if (part.startsWith('`') && part.endsWith('`')) {
         return <code key={i} className="bg-orange-50 text-orange-800 font-mono text-[11px] px-1 py-0.5 rounded border border-orange-200">{part.slice(1, -1)}</code>
       }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/^\[(.*?)\]\((.*?)\)$/)
+        if (match) {
+          const label = match[1]
+          const url = match[2]
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                if (url.startsWith('/')) {
+                  navigate(url)
+                } else {
+                  window.open(url, '_blank')
+                }
+              }}
+              className="inline-flex items-center gap-1 font-semibold text-orange-700 hover:text-orange-900 bg-orange-100/90 hover:bg-orange-200 px-2 py-0.5 rounded-md border border-orange-300/80 text-[11px] transition-colors cursor-pointer shadow-2xs my-0.5 mx-0.5"
+              title={`Navigate to ${label}`}
+            >
+              <span>{label}</span>
+              <ExternalLink className="w-3 h-3 text-orange-600 shrink-0" />
+            </button>
+          )
+        }
+      }
       return part
     })
   }
+
 
   return (
     <>
