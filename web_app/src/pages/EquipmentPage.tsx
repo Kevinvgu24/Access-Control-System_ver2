@@ -324,6 +324,7 @@ export function EquipmentPage() {
   }
 
   const openAddModal = () => {
+    setIsGroupAdd(false)
     setEntryMode('individual')
     setSerialNumber('')
     setName('')
@@ -360,17 +361,18 @@ export function EquipmentPage() {
     const autoSerial = `${prefix}-${String(nextSeq).padStart(3, '0')}`
     const existingBatchNumber = groupItems.find(i => !!i.batchNumber)?.batchNumber || ''
 
+    setIsGroupAdd(true)
     setEntryMode('individual')
     setSerialNumber(autoSerial)
     setName(groupName)
     setCategory(groupCategory || 'Module')
     setStatus('available')
     setQuantity(1)
-    setLocation('')
-    setSpecs('')
+    setLocation(groupItems[0]?.location || '')
+    setSpecs(groupItems[0]?.specs || '')
     setNotes('')
-    setContractNumber('')
-    setInvoiceNumber('')
+    setContractNumber(groupItems[0]?.contractNumber || '')
+    setInvoiceNumber(groupItems[0]?.invoiceNumber || '')
     setPurchaseDate(getTodayStr())
     setBatchNumber(existingBatchNumber)
     setImage(groupImage || '')
@@ -378,6 +380,7 @@ export function EquipmentPage() {
   }
 
   const openEditModal = (item: Equipment) => {
+    setIsGroupAdd(false)
     setEditingItem(item)
     setEntryMode((item.quantity || 1) > 1 ? 'batch' : 'individual')
     setSerialNumber(item.serialNumber)
@@ -1179,7 +1182,11 @@ export function EquipmentPage() {
           <div className="relative z-10 w-full max-w-xl bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-line pb-3">
               <h3 className="text-lg font-bold text-[#0f172a]">
-                {editingItem ? 'Edit Equipment Details' : 'Add New Equipment / Device'}
+                {editingItem
+                  ? 'Edit Equipment Details'
+                  : isGroupAdd
+                  ? `Add Serial Unit to "${name}"`
+                  : 'Add New Equipment / Device'}
               </h3>
               <button
                 onClick={() => !submitting && (setShowAddModal(false), setEditingItem(null))}
@@ -1341,11 +1348,37 @@ export function EquipmentPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <div className="h-5 flex items-end">
-                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">Location / Storage Bin</label>
+              {(isGroupAdd || editingItem) ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-5 flex items-end">
+                      <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">Location / Storage Bin</label>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. Shelf A - Bin 3"
+                      value={location}
+                      onChange={e => setLocation(e.target.value)}
+                      className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
+                    />
                   </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-5 flex items-end">
+                      <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold whitespace-nowrap">Batch / Lot No. (Lô hàng)</label>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. LOT-2026-B1"
+                      value={batchNumber}
+                      onChange={e => setBatchNumber(e.target.value)}
+                      className="bg-raised border border-orange-200 rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Location / Storage Bin</label>
                   <input
                     type="text"
                     placeholder="e.g. Shelf A - Bin 3"
@@ -1354,20 +1387,7 @@ export function EquipmentPage() {
                     className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
                   />
                 </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="h-5 flex items-end">
-                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold whitespace-nowrap">Batch / Lot No. (Lô hàng)</label>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. LOT-2026-B1"
-                    value={batchNumber}
-                    onChange={e => setBatchNumber(e.target.value)}
-                    className="bg-raised border border-orange-200 rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Notes / Specs</label>
