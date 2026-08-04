@@ -140,8 +140,10 @@ export default function App() {
   if (!initialized) return <LoadingScreen />
 
   return (
-    <BrowserRouter>
-      {user ? <AuthenticatedApp /> : <LoginPage />}
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        {user ? <AuthenticatedApp /> : <LoginPage />}
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

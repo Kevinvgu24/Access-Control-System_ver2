@@ -28,10 +28,11 @@ function isToday(ts: any): boolean {
 }
 
 function computeStats(events: AccessEvent[]) {
-  const today = (events || []).filter(e => isToday(e.occurredAt))
-  const todayEntries  = today.filter(e => e.result === 'granted').length
-  const failedAttempts = today.filter(e => e.result === 'denied' || e.result === 'liveness_failed' || e.result === 'pin_failed').length
-  const withConf = events.filter(e => e.confidence != null).slice(0, 30)
+  const safeEvents = Array.isArray(events) ? events : []
+  const today = safeEvents.filter(e => e && isToday(e.occurredAt))
+  const todayEntries  = today.filter(e => e?.result === 'granted').length
+  const failedAttempts = today.filter(e => e?.result === 'denied' || e?.result === 'liveness_failed' || e?.result === 'pin_failed').length
+  const withConf = safeEvents.filter(e => e && e.confidence != null).slice(0, 30)
   const averageConfidence = withConf.length
     ? withConf.reduce((s, e) => s + (Number(e.confidence) || 0), 0) / withConf.length
     : null
@@ -151,9 +152,9 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
     const v = ++_subscribeVersion
 
     const unsubEvents    = subscribeAccessEvents(labId, 60, events => {
-      set({ events, ...computeStats(events), loading: false })
+      const safeEvs = Array.isArray(events) ? events : []; set({ events: safeEvs, ...computeStats(safeEvs), loading: false })
     })
-    const unsubIncidents = subscribeIncidents(labId, incidents => set({ incidents }))
+    const unsubIncidents = subscribeIncidents(labId, incidents => set({ incidents: Array.isArray(incidents) ? incidents : [] }))
 
     let unsubNode: (() => void) | undefined
 
@@ -179,7 +180,7 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 
     void Promise.all([
       getLabUsers(labId).then(users => {
-        if (_subscribeVersion === v) set({ users })
+        if (_subscribeVersion === v) set({ users: Array.isArray(users) ? users : [] })
       }),
       nodeTask,
     ])
@@ -193,7 +194,7 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 
   refreshUsers: async (labId) => {
     const users = await getLabUsers(labId)
-    set({ users })
+    set({ users: Array.isArray(users) ? users : [] })
   },
 
   refreshNodeConfig: async (labId, clusterId, nodeId) => {
@@ -204,25 +205,25 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
   deleteUser: async (labId, userId) => {
     await deleteUser(labId, userId)
     const users = await getLabUsers(labId)
-    set({ users })
+    set({ users: Array.isArray(users) ? users : [] })
   },
 
   updateUserProfile: async (labId, userId, data) => {
     await updateUser(labId, userId, data)
     const users = await getLabUsers(labId)
-    set({ users })
+    set({ users: Array.isArray(users) ? users : [] })
   },
 
   resetUserPin: async (labId, userId, pin) => {
     await resetUserPin(labId, userId, pin)
     const users = await getLabUsers(labId)
-    set({ users })
+    set({ users: Array.isArray(users) ? users : [] })
   },
 
   updateUserStatus: async (labId, userId, status) => {
     await updateUserStatus(labId, userId, status)
     const users = await getLabUsers(labId)
-    set({ users })
+    set({ users: Array.isArray(users) ? users : [] })
   },
 }))
 
