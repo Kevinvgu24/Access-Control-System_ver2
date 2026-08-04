@@ -449,15 +449,15 @@ export function EquipmentPage() {
           <thead>
             <tr className="bg-raised">
               {[
-                { label: 'Serial Number', class: 'w-[140px] text-left whitespace-nowrap' },
-                { label: 'Equipment Name', class: 'min-w-[200px] text-left' },
-                { label: 'Category', class: 'w-[120px] text-left whitespace-nowrap' },
-                { label: 'Status', class: 'w-[130px] text-left whitespace-nowrap' },
-                { label: 'Borrower / User', class: 'min-w-[240px] text-left whitespace-nowrap' },
-                { label: 'Return Date', class: 'w-[130px] text-left whitespace-nowrap' },
-                { label: 'Actions', class: 'w-[140px] text-right whitespace-nowrap' }
+                { label: 'Serial Number', class: 'text-left whitespace-nowrap px-4 py-3' },
+                { label: 'Equipment Name', class: 'text-left px-4 py-3' },
+                { label: 'Category', class: 'text-left whitespace-nowrap px-4 py-3' },
+                { label: 'Status', class: 'text-left whitespace-nowrap px-4 py-3' },
+                { label: 'Borrower / User', class: 'text-left whitespace-nowrap px-4 py-3 w-full' },
+                { label: 'Return Date', class: 'text-left whitespace-nowrap px-4 py-3' },
+                { label: 'Actions', class: 'text-right whitespace-nowrap px-4 py-3' }
               ].map(h => (
-                <th key={h.label} className={`px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h.class}`}>
+                <th key={h.label} className={`font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h.class}`}>
                   {h.label}
                 </th>
               ))}
@@ -478,17 +478,17 @@ export function EquipmentPage() {
                   className={`${rowBgClass} transition-colors cursor-pointer select-none`}
                   title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                 >
-                  <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
                   <td 
-                    className="px-5 py-4 font-medium text-sm text-[#0f172a]"
+                    className="px-4 py-3 font-medium text-sm text-[#0f172a]"
                     onMouseMove={(e) => handleCellMouseMove(e, item)}
                     onMouseLeave={handleCellMouseLeave}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-9 h-9 rounded object-cover border border-line shadow-sm shrink-0" />
+                        <img src={item.image} alt={item.name} className="w-8 h-8 rounded object-cover border border-line shadow-sm shrink-0" />
                       ) : (
-                        <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
                           📷
                         </div>
                       )}
@@ -498,13 +498,13 @@ export function EquipmentPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-xs text-[#475569]">
+                  <td className="px-4 py-3 text-xs text-[#475569]">
                     <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px] whitespace-nowrap">{item.category}</span>
                   </td>
-                  <td className="px-5 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
                   </td>
-                  <td className="px-5 py-4 text-xs font-medium text-[#0f172a] min-w-[240px]">
+                  <td className="px-4 py-3 text-xs font-medium text-[#0f172a]">
                     {item.borrowerName ? (
                       <div>
                         <p className="font-bold text-[#0f172a] whitespace-nowrap">{item.borrowerName}</p>
@@ -514,7 +514,7 @@ export function EquipmentPage() {
                       <span className="text-[#cbd5e1] font-mono">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-xs font-mono text-[#475569] whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs font-mono text-[#475569] whitespace-nowrap">
                     {item.returnDate ? (
                       <div className="flex flex-col gap-1 items-start">
                         <span className={isOverdue ? "bg-red-100 text-red-800 font-bold border border-red-300 px-2 py-0.5 rounded text-[11px]" : "bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]"}>
@@ -530,7 +530,7 @@ export function EquipmentPage() {
                       <span className="text-[#cbd5e1]">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex items-center justify-end gap-1.5">
                         {item.status === 'in_use' ? (
