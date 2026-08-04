@@ -1,5 +1,5 @@
 import { Pagination } from '@/components/ui/Pagination'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'

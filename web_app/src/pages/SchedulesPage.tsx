@@ -1,5 +1,5 @@
 import { Pagination } from '@/components/ui/Pagination'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
