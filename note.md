@@ -10,15 +10,11 @@ git checkout -- database/smart_door.db 2>/dev/null || true
 git pull origin main
 # 5. Khôi phục lại file database người dùng từ thư mục tạm
 cp /tmp/smart_door.db.bak database/smart_door.db 2>/dev/null || true
-# 6. Tắt Docker containers cũ
-docker compose down
-# 7. Khởi chạy lại Docker bằng cấu hình và mã nguồn mới nhất
-docker compose up --build -d
-# 8. Tải mô hình Qwen 2.5 Coder vào container AI (nếu chưa có)
-docker exec qwen-ai-server ollama pull qwen2.5-coder:3b
-# 9. Xóa triệt để các Image cũ, Layer thừa và Cache build Docker để tránh gây đầy dung lượng ổ cứng
-docker image prune -af
-docker builder prune -af
+# 6. Chỉ Rebuild và Cập nhật duy nhất container Web-App (Cực nhanh, không ảnh hưởng AI & Qdrant)
+docker compose up -d --build smart-door-server
+# 7. Dọn dẹp cache thừa
+docker image prune -f
+
 
 
 
