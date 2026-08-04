@@ -256,3 +256,116 @@ class SensorDatabase:
 
 # Alias for compatibility
 FaceDatabase = SensorDatabase
+
+
+
+    # Equipment Management Methods
+    def _ensure_equipment_table(self, conn):
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS equipment (
+                id TEXT PRIMARY KEY,
+                labId TEXT NOT NULL,
+                serial_number TEXT NOT NULL,
+                name TEXT NOT NULL,
+                category TEXT DEFAULT 'Module',
+                status TEXT DEFAULT 'available',
+                assigned_to TEXT,
+                location TEXT,
+                specs TEXT,
+                notes TEXT,
+                createdAt TEXT,
+                updatedAt TEXT,
+                UNIQUE(labId, serial_number)
+            )
+        ''')
+        conn.commit()
+
+    def get_equipment(self, lab_id):
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        c.execute('''
+            SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes, createdAt, updatedAt
+            FROM equipment WHERE labId = ? ORDER BY serial_number ASC
+        ''', (lab_id,))
+        rows = c.fetchall()
+        conn.close()
+        items = []
+        for r in rows:
+            items.append({
+                "id": r[0],
+                "labId": r[1],
+                "serialNumber": r[2],
+                "name": r[3],
+                "category": r[4],
+                "status": r[5],
+                "assignedTo": r[6] or "",
+                "location": r[7] or "",
+                "specs": r[8] or "",
+                "notes": r[9] or "",
+                "createdAt": r[10] or "",
+                "updatedAt": r[11] or ""
+            })
+        return items
+
+    def add_equipment(self, eq_data):
+        import uuid, datetime
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        now = datetime.datetime.now().isoformat()
+        eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
+        c.execute('''
+            INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            eq_id,
+            eq_data.get("labId", "lab_1"),
+            eq_data.get("serialNumber", ""),
+            eq_data.get("name", ""),
+            eq_data.get("category", "Module"),
+            eq_data.get("status", "available"),
+            eq_data.get("assignedTo", ""),
+            eq_data.get("location", ""),
+            eq_data.get("specs", ""),
+            eq_data.get("notes", ""),
+            now,
+            now
+        ))
+        conn.commit()
+        conn.close()
+        return eq_id
+
+    def update_equipment(self, eq_id, eq_data):
+        import datetime
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        now = datetime.datetime.now().isoformat()
+        c.execute('''
+            UPDATE equipment
+            SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?, updatedAt = ?
+            WHERE id = ?
+        ''', (
+            eq_data.get("serialNumber", ""),
+            eq_data.get("name", ""),
+            eq_data.get("category", "Module"),
+            eq_data.get("status", "available"),
+            eq_data.get("assignedTo", ""),
+            eq_data.get("location", ""),
+            eq_data.get("specs", ""),
+            eq_data.get("notes", ""),
+            now,
+            eq_id
+        ))
+        conn.commit()
+        conn.close()
+
+    def delete_equipment(self, eq_id):
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        c.execute("DELETE FROM equipment WHERE id = ?", (eq_id,))
+        conn.commit()
+        conn.close()

@@ -764,14 +764,31 @@ class FaceDatabase:
             conn.close()
 
 
-
-
-
-
-
     # Equipment Management Methods
+    def _ensure_equipment_table(self, conn):
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS equipment (
+                id TEXT PRIMARY KEY,
+                labId TEXT NOT NULL,
+                serial_number TEXT NOT NULL,
+                name TEXT NOT NULL,
+                category TEXT DEFAULT 'Module',
+                status TEXT DEFAULT 'available',
+                assigned_to TEXT,
+                location TEXT,
+                specs TEXT,
+                notes TEXT,
+                createdAt TEXT,
+                updatedAt TEXT,
+                UNIQUE(labId, serial_number)
+            )
+        ''')
+        conn.commit()
+
     def get_equipment(self, lab_id):
         conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
         c = conn.cursor()
         c.execute('''
             SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes, createdAt, updatedAt
@@ -800,6 +817,7 @@ class FaceDatabase:
     def add_equipment(self, eq_data):
         import uuid, datetime
         conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
         eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
@@ -827,6 +845,7 @@ class FaceDatabase:
     def update_equipment(self, eq_id, eq_data):
         import datetime
         conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
         c.execute('''
@@ -850,6 +869,7 @@ class FaceDatabase:
 
     def delete_equipment(self, eq_id):
         conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
         c = conn.cursor()
         c.execute("DELETE FROM equipment WHERE id = ?", (eq_id,))
         conn.commit()
