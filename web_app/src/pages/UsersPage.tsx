@@ -1,3 +1,4 @@
+import { Pagination } from '@/components/ui/Pagination'
 import { useState } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
@@ -16,6 +17,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 const STATUS_TONE: Record<UserStatus, 'green' | 'red'> = { active: 'green', suspended: 'red' }
 
 export function UsersPage() {
+  const [currentPage, setCurrentPage] = useState(1)
   const { 
     users, refreshUsers,
     updateUserProfile, resetUserPin, updateUserStatus 
@@ -119,6 +121,12 @@ export function UsersPage() {
     }
   }
 
+    const PAGE_SIZE = 25
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filtered.slice(start, start + PAGE_SIZE)
+  }, [filtered, currentPage])
+
   const chipClass = (active: boolean) =>
     `px-3 py-1.5 rounded font-mono text-[11px] border cursor-pointer transition-colors ${
       active ? 'bg-[#ffedd5] border-[#ea580c] text-[#ea580c]' : 'bg-raised border-slate-200 text-[#475569] hover:text-[#334155]'
@@ -184,7 +192,7 @@ export function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(u => (
+            {paginatedUsers.map(u => (
               <tr key={u.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -240,6 +248,7 @@ export function UsersPage() {
             ))}
           </tbody>
         </table>
+        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={25} onPageChange={setCurrentPage} />
         {filtered.length === 0 && (
           <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No administrators match the current filters.</p>
         )}

@@ -1,3 +1,4 @@
+import { Pagination } from '@/components/ui/Pagination'
 import { useState, useEffect, useRef } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
@@ -26,6 +27,12 @@ interface ScheduleFile {
 }
 
 export function SchedulesPage() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 25
+  const paginatedSchedules = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filtered.slice(start, start + ITEMS_PER_PAGE)
+  }, [filtered, currentPage])
   const { selectedLabId } = useLabStore()
   const [scheduleFiles, setScheduleFiles] = useState<ScheduleFile[]>([])
   const [selectedFileKey, setSelectedFileKey] = useState<string>('') // "filename|labId"
@@ -34,8 +41,6 @@ export function SchedulesPage() {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
-  const [currentPage, setCurrentPage] = useState<number>(1)
-  const ITEMS_PER_PAGE = 25
   const [templateType, setTemplateType] = useState<string>('type1')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -243,7 +248,6 @@ export function SchedulesPage() {
       sGroup.toLowerCase().includes(search.toLowerCase())
   })
 
-  const displayedSchedules = filtered.slice(0, currentPage * ITEMS_PER_PAGE)
 
   // Compute stats
   const uniqueStudents = new Set(schedules.map(s => s.student_id).filter(Boolean)).size
@@ -393,7 +397,7 @@ export function SchedulesPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayedSchedules.map(s => (
+                {paginatedSchedules.map(s => (
                   <tr key={s.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                     <td className="px-5 py-4">
                       <div>
@@ -423,13 +427,7 @@ export function SchedulesPage() {
               </tbody>
             </table>
 
-            {filtered.length > currentPage * ITEMS_PER_PAGE && (
-              <div className="p-5 border-t border-line text-center bg-raised">
-                <Button variant="ghost" onClick={() => setCurrentPage(p => p + 1)}>
-                  + Load More ({filtered.length - currentPage * ITEMS_PER_PAGE} rows hidden)
-                </Button>
-              </div>
-            )}
+            <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
 
             {filtered.length === 0 && (
               <div className="py-16 text-center">

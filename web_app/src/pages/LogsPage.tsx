@@ -18,13 +18,13 @@ const OPTS: { value: AccessResult | 'all'; label: string }[] = [
 
 export function LogsPage() {
   const { events } = useAdminStore()
+  const [currentPage, setCurrentPage]   = useState(1)
   const [search, setSearch]             = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
   const [resultFilter, setResultFilter] = useState<AccessResult | 'all'>('all')
   const [dateFrom, setDateFrom]         = useState('')
   const [dateTo, setDateTo]             = useState('')
 
-  const filtered = useMemo(() => events.filter(ev => {
+  const filtered = useMemo(() => (events || []).filter(ev => {
     const ts = fmtTs(ev.occurredAt)
     const name = (ev.displayName ?? '').toLowerCase()
     const uid  = ev.universityId ?? ''
@@ -35,6 +35,12 @@ export function LogsPage() {
       (!dateTo   || ts <= dateTo + ' 23:59')
     )
   }), [events, search, resultFilter, dateFrom, dateTo])
+
+  const PAGE_SIZE = 25
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filtered.slice(start, start + PAGE_SIZE)
+  }, [filtered, currentPage])
 
   function exportCSV() {
     const rows = [
@@ -57,45 +63,36 @@ export function LogsPage() {
     }`
 
   return (
-    <div className="flex flex-col gap-7">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
-        <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-2">The Ledger</p>
-          <h1 className="text-4xl font-extrabold tracking-tight text-orange-600">Access Log</h1>
-          <p className="text-sm text-[#475569] mt-2">{filtered.length} of {events.length} events shown.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="primary" onClick={exportCSV}>Export CSV</Button>
-          <Button variant="ghost">Export JSON</Button>
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-6">
       <Panel>
-        <PanelHeader eyebrow="Filter" title="Search & Filter" />
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <input type="text" placeholder="Search by name or university ID..." value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
-              className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
-            />
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+        <PanelHeader
+          eyebrow="Logs"
+          title="Access Log History"
+          action={<Button variant="ghost" size="sm" onClick={exportCSV}>Export CSV</Button>}
+        />
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
+          <input type="text" placeholder="Search by name or university ID..." value={search}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+            className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full sm:w-72"
+          />
+          <div className="flex gap-2 items-center">
+            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
               className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
-            <span className="font-mono text-xs text-[#94a3b8]">to</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            <span className="text-[#cbd5e1] font-mono text-xs">-</span>
+            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
               className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
             {OPTS.map(({ value, label }) => (
-              <button key={value} onClick={() => setResultFilter(value)} className={chipClass(resultFilter === value)}>{label}</button>
+              <button key={value} onClick={() => { setResultFilter(value); setCurrentPage(1); }} className={chipClass(resultFilter === value)}>{label}</button>
             ))}
           </div>
         </div>
-        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={25} onPageChange={setCurrentPage} />
       </Panel>
 
-      <Panel pad={false} className="overflow-x-auto">
+      <Panel pad={false} className="overflow-x-auto flex flex-col">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-raised">
@@ -105,7 +102,7 @@ export function LogsPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(ev => (
+            {paginatedEvents.map(ev => (
               <tr key={ev.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
                 <td className="px-5 py-3.5 font-mono text-xs text-[#475569]">{fmtTs(ev.occurredAt)}</td>
                 <td className="px-5 py-3.5">
@@ -123,8 +120,8 @@ export function LogsPage() {
         {filtered.length === 0 && (
           <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No events match current filters.</p>
         )}
+        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={25} onPageChange={setCurrentPage} />
       </Panel>
     </div>
   )
 }
-
