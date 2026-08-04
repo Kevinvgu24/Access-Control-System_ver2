@@ -28,7 +28,7 @@ class QwenAIAssistant:
         self._system_knowledge = {
             "app_name": "Access Control System v2",
             "pages": {
-                "overview": "System summary, traffic analytics, real-time live feed, connection alerts.",
+                "overview": "System summary, active labs count, traffic analytics, real-time live feed, connection alerts.",
                 "users": "User management, add student/staff/admin, role assignment, pin/status toggles.",
                 "enrollment": "Biometric registration, Face ID 512-dim ArcFace embedding capture, PIN setup.",
                 "equipment": "Lab inventory, equipment borrow/return workflow, overdue tracking.",
@@ -83,7 +83,7 @@ class QwenAIAssistant:
 
     def sync_db_cache(self, force: bool = False):
         """
-        Synchronize in-memory snapshot of SQLite DB tables to minimize prompt token overhead.
+        Synchronize in-memory snapshot of SQLite DB tables (Labs, Nodes, Users, Equipment, Logs, Schedules).
         """
         now = time.time()
         if not force and (now - self._last_cache_update) < self._cache_ttl_seconds:
@@ -92,6 +92,16 @@ class QwenAIAssistant:
         try:
             conn = self._get_db_connection()
             c = conn.cursor()
+
+            # 0. Labs & Nodes Snapshot
+            c.execute("SELECT id, name, code, location, status FROM labs")
+            lab_rows = c.fetchall()
+            labs_list = [f"{r['name']} (Code: {r['code']}, Loc: {r['location']}, Status: {r['status']})" for r in lab_rows]
+            active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
+
+            c.execute("SELECT id, name, status FROM nodes")
+            node_rows = c.fetchall()
+            nodes_list = [f"{r['name']} [{r['status']}]" for r in node_rows]
 
             # 1. Users Snapshot
             c.execute("SELECT id, name, role, status FROM users LIMIT 20")
@@ -124,6 +134,10 @@ class QwenAIAssistant:
             conn.close()
 
             self._memory_cache = {
+                "labs_summary": labs_list,
+                "total_labs": len(labs_list),
+                "active_labs_count": active_labs_cnt,
+                "nodes_summary": nodes_list,
                 "users_summary": users_list,
                 "total_users": len(users_list),
                 "equipment_summary": equipment_list,
@@ -138,14 +152,32 @@ class QwenAIAssistant:
 
     def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview", user_prompt: str = "") -> str:
         """
-        Smart Context Extractor: Dynamically searches SQLite DB for specific user, equipment, or access log queries while utilizing fast in-memory snapshots.
+        Smart Context Extractor: Dynamically searches SQLite DB for labs, users, equipment, or access log queries.
         """
         self.sync_db_cache()
         prompt_lower = user_prompt.lower()
 
         data: Dict[str, Any] = {}
 
-        # 1. Intent Detection: User asking about logins / access events / who entered today
+        # 1. Intent Detection: Labs & Rooms & Active Status Query
+        if any(w in prompt_lower for w in ["lab", "phòng", "room", "active", "hoạt động", "bao nhiêu", "how many", "count", "trạm", "node"]):
+            try:
+                conn = self._get_db_connection()
+                c = conn.cursor()
+                c.execute("SELECT id, name, code, location, status FROM labs")
+                lab_rows = c.fetchall()
+                data["labs_list"] = [f"{r['name']} (Code: {r['code']}, Location: {r['location']}, Status: {r['status']})" for r in lab_rows]
+                data["total_labs_count"] = len(lab_rows)
+                data["active_labs_count"] = sum(1 for r in lab_rows if r['status'] == 'active')
+
+                c.execute("SELECT id, name, status FROM nodes")
+                node_rows = c.fetchall()
+                data["nodes_list"] = [f"{r['name']} ({r['status']})" for r in node_rows]
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error querying labs & nodes: {e}")
+
+        # 2. Intent Detection: User asking about logins / access events / who entered today
         if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai"]):
             try:
                 conn = self._get_db_connection()
@@ -160,7 +192,7 @@ class QwenAIAssistant:
             except Exception as e:
                 logger.error(f"Error querying access events log: {e}")
 
-        # 2. Intent Detection: User asking about equipment / items / borrowing / overdue
+        # 3. Intent Detection: User asking about equipment / items / borrowing / overdue
         if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
             try:
                 conn = self._get_db_connection()
@@ -187,6 +219,9 @@ class QwenAIAssistant:
             data["schedules"] = self._memory_cache.get("schedules_summary", [])
         elif not data:
             data = {
+                "total_labs": self._memory_cache.get("total_labs", 0),
+                "active_labs": self._memory_cache.get("active_labs_count", 0),
+                "labs": self._memory_cache.get("labs_summary", []),
                 "active_users": self._memory_cache.get("total_users", 0),
                 "overdue": self._memory_cache.get("overdue_items", []),
                 "latest_access": self._memory_cache.get("recent_logs", [])[:3]
@@ -204,7 +239,7 @@ class QwenAIAssistant:
 
 ### Core Rules:
 1. **Factual**: Answer using the cached DB JSON provided in user prompt.
-2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
+2. **System Awareness**: You are deeply aware of all system tables: Labs, Nodes, Users, Equipment, Schedules, Access Logs, Incidents.
 3. **Interactive Route Links**: Always embed clickable page links when guiding users or referring to system sections:
    - User Management: [Users Page](/users)
    - Face ID & PIN Registration: [Enrollment Page](/enrollment)
@@ -246,7 +281,6 @@ class QwenAIAssistant:
         system_instructions = self.get_system_instructions(current_page=current_page)
 
         messages = [
-
             {"role": "system", "content": system_instructions}
         ]
 
@@ -257,14 +291,14 @@ class QwenAIAssistant:
                 if role in ["user", "assistant"] and content:
                     messages.append({"role": role, "content": content})
 
-        full_user_content = f"DB_CACHE_JSON: {table_context}\n\nUser Question: {user_prompt}"
+        full_user_content = f"DATABASE_SNAPSHOT_JSON: {table_context}\n\nUser Question: {user_prompt}"
         messages.append({"role": "user", "content": full_user_content})
 
         payload = {
             "model": self.model_name,
             "messages": messages,
             "temperature": 0.0,
-            "max_tokens": 300
+            "max_tokens": 350
         }
 
         try:
