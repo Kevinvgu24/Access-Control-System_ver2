@@ -431,7 +431,7 @@ export function EquipmentPage() {
           <thead>
             <tr className="bg-raised">
               {['Serial Number', 'Equipment Name', 'Category', 'Status', 'Borrower / User', 'Return Date', 'Actions'].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
+                <th key={h} className={`px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h === 'Actions' ? 'text-right' : 'text-left'}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -502,15 +502,17 @@ export function EquipmentPage() {
                       <span className="text-[#cbd5e1]">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      {item.status === 'in_use' ? (
-                        <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5">Return</Button>
-                      ) : (
-                        <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50">Borrow</Button>
-                      )}
-                      <Button variant="ghost" size="xs" onClick={() => openEditModal(item)}>Edit</Button>
-                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5">Delete</Button>
+                  <td className="px-5 py-3 text-right">
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {item.status === 'in_use' ? (
+                          <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
+                        ) : (
+                          <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
+                        )}
+                        <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
+                      </div>
+                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
                     </div>
                   </td>
                 </tr>
