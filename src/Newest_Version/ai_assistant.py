@@ -28,7 +28,7 @@ class QwenAIAssistant:
         self._system_knowledge = {
             "app_name": "Access Control System v2",
             "pages": {
-                "overview": "System summary, active labs count, traffic analytics, real-time live feed, connection alerts.",
+                "overview": "System summary, active labs count, managers, traffic analytics, real-time live feed, connection alerts.",
                 "users": "User management, add student/staff/admin, role assignment, pin/status toggles.",
                 "enrollment": "Biometric registration, Face ID 512-dim ArcFace embedding capture, PIN setup.",
                 "equipment": "Lab inventory, equipment borrow/return workflow, overdue tracking.",
@@ -83,7 +83,7 @@ class QwenAIAssistant:
 
     def sync_db_cache(self, force: bool = False):
         """
-        Synchronize in-memory snapshot of SQLite DB tables (Labs, Nodes, Users, Equipment, Logs, Schedules).
+        Synchronize in-memory snapshot of SQLite DB tables (Labs including Manager, Nodes, Users, Equipment, Logs, Schedules).
         """
         now = time.time()
         if not force and (now - self._last_cache_update) < self._cache_ttl_seconds:
@@ -93,10 +93,13 @@ class QwenAIAssistant:
             conn = self._get_db_connection()
             c = conn.cursor()
 
-            # 0. Labs & Nodes Snapshot
-            c.execute("SELECT id, name, code, location, status FROM labs")
+            # 0. Labs & Nodes Snapshot (Including Manager field)
+            c.execute("SELECT id, name, code, location, manager, status FROM labs")
             lab_rows = c.fetchall()
-            labs_list = [f"{r['name']} (Code: {r['code']}, Loc: {r['location']}, Status: {r['status']})" for r in lab_rows]
+            labs_list = [
+                f"{r['name']} (Code: {r['code']}, Manager: {r['manager'] or 'N/A'}, Location: {r['location']}, Status: {r['status']})"
+                for r in lab_rows
+            ]
             active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
 
             c.execute("SELECT id, name, status FROM nodes")
@@ -129,7 +132,7 @@ class QwenAIAssistant:
             # 4. Schedules Snapshot
             c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 10")
             sch_rows = c.fetchall()
-            schedules_list = [f"{r['title']} ({r['room']} - {r['instructor']} - {r['dayOfWeek']} {r['startTime']}-{r['endTime']})" for r in sch_rows]
+            schedules_list = [f"{r['title']} ({r['room']} - Instructor: {r['instructor']} - {r['dayOfWeek']} {r['startTime']}-{r['endTime']})" for r in sch_rows]
 
             conn.close()
 
@@ -152,21 +155,24 @@ class QwenAIAssistant:
 
     def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview", user_prompt: str = "") -> str:
         """
-        Smart Context Extractor: Dynamically searches SQLite DB for labs, users, equipment, or access log queries.
+        Smart Context Extractor: Dynamically searches SQLite DB including Manager field for labs, users, equipment, or access log queries.
         """
         self.sync_db_cache()
         prompt_lower = user_prompt.lower()
 
         data: Dict[str, Any] = {}
 
-        # 1. Intent Detection: Labs & Rooms & Active Status Query
-        if any(w in prompt_lower for w in ["lab", "phòng", "room", "active", "hoạt động", "bao nhiêu", "how many", "count", "trạm", "node"]):
+        # 1. Intent Detection: Labs & Rooms & Managers & Active Status Query
+        if any(w in prompt_lower for w in ["lab", "phòng", "room", "active", "hoạt động", "bao nhiêu", "how many", "count", "trạm", "node", "quản lý", "manager", "phụ trách"]):
             try:
                 conn = self._get_db_connection()
                 c = conn.cursor()
-                c.execute("SELECT id, name, code, location, status FROM labs")
+                c.execute("SELECT id, name, code, location, manager, status FROM labs")
                 lab_rows = c.fetchall()
-                data["labs_list"] = [f"{r['name']} (Code: {r['code']}, Location: {r['location']}, Status: {r['status']})" for r in lab_rows]
+                data["labs_list"] = [
+                    f"{r['name']} (Code: {r['code']}, Manager: {r['manager'] or 'N/A'}, Location: {r['location']}, Status: {r['status']})"
+                    for r in lab_rows
+                ]
                 data["total_labs_count"] = len(lab_rows)
                 data["active_labs_count"] = sum(1 for r in lab_rows if r['status'] == 'active')
 
@@ -175,7 +181,7 @@ class QwenAIAssistant:
                 data["nodes_list"] = [f"{r['name']} ({r['status']})" for r in node_rows]
                 conn.close()
             except Exception as e:
-                logger.error(f"Error querying labs & nodes: {e}")
+                logger.error(f"Error querying labs & managers: {e}")
 
         # 2. Intent Detection: User asking about logins / access events / who entered today
         if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai", "tới", "đến", "ghé"]):
@@ -192,7 +198,6 @@ class QwenAIAssistant:
                 conn.close()
             except Exception as e:
                 logger.error(f"Error querying access events log: {e}")
-
 
         # 3. Intent Detection: User asking about equipment / items / borrowing / overdue
         if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
@@ -240,8 +245,8 @@ class QwenAIAssistant:
         prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
 
 ### Core Rules:
-1. **Factual**: Answer using the cached DB JSON provided in user prompt.
-2. **System Awareness**: You are deeply aware of all system tables: Labs, Nodes, Users, Equipment, Schedules, Access Logs, Incidents.
+1. **Factual & Accurate**: Read the database JSON carefully. If asked about lab managers, check the `Manager` field in `labs` data.
+2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
 3. **Interactive Route Links**: Always embed clickable page links when guiding users or referring to system sections:
    - User Management: [Users Page](/users)
    - Face ID & PIN Registration: [Enrollment Page](/enrollment)
