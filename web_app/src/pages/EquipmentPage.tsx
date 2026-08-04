@@ -34,6 +34,45 @@ function getNextWeekStr() {
   return d.toISOString().split('T')[0]
 }
 
+// Compress uploaded image to Max 600px width/height Base64 JPEG to keep payload lightweight
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_WIDTH = 600
+        const MAX_HEIGHT = 600
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width
+            width = MAX_WIDTH
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height
+            height = MAX_HEIGHT
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.85))
+      }
+      img.onerror = (err) => reject(err)
+    }
+    reader.onerror = (err) => reject(err)
+  })
+}
+
 export function EquipmentPage() {
   const { selectedLabId } = useLabStore()
   const { equipment, fetchEquipment, addEquipment, updateEquipment, deleteEquipment, borrowEquipment, returnEquipment } = useAdminStore()
@@ -55,6 +94,13 @@ export function EquipmentPage() {
     item: Equipment
   } | null>(null)
 
+  // Hover Preview Tooltip state
+  const [hoverPreview, setHoverPreview] = useState<{
+    x: number
+    y: number
+    item: Equipment
+  } | null>(null)
+
   // Form State - Add/Edit
   const [serialNumber, setSerialNumber] = useState('')
   const [name, setName] = useState('')
@@ -63,6 +109,7 @@ export function EquipmentPage() {
   const [location, setLocation] = useState('')
   const [specs, setSpecs] = useState('')
   const [notes, setNotes] = useState('')
+  const [image, setImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // Form State - Borrowing
@@ -88,11 +135,39 @@ export function EquipmentPage() {
   const handleRowContextMenu = (e: React.MouseEvent, item: Equipment) => {
     e.preventDefault()
     e.stopPropagation()
+    setHoverPreview(null)
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
       item
     })
+  }
+
+  const handleRowMouseMove = (e: React.MouseEvent, item: Equipment) => {
+    if (contextMenu) return
+    // Calculate tooltip coordinates keeping within viewport
+    const x = Math.min(e.clientX + 16, window.innerWidth - 300)
+    const y = Math.min(e.clientY + 16, window.innerHeight - 340)
+    setHoverPreview({ x, y, item })
+  }
+
+  const handleRowMouseLeave = () => {
+    setHoverPreview(null)
+  }
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid PNG or JPEG image file.')
+      return
+    }
+    try {
+      const base64 = await compressImage(file)
+      setImage(base64)
+    } catch (err) {
+      alert('Failed to process image file.')
+    }
   }
 
   const filtered = useMemo(() => {
@@ -130,6 +205,7 @@ export function EquipmentPage() {
   const totalCount = (equipment || []).length
   const availableCount = (equipment || []).filter(i => i.status === 'available').length
   const inUseCount = (equipment || []).filter(i => i.status === 'in_use').length
+  const overdueCount = (equipment || []).filter(i => i.status === 'in_use' && !!i.returnDate && i.returnDate < getTodayStr()).length
   const issueCount = (equipment || []).filter(i => i.status === 'maintenance' || i.status === 'broken').length
 
   const openAddModal = () => {
@@ -140,6 +216,7 @@ export function EquipmentPage() {
     setLocation('')
     setSpecs('')
     setNotes('')
+    setImage('')
     setShowAddModal(true)
   }
 
@@ -152,6 +229,7 @@ export function EquipmentPage() {
     setLocation(item.location || '')
     setSpecs(item.specs || '')
     setNotes(item.notes || '')
+    setImage(item.image || '')
   }
 
   const openBorrowModal = (item: Equipment) => {
@@ -181,7 +259,8 @@ export function EquipmentPage() {
           status,
           location: location.trim(),
           specs: specs.trim(),
-          notes: notes.trim()
+          notes: notes.trim(),
+          image
         })
         alert('Equipment updated successfully!')
         setEditingItem(null)
@@ -193,7 +272,8 @@ export function EquipmentPage() {
           status,
           location: location.trim(),
           specs: specs.trim(),
-          notes: notes.trim()
+          notes: notes.trim(),
+          image
         })
         alert('Equipment added successfully!')
         setShowAddModal(false)
@@ -274,10 +354,10 @@ export function EquipmentPage() {
           <p className="font-mono text-xs uppercase tracking-widest text-[#ea580c] font-bold mb-1">INVENTORY</p>
           <h1 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">Lab Equipment & Modules</h1>
           <p className="text-sm text-[#475569] mt-1">
-            Right-click any equipment row to <strong>Borrow</strong>, <strong>Return</strong>, or <strong>Delete</strong> it.
+            Right-click any equipment row to <strong>Borrow</strong>, <strong>Return</strong>, or <strong>Delete</strong> it. Hover over an item to preview its photo.
           </p>
         </div>
-        <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Module</Button>
+        <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Device</Button>
       </div>
 
       {/* Stats Cards */}
@@ -286,7 +366,7 @@ export function EquipmentPage() {
           { label: 'Total Inventory', value: totalCount, color: 'text-[#0f172a]' },
           { label: 'Available In Lab', value: availableCount, color: 'text-green' },
           { label: 'Borrowed / In Use', value: inUseCount, color: 'text-blue' },
-          { label: 'Overdue Borrowed', value: (equipment || []).filter(i => i.status === 'in_use' && i.returnDate && i.returnDate < getTodayStr()).length, color: 'text-red font-extrabold' },
+          { label: 'Overdue Borrowed', value: overdueCount, color: 'text-red font-extrabold' },
           { label: 'Maintenance / Issues', value: issueCount, color: 'text-amber' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-5 shadow-sm">
@@ -357,13 +437,26 @@ export function EquipmentPage() {
                 <tr
                   key={item.id}
                   onContextMenu={(e) => handleRowContextMenu(e, item)}
+                  onMouseMove={(e) => handleRowMouseMove(e, item)}
+                  onMouseLeave={handleRowMouseLeave}
                   className={`${rowBgClass} transition-colors cursor-pointer select-none`}
-                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Right-click for options (Borrow / Return / Delete)'}
+                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover for photo preview. Right-click for options.'}
                 >
                   <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
                   <td className="px-5 py-4 font-medium text-sm text-[#0f172a]">
-                    {item.name}
-                    {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
+                    <div className="flex items-center gap-3">
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} className="w-9 h-9 rounded object-cover border border-line shadow-sm shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
+                          📷
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-semibold text-[#0f172a] block">{item.name}</span>
+                        {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-5 py-4 text-xs text-[#475569]">
                     <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px]">{item.category}</span>
@@ -419,6 +512,39 @@ export function EquipmentPage() {
           <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No equipment matches the selected filters for this lab.</p>
         )}
       </Panel>
+
+      {/* Floating Mouse-Hover Equipment Preview Tooltip */}
+      {hoverPreview && !contextMenu && (
+        <div
+          style={{ top: hoverPreview.y, left: hoverPreview.x }}
+          className="fixed z-40 bg-surface border border-line rounded-xl shadow-2xl p-4 w-72 pointer-events-none animate-in fade-in zoom-in-95 duration-100"
+        >
+          <div className="w-full h-40 rounded-lg overflow-hidden bg-slate-100 border border-line mb-3 flex items-center justify-center">
+            {hoverPreview.item.image ? (
+              <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center gap-1 text-slate-400">
+                <span className="text-3xl">📷</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider">No Image Uploaded</span>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] text-[#ea580c] font-bold uppercase tracking-wider">{hoverPreview.item.category}</span>
+            <h4 className="text-sm font-bold text-[#0f172a] leading-snug">{hoverPreview.item.name}</h4>
+            <p className="font-mono text-xs text-[#475569]">S/N: <strong className="text-[#0f172a]">{hoverPreview.item.serialNumber}</strong></p>
+            {hoverPreview.item.location && (
+              <p className="text-xs text-[#64748b]">Bin/Storage: <strong>{hoverPreview.item.location}</strong></p>
+            )}
+            {hoverPreview.item.borrowerName && (
+              <div className="mt-2 pt-2 border-t border-line text-xs">
+                <p className="text-blue font-bold">Borrowed by: {hoverPreview.item.borrowerName}</p>
+                <p className="font-mono text-[11px] text-[#475569]">ID: {hoverPreview.item.borrowerId} | Due: {hoverPreview.item.returnDate}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Floating Right-Click Context Menu */}
       {contextMenu && (
@@ -578,10 +704,10 @@ export function EquipmentPage() {
       {(showAddModal || editingItem) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={() => !submitting && (setShowAddModal(false), setEditingItem(null))} />
-          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-line pb-3">
               <h3 className="text-lg font-bold text-[#0f172a]">
-                {editingItem ? 'Edit Equipment Details' : 'Add New Equipment / Module'}
+                {editingItem ? 'Edit Equipment Details' : 'Add New Equipment / Device'}
               </h3>
               <button
                 onClick={() => !submitting && (setShowAddModal(false), setEditingItem(null))}
@@ -590,6 +716,40 @@ export function EquipmentPage() {
             </div>
 
             <form onSubmit={handleSaveAddEdit} className="flex flex-col gap-4">
+              {/* Equipment Photo Upload */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Photo (PNG / JPEG)</label>
+                <div className="flex items-center gap-4">
+                  {image ? (
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-line group shrink-0">
+                      <img src={image} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setImage('')}
+                        className="absolute inset-0 bg-black/60 text-white font-bold text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-raised border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0">
+                      <span className="text-2xl">📷</span>
+                      <span className="text-[9px] font-mono uppercase">No Image</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1">
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg"
+                      onChange={handleImageFileChange}
+                      className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                    />
+                    <span className="text-[10px] text-[#94a3b8]">Upload PNG or JPEG photo. Hovering over equipment will display a preview card.</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Serial Number *</label>
@@ -667,7 +827,7 @@ export function EquipmentPage() {
               <div className="flex gap-2 justify-end mt-3 pt-3 border-t border-line">
                 <Button variant="ghost" type="button" onClick={() => (setShowAddModal(false), setEditingItem(null))} disabled={submitting}>Cancel</Button>
                 <Button variant="primary" type="submit" disabled={submitting || !serialNumber.trim() || !name.trim()}>
-                  {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Equipment'}
+                  {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Equipment / Device'}
                 </Button>
               </div>
             </form>

@@ -29,16 +29,14 @@ class FaceDatabase:
     def _init_db(self):
         conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
-        c.execute("PRAGMA journal_mode=WAL;")
         
         # 1. Tạo bảng users mở rộng
         c.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                labId TEXT,
-                name TEXT,
-                university_id TEXT,
-                email TEXT,
+                name TEXT UNIQUE,
+                university_id TEXT UNIQUE,
+                email TEXT UNIQUE,
                 password TEXT,
                 role TEXT DEFAULT 'student',
                 status TEXT DEFAULT 'active',
@@ -47,16 +45,12 @@ class FaceDatabase:
                 pin TEXT,
                 embedding array,
                 createdAt TEXT,
-                updatedAt TEXT,
-                UNIQUE(labId, name),
-                UNIQUE(labId, university_id),
-                UNIQUE(labId, email)
+                updatedAt TEXT
             )
         ''')
 
         # Thêm các cột nếu chưa có (trong trường hợp DB cũ đã tồn tại)
         columns_to_add = [
-            ("labId", "TEXT DEFAULT 'lab_1'"),
             ("university_id", "TEXT"),
             ("email", "TEXT"),
             ("password", "TEXT"),
@@ -82,20 +76,11 @@ class FaceDatabase:
                 code TEXT,
                 location TEXT,
                 timezone TEXT,
-                manager TEXT,
-                activationCode TEXT,
-                nodeActivatedAt TEXT,
-                nodeActivatedBy TEXT,
                 status TEXT DEFAULT 'active',
                 createdAt TEXT,
                 updatedAt TEXT
             )
         ''')
-        for col in ["activationCode", "nodeActivatedAt", "nodeActivatedBy"]:
-            try:
-                c.execute(f"ALTER TABLE labs ADD COLUMN {col} TEXT")
-            except sqlite3.OperationalError:
-                pass
         
         c.execute('''
             CREATE TABLE IF NOT EXISTS clusters (
@@ -106,25 +91,6 @@ class FaceDatabase:
                 status TEXT DEFAULT 'active',
                 createdAt TEXT,
                 updatedAt TEXT
-            )
-        ''')
-
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS equipment (
-                id TEXT PRIMARY KEY,
-                labId TEXT NOT NULL,
-                serial_number TEXT NOT NULL,
-                name TEXT NOT NULL,
-                category TEXT DEFAULT 'Module',
-                status TEXT DEFAULT 'available',
-                assigned_to TEXT,
-                location TEXT,
-                specs TEXT,
-                notes TEXT,
-                createdAt TEXT,
-                updatedAt TEXT,
-                UNIQUE(labId, serial_number)
             )
         ''')
 
@@ -210,111 +176,12 @@ class FaceDatabase:
             )
         ''')
 
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS lab_schedules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                labId TEXT,
-                student_id TEXT,
-                student_name TEXT,
-                group_nr TEXT,
-                student_nr TEXT,
-                date TEXT,
-                day_of_week TEXT,
-                ma TEXT,
-                session_num TEXT,
-                experiment TEXT,
-                createdAt TEXT,
-                filename TEXT
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS environment_telemetry (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                labId TEXT,
-                temperature REAL,
-                humidity REAL,
-                latitude REAL,
-                longitude REAL,
-                altitude REAL,
-                speed REAL,
-                satellites INTEGER,
-                dht_ok INTEGER DEFAULT 1,
-                gnss_ok INTEGER DEFAULT 1,
-                raw_payload TEXT,
-                receivedAt TEXT
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS subnodes (
-                id TEXT PRIMARY KEY,
-                labId TEXT,
-                name TEXT,
-                sensors TEXT,
-                maintenance_mode INTEGER DEFAULT 0,
-                createdAt TEXT
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS node_telemetry_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                node_id TEXT,
-                labId TEXT,
-                temperature REAL,
-                humidity REAL,
-                pm25 REAL,
-                co2 REAL,
-                light REAL,
-                latitude REAL,
-                longitude REAL,
-                altitude REAL,
-                speed REAL,
-                satellites INTEGER,
-                sensor_ok INTEGER DEFAULT 1,
-                raw_payload TEXT,
-                receivedAt TEXT
-            )
-        ''')
-
-        # Add maintenance_mode column to subnodes if it doesn't exist
-        try:
-            c.execute("ALTER TABLE subnodes ADD COLUMN maintenance_mode INTEGER DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass
-            
-        # Migrate existing databases to Multi-Lab schema by adding labId column with default 'lab_1'
-        for table_name in ["environment_telemetry", "subnodes", "node_telemetry_history"]:
-            try:
-                c.execute(f"ALTER TABLE {table_name} ADD COLUMN labId TEXT DEFAULT 'lab_1'")
-            except sqlite3.OperationalError:
-                pass
-
         # Add synced column to access_events and incidents if they don't exist in existing database
         for col_name, table_name in [("synced", "access_events"), ("synced", "incidents")]:
             try:
                 c.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} INTEGER DEFAULT 0")
             except sqlite3.OperationalError:
                 pass
-
-        # Add manager column to labs if it doesn't exist in existing database
-        try:
-            c.execute("ALTER TABLE labs ADD COLUMN manager TEXT")
-        except sqlite3.OperationalError:
-            pass
-
-        # Add filename column to lab_schedules if it doesn't exist in existing database
-        try:
-            c.execute("ALTER TABLE lab_schedules ADD COLUMN filename TEXT")
-        except sqlite3.OperationalError:
-            pass
-
-        # Migrate old 'faculty' roles to 'lecturer' (case-insensitive)
-        try:
-            c.execute("UPDATE users SET role = 'lecturer' WHERE LOWER(role) = 'faculty'")
-        except sqlite3.OperationalError:
-            pass
 
         conn.commit()
 
@@ -350,48 +217,45 @@ class FaceDatabase:
         # Admin mặc định (Email: dawnnkevin9@gmail.com, Pass: admin123)
         c.execute("SELECT COUNT(*) FROM admins")
         if c.fetchone()[0] == 0:
-            try:
-                from werkzeug.security import generate_password_hash
-                pw_hash = generate_password_hash("admin123")
-            except ImportError:
-                import hashlib
-                pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
+            import hashlib
+            # Sử dụng SHA256 để mã hóa mật khẩu đơn giản
+            pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
             c.execute("INSERT INTO admins (id, email, password, displayName, type, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)",
                       ("default-admin", "dawnnkevin9@gmail.com", pw_hash, "Kevin", "super_admin", "active", now_str))
 
         conn.commit()
         conn.close()
 
-    def save_user(self, lab_id, name, embedding):
+    def save_user(self, name, embedding):
         conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
         try:
             # Kiểm tra xem user đã tồn tại chưa để tránh ghi đè các cột thông tin cá nhân
-            c.execute("SELECT id FROM users WHERE name = ? AND labId = ?", (name, lab_id))
+            c.execute("SELECT id FROM users WHERE name = ?", (name,))
             row = c.fetchone()
             if row:
-                c.execute("UPDATE users SET embedding = ?, faceStatus = 'complete' WHERE name = ? AND labId = ?", (embedding, name, lab_id))
+                c.execute("UPDATE users SET embedding = ?, faceStatus = 'complete' WHERE name = ?", (embedding, name))
             else:
                 import datetime as dt
                 now_str = dt.datetime.now().isoformat()
-                c.execute("INSERT INTO users (labId, name, embedding, status, faceStatus, createdAt, updatedAt) VALUES (?, ?, ?, 'active', 'complete', ?, ?)", 
-                          (lab_id, name, embedding, now_str, now_str))
+                c.execute("INSERT INTO users (name, embedding, status, faceStatus, createdAt, updatedAt) VALUES (?, ?, 'active', 'complete', ?, ?)", 
+                          (name, embedding, now_str, now_str))
             conn.commit()
-            logger.info(f"Saved/Updated profile: {name}")
+            logger.info(f"Đã lưu/cập nhật hồ sơ: {name}")
         except Exception as e:
-            logger.error(f"Error saving {name}: {e}")
+            logger.error(f"Lỗi khi lưu {name}: {e}")
         finally:
             conn.close()
 
-    def delete_user(self, lab_id, name):
+    def delete_user(self, name):
         conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
         try:
-            c.execute("DELETE FROM users WHERE name = ? AND labId = ?", (name, lab_id))
+            c.execute("DELETE FROM users WHERE name = ?", (name,))
             conn.commit()
-            logger.info(f"Permanently deleted profile: {name}")
+            logger.info(f"Đã xóa vĩnh viễn hồ sơ: {name}")
         except Exception as e:
-            logger.error(f"Error deleting {name}: {e}")
+            logger.error(f"Lỗi khi xóa {name}: {e}")
         finally:
             conn.close()
 
@@ -403,14 +267,14 @@ class FaceDatabase:
         conn.close()
         return {row[0]: row[1] for row in rows}
 
-    def save_full_user(self, lab_id, name, university_id, email, password, role, status, pin, embedding=None):
+    def save_full_user(self, name, university_id, email, password, role, status, pin, embedding=None):
         conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
         try:
             import datetime as dt
             now_str = dt.datetime.now().isoformat()
             
-            c.execute("SELECT id FROM users WHERE (name = ? OR email = ?) AND labId = ?", (name, email, lab_id))
+            c.execute("SELECT id FROM users WHERE name = ? OR email = ?", (name, email))
             row = c.fetchone()
             if row:
                 if embedding is not None:
@@ -428,13 +292,13 @@ class FaceDatabase:
             else:
                 c.execute("""
                     INSERT INTO users 
-                        (labId, name, university_id, email, password, role, status, pin, embedding, faceStatus, pinStatus, createdAt, updatedAt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (lab_id, name, university_id, email, password, role, status, pin, embedding, 
+                        (name, university_id, email, password, role, status, pin, embedding, faceStatus, pinStatus, createdAt, updatedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (name, university_id, email, password, role, status, pin, embedding, 
                       'complete' if embedding is not None else 'incomplete',
                       'set' if pin else 'missing', now_str, now_str))
             conn.commit()
-            logger.info(f"Saved full user profile: {name} ({email}) in lab {lab_id}")
+            logger.info(f"Saved full user profile: {name} ({email})")
         except Exception as e:
             logger.error(f"Error saving full user {name}: {e}")
         finally:
@@ -474,7 +338,7 @@ class FaceDatabase:
         finally:
             conn.close()
 
-    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC, labId=None):
+    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         try:
@@ -485,7 +349,6 @@ class FaceDatabase:
             telemetry_data = {
                 "heartbeatAt": now_str,
                 "onlineState": onlineState,
-                "modelStatus": "running" if status == "online" else "stopped",
                 "cpuPercent": cpuPercent,
                 "ramPercent": ramPercent,
                 "cameraFps": cameraFps,
@@ -494,38 +357,12 @@ class FaceDatabase:
             }
             telemetry_json = json.dumps(telemetry_data)
 
-            # Check if node exists
-            c.execute("SELECT id FROM nodes WHERE id = ?", (nodeId,))
-            row = c.fetchone()
-            if not row:
-                # If node does not exist, insert it under the cluster of the given lab
-                c.execute("SELECT id FROM clusters WHERE labId = ?", (labId or "default-lab",))
-                cluster_row = c.fetchone()
-                cluster_id = cluster_row[0] if cluster_row else "default-cluster"
-                
-                c.execute("""
-                    INSERT INTO nodes (id, clusterId, labId, name, code, status, onlineState, lastHeartbeatAt, latestTelemetry, createdAt, updatedAt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    nodeId,
-                    cluster_id,
-                    labId or "default-lab",
-                    f"Node {nodeId}",
-                    nodeId.upper(),
-                    status,
-                    onlineState,
-                    now_str,
-                    telemetry_json,
-                    now_str,
-                    now_str
-                ))
-            else:
-                # Update nodes table with latest state
-                c.execute("""
-                    UPDATE nodes SET 
-                        status = ?, onlineState = ?, lastHeartbeatAt = ?, latestTelemetry = ?, updatedAt = ?
-                    WHERE id = ?
-                """, (status, onlineState, now_str, telemetry_json, now_str, nodeId))
+            # Update nodes table with latest state
+            c.execute("""
+                UPDATE nodes SET 
+                    status = ?, onlineState = ?, lastHeartbeatAt = ?, latestTelemetry = ?, updatedAt = ?
+                WHERE id = ?
+            """, (status, onlineState, now_str, telemetry_json, now_str, nodeId))
             conn.commit()
         except Exception as e:
             logger.error(f"Error updating node telemetry: {e}")
@@ -588,180 +425,9 @@ class FaceDatabase:
         finally:
             conn.close()
 
-    def save_sensor_telemetry(self, lab_id, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok=True, gnss_ok=True, raw_payload=""):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        try:
-            import datetime as dt
-            now_str = dt.datetime.now().isoformat()
-            c.execute("""
-                INSERT INTO environment_telemetry 
-                    (labId, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok, raw_payload, receivedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                lab_id, temperature, humidity, latitude, longitude, altitude, speed, satellites,
-                1 if dht_ok else 0, 1 if gnss_ok else 0, str(raw_payload), now_str
-            ))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error saving sensor telemetry: {e}")
-        finally:
-            conn.close()
 
-    def get_latest_sensor_telemetry(self, lab_id):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM environment_telemetry WHERE labId = ? ORDER BY id DESC LIMIT 1", (lab_id,))
-            row = c.fetchone()
-            if row:
-                res = dict(row)
-                res["dht_ok"] = bool(res["dht_ok"])
-                res["gnss_ok"] = bool(res["gnss_ok"])
-                return res
-            return None
-        except Exception as e:
-            logger.error(f"Error reading latest sensor telemetry: {e}")
-            return None
-        finally:
-            conn.close()
 
-    def save_subnode(self, lab_id, node_id, name, sensors, maintenance_mode=0):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        try:
-            import datetime as dt
-            now_str = dt.datetime.now().isoformat()
-            c.execute("""
-                INSERT INTO subnodes (id, labId, name, sensors, maintenance_mode, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    labId=excluded.labId,
-                    name=excluded.name,
-                    sensors=excluded.sensors,
-                    maintenance_mode=excluded.maintenance_mode
-            """, (node_id, lab_id, name, sensors, maintenance_mode, now_str))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error saving subnode: {e}")
-        finally:
-            conn.close()
 
-    def get_all_subnodes(self, lab_id):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM subnodes WHERE LOWER(labId) = LOWER(?) OR labId = 'default-lab'", (lab_id,))
-            rows = c.fetchall()
-            return {row["id"]: dict(row) for row in rows}
-        except Exception as e:
-            logger.error(f"Error reading subnodes: {e}")
-            return {}
-        finally:
-            conn.close()
-
-    def get_all_subnodes_globally(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM subnodes")
-            rows = c.fetchall()
-            return [dict(r) for r in rows]
-        except Exception as e:
-            logger.error(f"Error reading all subnodes globally: {e}")
-            return []
-        finally:
-            conn.close()
-
-    def delete_subnode(self, lab_id, node_id):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        try:
-            c.execute("DELETE FROM subnodes WHERE id = ? OR (id = ? AND labId = ?)", (node_id, node_id, lab_id))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error deleting subnode: {e}")
-        finally:
-            conn.close()
-
-    def get_subnode_globally(self, node_id):
-        if not node_id:
-            return None
-        node_id_clean = str(node_id).strip()
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM subnodes WHERE LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?)", 
-                      (node_id_clean, node_id_clean.replace('-', '_'), node_id_clean.replace('_', '-')))
-            row = c.fetchone()
-            return dict(row) if row else None
-        except Exception as e:
-            logger.error(f"Error fetching subnode globally: {e}")
-            return None
-        finally:
-            conn.close()
-
-    def update_subnode_maintenance(self, lab_id, node_id, maintenance_mode):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        try:
-            c.execute("UPDATE subnodes SET maintenance_mode = ? WHERE id = ? AND labId = ?", (1 if maintenance_mode else 0, node_id, lab_id))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error updating subnode maintenance: {e}")
-        finally:
-            conn.close()
-
-    def save_individual_node_telemetry(self, lab_id, node_id, metrics, raw_payload=""):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        try:
-            import datetime as dt
-            now_str = dt.datetime.now().isoformat()
-            
-            # Extract values dynamically from metrics dict
-            t_c = metrics.get("temperature_c", metrics.get("temperature", None))
-            h_p = metrics.get("humidity_pct", metrics.get("humidity", None))
-            pm = metrics.get("pm25_ugm3", metrics.get("pm25", None))
-            co2 = metrics.get("co2_ppm", metrics.get("co2", None))
-            light = metrics.get("light_lux", metrics.get("lux", None))
-            lat = metrics.get("latitude", metrics.get("lat", None))
-            lng = metrics.get("longitude", metrics.get("lng", None))
-            alt = metrics.get("altitude_m", metrics.get("altitude", None))
-            spd = metrics.get("speed_kmph", metrics.get("speed", None))
-            sats = metrics.get("satellites", metrics.get("sats", None))
-            s_ok = metrics.get("dht_ok", metrics.get("gnss_ok", metrics.get("status_ok", True)))
-            
-            c.execute("""
-                INSERT INTO node_telemetry_history 
-                    (node_id, labId, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok, raw_payload, receivedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                str(node_id), str(lab_id), t_c, h_p, pm, co2, light, lat, lng, alt, spd, sats, 1 if s_ok else 0, str(raw_payload), now_str
-            ))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error saving individual node telemetry: {e}")
-        finally:
-            conn.close()
-
-    def get_individual_node_telemetry(self, lab_id, node_id, limit=50):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        try:
-            c.execute("SELECT * FROM node_telemetry_history WHERE node_id = ? AND labId = ? ORDER BY id DESC LIMIT ?", (node_id, lab_id, limit))
-            rows = c.fetchall()
-            return [dict(row) for row in rows]
-        except Exception as e:
-            logger.error(f"Error reading node telemetry history: {e}")
-            return []
-        finally:
-            conn.close()
 
 
     # Equipment Management Methods
@@ -784,20 +450,22 @@ class FaceDatabase:
                 borrow_date TEXT,
                 return_date TEXT,
                 borrow_notes TEXT,
+                image TEXT,
                 createdAt TEXT,
                 updatedAt TEXT,
                 UNIQUE(labId, serial_number)
             )
         ''')
-        # Alter table for existing databases to add missing borrowing columns
-        borrow_cols = [
+        # Alter table for existing databases to add missing columns
+        extra_cols = [
             ("borrower_name", "TEXT"),
             ("borrower_id", "TEXT"),
             ("borrow_date", "TEXT"),
             ("return_date", "TEXT"),
-            ("borrow_notes", "TEXT")
+            ("borrow_notes", "TEXT"),
+            ("image", "TEXT")
         ]
-        for col_name, col_type in borrow_cols:
+        for col_name, col_type in extra_cols:
             try:
                 c.execute(f"ALTER TABLE equipment ADD COLUMN {col_name} {col_type}")
             except sqlite3.OperationalError:
@@ -810,7 +478,7 @@ class FaceDatabase:
         c = conn.cursor()
         c.execute('''
             SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
-                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, createdAt, updatedAt
+                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt
             FROM equipment WHERE labId = ? ORDER BY serial_number ASC
         ''', (lab_id,))
         rows = c.fetchall()
@@ -833,8 +501,9 @@ class FaceDatabase:
                 "borrowDate": r[12] or "",
                 "returnDate": r[13] or "",
                 "borrowNotes": r[14] or "",
-                "createdAt": r[15] or "",
-                "updatedAt": r[16] or ""
+                "image": r[15] or "",
+                "createdAt": r[16] or "",
+                "updatedAt": r[17] or ""
             })
         return items
 
@@ -847,8 +516,8 @@ class FaceDatabase:
         eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
         c.execute('''
             INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
-                                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             eq_id,
             eq_data.get("labId", "lab_1"),
@@ -865,6 +534,7 @@ class FaceDatabase:
             eq_data.get("borrowDate", ""),
             eq_data.get("returnDate", ""),
             eq_data.get("borrowNotes", ""),
+            eq_data.get("image", ""),
             now,
             now
         ))
@@ -881,7 +551,7 @@ class FaceDatabase:
         c.execute('''
             UPDATE equipment
             SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
-                borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, updatedAt = ?
+                borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, image = ?, updatedAt = ?
             WHERE id = ?
         ''', (
             eq_data.get("serialNumber", ""),
@@ -897,6 +567,7 @@ class FaceDatabase:
             eq_data.get("borrowDate", ""),
             eq_data.get("returnDate", ""),
             eq_data.get("borrowNotes", ""),
+            eq_data.get("image", ""),
             now,
             eq_id
         ))

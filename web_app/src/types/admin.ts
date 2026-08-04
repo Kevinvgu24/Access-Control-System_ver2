@@ -1,8 +1,8 @@
-export type Timestamp = any;
+import type { Timestamp } from 'firebase/firestore'
 
 export type AdminRole       = 'super_admin' | 'lab_admin'
 export type AdminStatus     = 'active' | 'suspended'
-export type UserRole        = 'student' | 'lecturer' | 'teacher_assistant' | 'guest' | 'maintenance'
+export type UserRole        = 'student' | 'faculty' | 'lab_assistant' | 'guest' | 'maintenance'
 export type UserStatus      = 'active' | 'suspended'
 export type AccessMethod    = 'face' | 'face_pin_fallback'
 export type AccessResult    = 'granted' | 'denied' | 'liveness_failed' | 'unknown_user' | 'pin_failed' | 'system_error'
@@ -25,11 +25,7 @@ export interface Lab {
   code:        string
   location?:   string
   timezone:    string
-  manager?:    string
   status:      LabStatus
-  activationCode?: string
-  nodeActivatedAt?: string
-  nodeActivatedBy?: string
   createdAt:   Timestamp | null
   updatedAt:   Timestamp | null
 }
@@ -139,26 +135,4 @@ export interface LabMembership {
   allowedNodeIds:    string[]
   createdAt:         Timestamp | null
   updatedAt:         Timestamp | null
-}
-
-export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'broken'
-
-export interface Equipment {
-  id:           string
-  labId:        string
-  serialNumber: string
-  name:         string
-  category:     string
-  status:       EquipmentStatus
-  assignedTo?:  string
-  location?:    string
-  specs?:       string
-  notes?:       string
-  borrowerName?: string
-  borrowerId?:   string
-  borrowDate?:   string
-  returnDate?:   string
-  borrowNotes?:  string
-  createdAt?:   string
-  updatedAt?:   string
 }
