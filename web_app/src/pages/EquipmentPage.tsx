@@ -88,7 +88,7 @@ export function EquipmentPage() {
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
   const [borrowingItem, setBorrowingItem] = useState<Equipment | null>(null)
   const [deletingItem, setDeletingItem] = useState<Equipment | null>(null)
-  const [removeReason, setRemoveReason] = useState<'broken' | 'relocate' | 'dispose'>('broken')
+  const [removeReason, setRemoveReason] = useState<'broken' | 'relocate'>('broken')
   const [targetLabId, setTargetLabId] = useState('')
   const [removeNotes, setRemoveNotes] = useState('')
   const [availableLabs, setAvailableLabs] = useState<Lab[]>([])
@@ -584,10 +584,9 @@ export function EquipmentPage() {
 
         showToast(`Equipment [${deletingItem.serialNumber}] relocated successfully to ${targetLabName}!`, 'success')
       } else {
-        // Broken / Disposal
+        // Broken / Defective
         await deleteEquipment(selectedLabId, deletingItem.id)
-        const reasonLabel = removeReason === 'broken' ? 'Decommissioned (Damaged / Defective)' : 'Permanently Disposed'
-        showToast(`Equipment [${deletingItem.serialNumber}] removed: ${reasonLabel}`, 'success')
+        showToast(`Equipment [${deletingItem.serialNumber}] decommissioned (Damaged / Defective)!`, 'success')
       }
       setDeletingItem(null)
     } catch (err) {
@@ -1338,32 +1337,6 @@ export function EquipmentPage() {
                       </select>
                     </div>
                   )}
-
-                  {/* Option 3: Permanent Disposal */}
-                  <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                      removeReason === 'dispose'
-                        ? 'bg-slate-100 border-slate-400 shadow-xs'
-                        : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="removeReason"
-                      value="dispose"
-                      checked={removeReason === 'dispose'}
-                      onChange={() => setRemoveReason('dispose')}
-                      className="mt-0.5 accent-[#ea580c]"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        🗑️ Permanent Disposal / Decommission
-                      </span>
-                      <span className="text-[11px] text-slate-500 mt-0.5">
-                        Permanently delete this equipment record from lab management system.
-                      </span>
-                    </div>
-                  </label>
                 </div>
               </div>
 
