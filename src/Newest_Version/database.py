@@ -499,6 +499,9 @@ class FaceDatabase:
             ("return_date", "TEXT"),
             ("borrow_notes", "TEXT"),
             ("image", "TEXT"),
+            ("quantity", "INTEGER DEFAULT 1"),
+            ("available_qty", "INTEGER DEFAULT 1"),
+            ("in_use_qty", "INTEGER DEFAULT 0"),
             ("createdAt", "TEXT"),
             ("updatedAt", "TEXT")
         ]
@@ -516,13 +519,18 @@ class FaceDatabase:
         c.execute('''
             SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
                    borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt,
-                   purchase_contract, invoice_number, purchase_date, batch_number
+                   purchase_contract, invoice_number, purchase_date, batch_number,
+                   quantity, available_qty, in_use_qty
             FROM equipment WHERE labId = ? ORDER BY serial_number ASC
         ''', (lab_id,))
         rows = c.fetchall()
         conn.close()
         items = []
         for r in rows:
+            qty = r[22] if len(r) > 22 and r[22] is not None else 1
+            avail = r[23] if len(r) > 23 and r[23] is not None else (1 if r[5] == 'available' else 0)
+            in_use = r[24] if len(r) > 24 and r[24] is not None else (1 if r[5] == 'in_use' else 0)
+
             items.append({
                 "id": r[0],
                 "labId": r[1],
@@ -545,7 +553,10 @@ class FaceDatabase:
                 "contractNumber": (r[18] if len(r) > 18 else "") or "",
                 "invoiceNumber": (r[19] if len(r) > 19 else "") or "",
                 "purchaseDate": (r[20] if len(r) > 20 else "") or "",
-                "batchNumber": (r[21] if len(r) > 21 else "") or ""
+                "batchNumber": (r[21] if len(r) > 21 else "") or "",
+                "quantity": int(qty),
+                "availableQty": int(avail),
+                "inUseQty": int(in_use)
             })
         return items
 
@@ -558,13 +569,17 @@ class FaceDatabase:
         eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
         lab_id = eq_data.get("labId", "lab_1")
         serial_number = eq_data.get("serialNumber", "").strip()
+        qty = int(eq_data.get("quantity", 1))
+        avail = int(eq_data.get("availableQty", qty))
+        in_use = int(eq_data.get("inUseQty", 0))
         
         try:
             c.execute('''
                 INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
                                        purchase_contract, invoice_number, purchase_date, batch_number,
-                                       borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                       borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image,
+                                       quantity, available_qty, in_use_qty, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 eq_id,
                 lab_id,
@@ -586,6 +601,9 @@ class FaceDatabase:
                 eq_data.get("returnDate", ""),
                 eq_data.get("borrowNotes", ""),
                 eq_data.get("image", ""),
+                qty,
+                avail,
+                in_use,
                 now,
                 now
             ))
@@ -595,7 +613,8 @@ class FaceDatabase:
             c.execute('''
                 UPDATE equipment
                 SET name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
-                    purchase_contract = ?, invoice_number = ?, purchase_date = ?, batch_number = ?, image = ?, updatedAt = ?
+                    purchase_contract = ?, invoice_number = ?, purchase_date = ?, batch_number = ?, image = ?,
+                    quantity = ?, available_qty = ?, in_use_qty = ?, updatedAt = ?
                 WHERE labId = ? AND serial_number = ?
             ''', (
                 eq_data.get("name", ""),
@@ -610,6 +629,9 @@ class FaceDatabase:
                 eq_data.get("purchaseDate", ""),
                 eq_data.get("batchNumber", ""),
                 eq_data.get("image", ""),
+                qty,
+                avail,
+                in_use,
                 now,
                 lab_id,
                 serial_number
@@ -632,11 +654,16 @@ class FaceDatabase:
         self._ensure_equipment_table(conn)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
+        qty = int(eq_data.get("quantity", 1))
+        avail = int(eq_data.get("availableQty", qty))
+        in_use = int(eq_data.get("inUseQty", 0))
+
         c.execute('''
             UPDATE equipment
             SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
                 purchase_contract = ?, invoice_number = ?, purchase_date = ?, batch_number = ?,
-                borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, image = ?, updatedAt = ?
+                borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, image = ?,
+                quantity = ?, available_qty = ?, in_use_qty = ?, updatedAt = ?
             WHERE id = ?
         ''', (
             eq_data.get("serialNumber", ""),
@@ -657,6 +684,9 @@ class FaceDatabase:
             eq_data.get("returnDate", ""),
             eq_data.get("borrowNotes", ""),
             eq_data.get("image", ""),
+            qty,
+            avail,
+            in_use,
             now,
             eq_id
         ))
@@ -669,9 +699,23 @@ class FaceDatabase:
         self._ensure_equipment_table(conn)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
+
+        c.execute("SELECT quantity, available_qty, in_use_qty FROM equipment WHERE id = ?", (eq_id,))
+        row = c.fetchone()
+        qty = row[0] if row and row[0] else 1
+        avail = row[1] if row and row[1] is not None else 1
+        in_use = row[2] if row and row[2] is not None else 0
+
+        borrow_count = int(borrow_data.get("borrowQty", 1))
+        new_avail = max(0, avail - borrow_count)
+        new_in_use = in_use + borrow_count
+        new_status = 'in_use' if new_avail == 0 else 'available'
+
         c.execute('''
             UPDATE equipment
-            SET status = 'in_use',
+            SET status = ?,
+                available_qty = ?,
+                in_use_qty = ?,
                 borrower_name = ?,
                 borrower_id = ?,
                 borrow_date = ?,
@@ -680,6 +724,9 @@ class FaceDatabase:
                 updatedAt = ?
             WHERE id = ?
         ''', (
+            new_status,
+            new_avail,
+            new_in_use,
             borrow_data.get("borrowerName", ""),
             borrow_data.get("borrowerId", ""),
             borrow_data.get("borrowDate", ""),
@@ -697,9 +744,16 @@ class FaceDatabase:
         self._ensure_equipment_table(conn)
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
+
+        c.execute("SELECT quantity, available_qty, in_use_qty FROM equipment WHERE id = ?", (eq_id,))
+        row = c.fetchone()
+        qty = row[0] if row and row[0] else 1
+
         c.execute('''
             UPDATE equipment
             SET status = 'available',
+                available_qty = ?,
+                in_use_qty = 0,
                 borrower_name = '',
                 borrower_id = '',
                 borrow_date = '',
@@ -707,7 +761,7 @@ class FaceDatabase:
                 borrow_notes = '',
                 updatedAt = ?
             WHERE id = ?
-        ''', (now, eq_id))
+        ''', (qty, now, eq_id))
         conn.commit()
         conn.close()
 

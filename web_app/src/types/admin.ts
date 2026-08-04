@@ -154,6 +154,9 @@ export interface Equipment {
   invoiceNumber?: string
   purchaseDate?: string
   batchNumber?: string
+  quantity?: number
+  availableQty?: number
+  inUseQty?: number
   borrowerName?: string
   borrowerId?: string
   borrowDate?: string

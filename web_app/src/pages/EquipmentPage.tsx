@@ -105,10 +105,12 @@ export function EquipmentPage() {
   const leaveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Form State - Add/Edit
+  const [entryMode, setEntryMode] = useState<'individual' | 'batch'>('individual')
   const [serialNumber, setSerialNumber] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState('Module')
   const [status, setStatus] = useState<EquipmentStatus>('available')
+  const [quantity, setQuantity] = useState<number>(1)
   const [location, setLocation] = useState('')
   const [specs, setSpecs] = useState('')
   const [notes, setNotes] = useState('')
@@ -122,6 +124,7 @@ export function EquipmentPage() {
   // Form State - Borrowing
   const [borrowerName, setBorrowerName] = useState('')
   const [borrowerId, setBorrowerId] = useState('')
+  const [borrowQty, setBorrowQty] = useState<number>(1)
   const [borrowDate, setBorrowDate] = useState(getTodayStr())
   const [returnDate, setReturnDate] = useState(getNextWeekStr())
   const [borrowNotes, setBorrowNotes] = useState('')
@@ -264,11 +267,18 @@ export function EquipmentPage() {
           issues: 0
         }
       }
+
+      const itemQty = item.quantity || 1
+      const itemAvail = item.availableQty ?? (item.status === 'available' ? itemQty : 0)
+      const itemInUse = item.inUseQty ?? (item.status === 'in_use' ? itemQty : 0)
+
       groups[key].items.push(item)
-      groups[key].total += 1
-      if (item.status === 'available') groups[key].available += 1
-      else if (item.status === 'in_use') groups[key].inUse += 1
-      else if (item.status === 'maintenance' || item.status === 'broken') groups[key].issues += 1
+      groups[key].total += itemQty
+      groups[key].available += itemAvail
+      groups[key].inUse += itemInUse
+      if (item.status === 'maintenance' || item.status === 'broken') {
+        groups[key].issues += itemQty
+      }
       if (!groups[key].image && item.image) {
         groups[key].image = item.image
       }
@@ -283,18 +293,20 @@ export function EquipmentPage() {
     return (filtered || []).slice(start, start + PAGE_SIZE)
   }, [filtered, currentPage])
 
-  // Stats calculation
-  const totalCount = (equipment || []).length
-  const availableCount = (equipment || []).filter(i => i.status === 'available').length
-  const inUseCount = (equipment || []).filter(i => i.status === 'in_use').length
+  // Stats calculation considering bulk quantities
+  const totalCount = (equipment || []).reduce((acc, i) => acc + (i.quantity || 1), 0)
+  const availableCount = (equipment || []).reduce((acc, i) => acc + (i.availableQty ?? (i.status === 'available' ? (i.quantity || 1) : 0)), 0)
+  const inUseCount = (equipment || []).reduce((acc, i) => acc + (i.inUseQty ?? (i.status === 'in_use' ? (i.quantity || 1) : 0)), 0)
   const overdueCount = (equipment || []).filter(i => i.status === 'in_use' && !!i.returnDate && i.returnDate < getTodayStr()).length
-  const issueCount = (equipment || []).filter(i => i.status === 'maintenance' || i.status === 'broken').length
+  const issueCount = (equipment || []).filter(i => i.status === 'maintenance' || i.status === 'broken').reduce((acc, i) => acc + (i.quantity || 1), 0)
 
   const openAddModal = () => {
+    setEntryMode('individual')
     setSerialNumber('')
     setName('')
     setCategory('Module')
     setStatus('available')
+    setQuantity(1)
     setLocation('')
     setSpecs('')
     setNotes('')
@@ -307,10 +319,12 @@ export function EquipmentPage() {
   }
 
   const openAddModalForGroup = (groupName: string, groupCategory: string, groupImage: string) => {
+    setEntryMode('individual')
     setSerialNumber('')
     setName(groupName)
     setCategory(groupCategory || 'Module')
     setStatus('available')
+    setQuantity(1)
     setLocation('')
     setSpecs('')
     setNotes('')
@@ -324,10 +338,12 @@ export function EquipmentPage() {
 
   const openEditModal = (item: Equipment) => {
     setEditingItem(item)
+    setEntryMode((item.quantity || 1) > 1 ? 'batch' : 'individual')
     setSerialNumber(item.serialNumber)
     setName(item.name)
     setCategory(item.category)
     setStatus(item.status)
+    setQuantity(item.quantity || 1)
     setLocation(item.location || '')
     setSpecs(item.specs || '')
     setNotes(item.notes || '')
@@ -342,6 +358,7 @@ export function EquipmentPage() {
     setBorrowingItem(item)
     setBorrowerName(item.borrowerName || '')
     setBorrowerId(item.borrowerId || '')
+    setBorrowQty(1)
     setBorrowDate(item.borrowDate || getTodayStr())
     setReturnDate(item.returnDate || getNextWeekStr())
     setBorrowNotes(item.borrowNotes || '')
@@ -351,18 +368,27 @@ export function EquipmentPage() {
     e.preventDefault()
     if (!selectedLabId) return
     if (!serialNumber.trim() || !name.trim()) {
-      showToast('Serial Number and Name are required.', 'error')
+      showToast('Serial Number / Batch Code and Name are required.', 'error')
       return
     }
+
+    const itemQty = entryMode === 'batch' ? Math.max(1, quantity) : 1
 
     setSubmitting(true)
     try {
       if (editingItem) {
+        const prevQty = editingItem.quantity || 1
+        const prevInUse = editingItem.inUseQty || 0
+        const newAvail = Math.max(0, itemQty - prevInUse)
+
         await updateEquipment(selectedLabId, editingItem.id, {
           serialNumber: serialNumber.trim(),
           name: name.trim(),
           category,
-          status,
+          status: newAvail === 0 ? 'in_use' : status,
+          quantity: itemQty,
+          availableQty: newAvail,
+          inUseQty: prevInUse,
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim(),
@@ -380,6 +406,9 @@ export function EquipmentPage() {
           name: name.trim(),
           category,
           status,
+          quantity: itemQty,
+          availableQty: itemQty,
+          inUseQty: 0,
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim(),
@@ -389,7 +418,7 @@ export function EquipmentPage() {
           batchNumber: batchNumber.trim(),
           image
         })
-        showToast(`Equipment [${serialNumber.trim()}] added successfully to lab!`, 'success')
+        showToast(`Equipment [${serialNumber.trim()}] (${itemQty} units) added successfully to lab!`, 'success')
         setShowAddModal(false)
       }
     } catch (err) {
@@ -407,6 +436,9 @@ export function EquipmentPage() {
       return
     }
 
+    const avail = borrowingItem.availableQty ?? 1
+    const qtyToBorrow = Math.min(avail, Math.max(1, borrowQty))
+
     setSubmitting(true)
     try {
       await borrowEquipment(
@@ -415,6 +447,7 @@ export function EquipmentPage() {
         {
           borrowerName: borrowerName.trim(),
           borrowerId: borrowerId.trim(),
+          borrowQty: qtyToBorrow,
           borrowDate,
           returnDate,
           borrowNotes: borrowNotes.trim()
@@ -422,7 +455,7 @@ export function EquipmentPage() {
         borrowingItem.name,
         borrowingItem.serialNumber
       )
-      showToast(`Equipment [${borrowingItem.serialNumber}] successfully checked out to ${borrowerName.trim()}!`, 'success')
+      showToast(`Equipment [${borrowingItem.serialNumber}] (${qtyToBorrow} unit${qtyToBorrow > 1 ? 's' : ''}) checked out to ${borrowerName.trim()}!`, 'success')
       setBorrowingItem(null)
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to process equipment borrowing', 'error')
@@ -660,13 +693,24 @@ export function EquipmentPage() {
                                 }`}
                               >
                                 <td className="px-5 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                                  {item.serialNumber}
+                                  <div className="flex items-center gap-2">
+                                    <span>{item.serialNumber}</span>
+                                    {(item.quantity || 1) > 1 && (
+                                      <span className="bg-orange-100 text-[#ea580c] font-bold text-[10px] px-2 py-0.5 rounded-full border border-orange-300">
+                                        Avail: {item.availableQty ?? (item.status === 'available' ? item.quantity : 0)} / {item.quantity}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-5 py-3 text-xs text-slate-700 font-medium">
                                   {item.location ? `Bin: ${item.location}` : <span className="text-slate-300">-</span>}
                                 </td>
                                 <td className="px-5 py-3 whitespace-nowrap">
-                                  <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
+                                  <Badge tone={STATUS_TONE[item.status] || 'green'}>
+                                    {(item.quantity || 1) > 1
+                                      ? (item.availableQty === 0 ? 'All Checked Out' : `${item.availableQty} Available`)
+                                      : (STATUS_LABEL[item.status] || item.status)}
+                                  </Badge>
                                 </td>
                                 <td className="px-5 py-3 text-xs font-medium text-[#0f172a]">
                                   {item.borrowerName ? (
@@ -689,9 +733,10 @@ export function EquipmentPage() {
                                 </td>
                                 <td className="px-5 py-2.5 text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    {item.status === 'in_use' ? (
+                                    {(item.inUseQty || 0) > 0 && (
                                       <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
-                                    ) : (
+                                    )}
+                                    {(item.availableQty ?? 1) > 0 && (
                                       <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
                                     )}
                                     <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
@@ -749,7 +794,16 @@ export function EquipmentPage() {
                       className={`${rowBgClass} transition-colors cursor-pointer select-none`}
                       title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                     >
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span>{item.serialNumber}</span>
+                          {(item.quantity || 1) > 1 && (
+                            <span className="bg-orange-100 text-[#ea580c] font-bold text-[10px] px-2 py-0.5 rounded-full border border-orange-300">
+                              Avail: {item.availableQty ?? (item.status === 'available' ? item.quantity : 0)} / {item.quantity}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td 
                         className="px-4 py-3 font-medium text-sm text-[#0f172a]"
                         onMouseMove={(e) => handleCellMouseMove(e, item)}
@@ -773,7 +827,11 @@ export function EquipmentPage() {
                         <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px] whitespace-nowrap">{item.category}</span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
+                        <Badge tone={STATUS_TONE[item.status] || 'green'}>
+                          {(item.quantity || 1) > 1
+                            ? (item.availableQty === 0 ? 'All Checked Out' : `${item.availableQty} Available`)
+                            : (STATUS_LABEL[item.status] || item.status)}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-xs font-medium text-[#0f172a]">
                         {item.borrowerName ? (
@@ -804,9 +862,10 @@ export function EquipmentPage() {
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center justify-end gap-1.5">
-                            {item.status === 'in_use' ? (
+                            {(item.inUseQty || 0) > 0 && (
                               <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
-                            ) : (
+                            )}
+                            {(item.availableQty ?? 1) > 0 && (
                               <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
                             )}
                             <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
@@ -924,10 +983,32 @@ export function EquipmentPage() {
             </div>
 
             <form onSubmit={handleConfirmBorrow} className="flex flex-col gap-4">
-              <div className="bg-raised border border-line rounded p-3 text-xs flex justify-between font-mono">
-                <span className="text-[#475569]">Serial: <strong className="text-[#ea580c]">{borrowingItem.serialNumber}</strong></span>
+              <div className="bg-raised border border-line rounded p-3 text-xs flex items-center justify-between font-mono flex-wrap gap-2">
+                <span className="text-[#475569]">Serial/Tag: <strong className="text-[#ea580c]">{borrowingItem.serialNumber}</strong></span>
                 <span className="text-[#475569]">Category: <strong>{borrowingItem.category}</strong></span>
+                <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[11px]">
+                  Available: {borrowingItem.availableQty ?? 1} / {borrowingItem.quantity ?? 1}
+                </span>
               </div>
+
+              {/* Quantity to Borrow for Batch Items */}
+              {(borrowingItem.quantity || 1) > 1 && (
+                <div className="flex flex-col gap-1.5 bg-orange-50/60 p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold">Quantity to Borrow *</label>
+                    <span className="text-[10px] text-slate-500 font-medium">Max available: {borrowingItem.availableQty ?? 1}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max={borrowingItem.availableQty ?? 1}
+                    required
+                    value={borrowQty}
+                    onChange={e => setBorrowQty(Math.min(borrowingItem.availableQty ?? 1, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="bg-white border border-orange-300 rounded px-3 py-1.5 text-sm font-bold text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
@@ -1017,6 +1098,35 @@ export function EquipmentPage() {
             </div>
 
             <form onSubmit={handleSaveAddEdit} className="flex flex-col gap-4">
+              {/* Management Mode Selector Switch */}
+              <div className="flex flex-col gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                <label className="font-mono text-[10px] uppercase tracking-wider text-[#ea580c] font-bold">Management Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEntryMode('individual'); setQuantity(1); }}
+                    className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
+                      entryMode === 'individual'
+                        ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
+                        : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
+                    }`}
+                  >
+                    📌 Individual Unit (Mã tài sản trường)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntryMode('batch')}
+                    className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
+                      entryMode === 'batch'
+                        ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
+                        : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
+                    }`}
+                  >
+                    📦 Bulk Batch (Lô số lượng lớn)
+                  </button>
+                </div>
+              </div>
+
               {/* Equipment Photo Upload */}
               <div className="flex flex-col gap-1.5">
                 <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Photo (PNG / JPEG)</label>
@@ -1053,11 +1163,13 @@ export function EquipmentPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Serial Number *</label>
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">
+                    {entryMode === 'batch' ? 'Batch Code / Serial ID *' : 'University Asset Tag / Serial *'}
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. MOD-ESP32-01"
+                    placeholder={entryMode === 'batch' ? "e.g. BATCH-ESP32-01" : "e.g. VGU-EQ-2026-001"}
                     value={serialNumber}
                     onChange={e => setSerialNumber(e.target.value)}
                     className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
@@ -1077,6 +1189,25 @@ export function EquipmentPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Quantity Field (for Batch Mode) */}
+              {entryMode === 'batch' && (
+                <div className="flex flex-col gap-1.5 bg-orange-50/50 p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold">Total Batch Quantity *</label>
+                    <span className="text-[10px] text-slate-500 font-medium">Quantity of items purchased in this batch</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    required
+                    value={quantity}
+                    onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="bg-white border border-orange-300 rounded px-3 py-1.5 text-sm font-bold text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
+                  />
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Equipment Name *</label>
