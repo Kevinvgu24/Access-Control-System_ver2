@@ -136,24 +136,56 @@ class QwenAIAssistant:
         except Exception as e:
             logger.error(f"Error syncing DB in-memory cache: {e}")
 
-    def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview") -> str:
+    def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview", user_prompt: str = "") -> str:
         """
-        Extract pre-cached, ultra-compact micro JSON summary (Zero prefill latency).
+        Smart Context Extractor: Dynamically searches SQLite DB for specific user, equipment, or access log queries while utilizing fast in-memory snapshots.
         """
         self.sync_db_cache()
+        prompt_lower = user_prompt.lower()
 
+        data: Dict[str, Any] = {}
+
+        # 1. Intent Detection: User asking about logins / access events / who entered today
+        if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai"]):
+            try:
+                conn = self._get_db_connection()
+                c = conn.cursor()
+                c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 15")
+                rows = c.fetchall()
+                data["today_access_events_log"] = [
+                    f"{r['userName']} ({r['accessMethod']}/Authorized:{r['isAuthorized']}) at {r['timestamp']}"
+                    for r in rows
+                ]
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error querying access events log: {e}")
+
+        # 2. Intent Detection: User asking about equipment / items / borrowing / overdue
+        if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
+            try:
+                conn = self._get_db_connection()
+                c = conn.cursor()
+                c.execute("SELECT name, code, category, status, borrowedByName, dueDate FROM equipment LIMIT 20")
+                rows = c.fetchall()
+                data["equipment_inventory_list"] = [
+                    f"{r['name']} [Code: {r['code']}, Status: {r['status']}, Borrower: {r['borrowedByName'] or 'None'}, Due: {r['dueDate'] or 'N/A'}]"
+                    for r in rows
+                ]
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error querying equipment: {e}")
+
+        # Default fallback to page cache
         if page in ["users", "enrollment"]:
-            data = {"users": self._memory_cache.get("users_summary", []), "page": page}
-        elif page == "equipment":
-            data = {
-                "equipment": self._memory_cache.get("equipment_summary", []),
-                "overdue_items": self._memory_cache.get("overdue_items", [])
-            }
-        elif page == "logs":
-            data = {"recent_logs": self._memory_cache.get("recent_logs", [])}
+            data["users"] = self._memory_cache.get("users_summary", [])
+        elif page == "equipment" and "equipment_inventory_list" not in data:
+            data["equipment"] = self._memory_cache.get("equipment_summary", [])
+            data["overdue_items"] = self._memory_cache.get("overdue_items", [])
+        elif page == "logs" and "today_access_events_log" not in data:
+            data["recent_logs"] = self._memory_cache.get("recent_logs", [])
         elif page == "schedules":
-            data = {"schedules": self._memory_cache.get("schedules_summary", [])}
-        else:
+            data["schedules"] = self._memory_cache.get("schedules_summary", [])
+        elif not data:
             data = {
                 "active_users": self._memory_cache.get("total_users", 0),
                 "overdue": self._memory_cache.get("overdue_items", []),
@@ -173,7 +205,7 @@ class QwenAIAssistant:
 ### Core Rules:
 1. **Factual**: Answer using the cached DB JSON provided in user prompt.
 2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
-3. **Interactive Route Links**: Always embed clickable page links when guiding users:
+3. **Interactive Route Links**: Always embed clickable page links when guiding users or referring to system sections:
    - User Management: [Users Page](/users)
    - Face ID & PIN Registration: [Enrollment Page](/enrollment)
    - Equipment & Inventory: [Equipment Page](/equipment)
@@ -188,7 +220,6 @@ class QwenAIAssistant:
 """
         return prompt
 
-
     def generate_response(
         self,
         user_prompt: str,
@@ -198,7 +229,7 @@ class QwenAIAssistant:
         custom_table_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send ultra-compact context to local Qwen 2.5 Coder with instant response speed.
+        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint.
         """
         status_info = self.check_status()
         if status_info["status"] == "offline":
@@ -211,10 +242,11 @@ class QwenAIAssistant:
                 "offline": True
             }
 
-        table_context = custom_table_data or self.extract_table_context(lab_id=lab_id, page=current_page)
+        table_context = custom_table_data or self.extract_table_context(lab_id=lab_id, page=current_page, user_prompt=user_prompt)
         system_instructions = self.get_system_instructions(current_page=current_page)
 
         messages = [
+
             {"role": "system", "content": system_instructions}
         ]
 
