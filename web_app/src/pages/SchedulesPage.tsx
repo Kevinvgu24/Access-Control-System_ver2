@@ -39,6 +39,7 @@ export function SchedulesPage() {
   const [search, setSearch] = useState('')
   const [templateType, setTemplateType] = useState<string>('type1')
   const [viewMode, setViewMode] = useState<'grouped' | 'table'>('grouped')
+  const [selectedGroupNrs, setSelectedGroupNrs] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const aiFileInputRef = useRef<HTMLInputElement>(null)
 
