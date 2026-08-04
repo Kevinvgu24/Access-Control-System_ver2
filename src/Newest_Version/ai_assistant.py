@@ -178,7 +178,7 @@ class QwenAIAssistant:
                 logger.error(f"Error querying labs & nodes: {e}")
 
         # 2. Intent Detection: User asking about logins / access events / who entered today
-        if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai"]):
+        if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai", "tới", "đến", "ghé"]):
             try:
                 conn = self._get_db_connection()
                 c = conn.cursor()
@@ -188,9 +188,11 @@ class QwenAIAssistant:
                     f"{r['userName']} ({r['accessMethod']}/Authorized:{r['isAuthorized']}) at {r['timestamp']}"
                     for r in rows
                 ]
+                data["total_entries_count"] = len(rows)
                 conn.close()
             except Exception as e:
                 logger.error(f"Error querying access events log: {e}")
+
 
         # 3. Intent Detection: User asking about equipment / items / borrowing / overdue
         if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món"]):
