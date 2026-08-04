@@ -128,6 +128,7 @@ export function EquipmentPage() {
   // Form State - Add/Edit
   const [entryMode, setEntryMode] = useState<'individual' | 'batch'>('individual')
   const [isGroupAdd, setIsGroupAdd] = useState(false)
+  const [isGroupBatch, setIsGroupBatch] = useState(false)
   const [serialNumber, setSerialNumber] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState('Module')
@@ -1734,4 +1735,5 @@ export function EquipmentPage() {
     </div>
   )
 }
+
 
