@@ -1174,7 +1174,7 @@ export function EquipmentPage() {
                       onChange={handleImageFileChange}
                       className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
                     />
-                    <span className="text-[10px] text-[#94a3b8]">Upload PNG or JPEG photo. Hovering over equipment will display a preview card.</span>
+                    <span className="text-[10px] text-[#0f172a] font-medium">Upload PNG or JPEG photo. Hovering over equipment will display a preview card.</span>
                   </div>
                 </div>
               </div>
