@@ -70,25 +70,30 @@ export function LogsPage() {
           title="Access Log History"
           action={<Button variant="ghost" size="sm" onClick={exportCSV}>Export CSV</Button>}
         />
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
+        {/* Row 1: Search Box & Date Range Picker */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-line">
           <input type="text" placeholder="Search by name or university ID..." value={search}
             onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full sm:w-72"
+            className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 w-full sm:w-80"
           />
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center shrink-0">
+            <span className="font-mono text-[11px] text-[#94a3b8] uppercase tracking-wider font-bold hidden sm:inline">Date Range:</span>
             <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
-              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
+              className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
             <span className="text-[#cbd5e1] font-mono text-xs">-</span>
             <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
-              className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
+              className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#475569] outline-none focus:border-[#ea580c]/50 [color-scheme:light]"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {OPTS.map(({ value, label }) => (
-              <button key={value} onClick={() => { setResultFilter(value); setCurrentPage(1); }} className={chipClass(resultFilter === value)}>{label}</button>
-            ))}
-          </div>
+        </div>
+
+        {/* Row 2: Filter Option Chips (Placed BELOW Search & Date Pickers) */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-[11px] text-[#94a3b8] uppercase tracking-wider font-bold mr-1">Filter Result:</span>
+          {OPTS.map(({ value, label }) => (
+            <button key={value} onClick={() => { setResultFilter(value); setCurrentPage(1); }} className={chipClass(resultFilter === value)}>{label}</button>
+          ))}
         </div>
       </Panel>
 

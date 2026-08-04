@@ -160,26 +160,35 @@ export function UsersPage() {
       </div>
 
       <Panel pad={false} className="overflow-x-auto">
-        <div className="flex gap-3 items-center p-5 border-b border-line flex-wrap">
-          <input type="text" placeholder="Search name or university ID..." value={search}
-            onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
-            className="flex-1 min-w-[160px] bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
-          />
-          <div className="flex gap-1.5 flex-wrap">
-            <button onClick={() => setRoleFilter('all')} className={chipClass(roleFilter === 'all')}>All</button>
-            {ROLE_OPTS.map(r => (
-              <button key={r} onClick={() => { setRoleFilter(r); setCurrentPage(1) }} className={chipClass(roleFilter === r)}>
-                {ROLE_LABEL[r]}
-              </button>
-            ))}
+        <div className="p-5 border-b border-line flex flex-col gap-3">
+          {/* Row 1: Search Box */}
+          <div className="flex items-center">
+            <input type="text" placeholder="Search name or university ID..." value={search}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
+              className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors w-full sm:w-80"
+            />
           </div>
-          <div className="w-px h-5 bg-slate-200" />
-          <div className="flex gap-1.5">
-            {(['all', 'active', 'suspended'] as const).map(s => (
-              <button key={s} onClick={() => setStatusFilter(s)} className={chipClass(statusFilter === s)}>
-                {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
+
+          {/* Row 2: Filter Option Chips (Placed BELOW Search Box) */}
+          <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-[11px] text-[#94a3b8] uppercase tracking-wider font-bold mr-1">Role:</span>
+              <button onClick={() => setRoleFilter('all')} className={chipClass(roleFilter === 'all')}>All</button>
+              {ROLE_OPTS.map(r => (
+                <button key={r} onClick={() => { setRoleFilter(r); setCurrentPage(1) }} className={chipClass(roleFilter === r)}>
+                  {ROLE_LABEL[r]}
+                </button>
+              ))}
+            </div>
+            <span className="w-px h-4 bg-slate-200 hidden sm:inline" />
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] text-[#94a3b8] uppercase tracking-wider font-bold mr-1">Status:</span>
+              {(['all', 'active', 'suspended'] as const).map(s => (
+                <button key={s} onClick={() => setStatusFilter(s)} className={chipClass(statusFilter === s)}>
+                  {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
