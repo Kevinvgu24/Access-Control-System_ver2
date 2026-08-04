@@ -148,8 +148,9 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
   loading: false,
 
   subscribe: (labId, labName) => {
-    set({ loading: true })
-    const v = ++_subscribeVersion
+    try {
+      set({ loading: true })
+      const v = ++_subscribeVersion
 
     const unsubEvents    = subscribeAccessEvents(labId, 60, events => {
       const safeEvs = Array.isArray(events) ? events : []; set({ events: safeEvs, ...computeStats(safeEvs), loading: false })
@@ -186,9 +187,17 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
     ])
 
     return () => {
-      unsubEvents()
-      unsubIncidents()
-      unsubNode?.()
+      try {
+        unsubEvents?.()
+        unsubIncidents?.()
+        unsubNode?.()
+      } catch (e) {
+        console.error('Error during cleanup:', e)
+      }
+    }
+    } catch (err) {
+      console.error('Error in subscribe:', err)
+      return () => {}
     }
   },
 
