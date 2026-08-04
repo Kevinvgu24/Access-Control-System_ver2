@@ -142,6 +142,13 @@ export const AiChatWidget: React.FC = () => {
       }
 
       setMessages(prev => [...prev, aiMsg])
+
+      // Auto-navigate if AI intent detection returned NAVIGATE action
+      if (data.action === 'NAVIGATE' && data.target_route) {
+        setTimeout(() => {
+          navigate(data.target_route)
+        }, 500)
+      }
     } catch (err: any) {
       setMessages(prev => [
         ...prev,

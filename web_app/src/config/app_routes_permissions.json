@@ -1,0 +1,449 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "app_metadata": {
+    "name": "VGU Smart Lab Access Control System",
+    "version": "2.1.0",
+    "system_type": "Multi-Lab Biometric & PIN Access Control",
+    "target_ai_model": "Qwen 2.5 Coder (1.5B / Local Ollama Server)",
+    "description": "JSON configuration map defining all web app URL routes, features, RBAC permissions, edge hardware decision flows, and context guidelines for the local AI Assistant.",
+    "updated_at": "2026-08-05"
+  },
+  "roles_and_permissions": {
+    "admin_roles": {
+      "super_admin": {
+        "title": "Super Admin (Full System Administrator)",
+        "description": "Highest privilege level. Has full administrative control over all labs, edge nodes, system thresholds, Lab Admin assignments, and new lab creations.",
+        "level": 1,
+        "capabilities": [
+          "create_lab",
+          "edit_lab",
+          "delete_lab",
+          "assign_super_admin",
+          "assign_lab_admin",
+          "manage_all_users",
+          "manage_all_equipment",
+          "configure_hardware_nodes",
+          "edit_confidence_thresholds",
+          "reboot_hardware_nodes",
+          "view_global_audit_logs",
+          "export_all_reports"
+        ]
+      },
+      "lab_admin": {
+        "title": "Lab Admin (Laboratory Manager)",
+        "description": "Scoped administrative role limited to assigned labs (via labAccessIds). Manages lab users, biometric enrollments, equipment inventory, schedules, and access audit logs for assigned labs.",
+        "level": 2,
+        "capabilities": [
+          "view_assigned_labs",
+          "manage_lab_users",
+          "enroll_user_biometrics",
+          "set_user_pin",
+          "manage_lab_equipment",
+          "track_equipment_loans",
+          "configure_lab_schedules",
+          "view_lab_access_logs",
+          "export_lab_logs_csv",
+          "view_node_status"
+        ],
+        "restrictions": [
+          "cannot_create_new_lab",
+          "cannot_delete_lab",
+          "cannot_assign_super_admin_role",
+          "cannot_access_unassigned_labs",
+          "cannot_modify_global_system_configs"
+        ]
+      }
+    },
+    "user_roles": {
+      "student": {
+        "title": "Student",
+        "description": "Standard student subject. Access permissions granted based on class schedules and Access Groups."
+      },
+      "faculty": {
+        "title": "Faculty / Researcher",
+        "description": "Academic staff and researcher role. Extended access privileges including 24/7 or custom lab hours."
+      },
+      "lab_assistant": {
+        "title": "Lab Assistant",
+        "description": "Student assistant supporting lab operations, equipment monitoring, and student guidance."
+      },
+      "guest": {
+        "title": "Guest",
+        "description": "Temporary visitor account with access limited to specific time frames."
+      },
+      "maintenance": {
+        "title": "Maintenance Technician",
+        "description": "Technical personnel responsible for hardware repair, camera calibration, and IoT maintenance."
+      }
+    }
+  },
+  "decision_flow": {
+    "primary_method": "face_recognition",
+    "fallback_method": "pin_code_4_6_digits",
+    "liveness_check": "required",
+    "logic_rules": [
+      "Face match with high confidence (Confidence >= Threshold) & liveness passed -> Access GRANTED (method: face).",
+      "Face match low or uncertain confidence -> Prompt fallback 4-6 digit PIN.",
+      "Face match + correct PIN -> Access GRANTED (method: face_pin_fallback).",
+      "Incorrect PIN or liveness check failed -> Access DENIED (reason: pin_failed / liveness_failed).",
+      "Face not recognized in database -> Access DENIED (reason: unknown_user).",
+      "Network disconnection -> Edge Nodes evaluate access locally using encrypted offline manifest and reconcile with Firebase upon reconnect."
+    ]
+  },
+  "routes": [
+    {
+      "path": "/login",
+      "page_key": "login",
+      "title": "Login Page",
+      "description": "Authentication gateway for Administrators (Super Admin & Lab Admin) via Firebase Auth.",
+      "requires_auth": false,
+      "requires_lab_selected": false,
+      "allowed_roles": ["public"],
+      "features": [
+        {
+          "id": "auth_login",
+          "name": "Email & Password Login",
+          "action": "firebase_auth_login",
+          "allowed_roles": ["public"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "User login & authentication page.",
+        "suggested_actions": ["Guide user on password reset", "Explain admin account creation workflow"]
+      }
+    },
+    {
+      "path": "/labs",
+      "page_key": "labs",
+      "title": "Lab Selector & Management",
+      "description": "Displays all available laboratories, operational statuses (Active, Inactive, Maintenance), and allows workspace context switching.",
+      "requires_auth": true,
+      "requires_lab_selected": false,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "select_active_lab",
+          "name": "Select Active Lab Workspace",
+          "action": "set_active_lab_context",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "create_new_lab",
+          "name": "Create New Laboratory",
+          "action": "create_lab_doc",
+          "allowed_roles": ["super_admin"]
+        },
+        {
+          "id": "edit_lab_info",
+          "name": "Edit Laboratory Details",
+          "action": "update_lab_doc",
+          "allowed_roles": ["super_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Users must select an active lab before navigating to lab-scoped management features.",
+        "suggested_actions": ["Switch active lab context", "List available laboratories", "Create a new lab (Super Admin only)"]
+      }
+    },
+    {
+      "path": "/overview",
+      "page_key": "overview",
+      "title": "Dashboard Overview",
+      "description": "Central hub showing key operational metrics, hardware connection statuses (Nodes, Cameras, Sync), active alerts, and real-time access events.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "view_live_metrics",
+          "name": "Real-time Metrics Summary",
+          "description": "Total users, active nodes, today's access count, active security incidents.",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "view_hardware_status",
+          "name": "Hardware Status Monitoring",
+          "description": "Node online state (Online/Grace Period/Offline), Camera state (Connected/Disconnected), Sync state (Live/Delayed/Offline).",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "live_activity_feed",
+          "name": "Live Activity Stream",
+          "description": "Real-time feed of granted and denied access attempts.",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Provides high-level operational visibility for the active laboratory.",
+        "suggested_actions": ["Summarize device connection health", "Report today's access statistics", "Analyze active system alerts"]
+      }
+    },
+    {
+      "path": "/users",
+      "page_key": "users",
+      "title": "User Directory & Access Control",
+      "description": "Manage user profiles (Students, Faculty, Staff), assign University/Student IDs, roles, lab memberships, and Admin privileges.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "search_filter_users",
+          "name": "Search & Filter Users",
+          "description": "Filter users by Student ID, Email, Role (Student, Faculty...), and Account Status (Active/Suspended).",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "create_user",
+          "name": "Add New User Profile",
+          "action": "create_user_doc",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "edit_user",
+          "name": "Edit User Details",
+          "action": "update_user_doc",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "toggle_user_status",
+          "name": "Suspend or Activate User Account",
+          "action": "toggle_user_active_suspended",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "assign_admin_role",
+          "name": "Assign Admin Authority (Super Admin / Lab Admin)",
+          "action": "update_admin_doc",
+          "allowed_roles": ["super_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "User management directory for members of the lab.",
+        "suggested_actions": ["Search user by name or Student ID", "Count suspended user accounts", "Verify biometric enrollment completion status"]
+      }
+    },
+    {
+      "path": "/enrollment",
+      "page_key": "enrollment",
+      "title": "Biometric & PIN Enrollment",
+      "description": "Capture user face images via USB/Webcam stream or file upload, set fallback 4-6 digit PINs, run photo quality checks, and upload credentials to Firebase Storage.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "capture_webcam_face",
+          "name": "Capture Face Image from Camera",
+          "action": "webcam_capture",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "upload_face_image",
+          "name": "Upload Face Image File",
+          "action": "file_upload_face",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "set_fallback_pin",
+          "name": "Configure Fallback PIN",
+          "action": "update_user_pin",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "verify_face_quality",
+          "name": "Run Image Quality Verification",
+          "action": "quality_score_check",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Interface for registering facial biometrics and security PINs for users.",
+        "suggested_actions": ["Guide optimal camera distance & lighting", "Explain PIN fallback requirements", "Check user enrollment status"]
+      }
+    },
+    {
+      "path": "/equipment",
+      "page_key": "equipment",
+      "title": "Equipment & Asset Management",
+      "description": "Track lab inventory including microcontrollers, sensors, tools, and machinery. Monitor status (Available, In Use, Maintenance, Broken) and manage loan/return logs.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "view_equipment_inventory",
+          "name": "View Equipment Inventory",
+          "description": "Search by Serial Number, Name, Contract Number, Invoice Number.",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "add_equipment",
+          "name": "Add New Equipment Item",
+          "action": "create_equipment_doc",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "edit_equipment",
+          "name": "Update Equipment Specs & Quantity",
+          "action": "update_equipment_doc",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "borrow_return_equipment",
+          "name": "Record Borrow & Return Actions",
+          "action": "track_borrow_return",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "report_equipment_maintenance",
+          "name": "Flag Item as Maintenance or Broken",
+          "action": "set_equipment_status_maintenance",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Inventory asset management and loan tracking view.",
+        "suggested_actions": ["List currently borrowed equipment", "Find equipment by Serial Number", "Filter items requiring maintenance"]
+      }
+    },
+    {
+      "path": "/schedules",
+      "page_key": "schedules",
+      "title": "Schedules & Operating Hours",
+      "description": "Configure weekly lab operating time windows (Monday - Sunday), manage shift schedules, set holiday overrides, and map schedules to Access Groups.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "configure_operating_hours",
+          "name": "Configure Lab Operating Hours",
+          "action": "update_lab_schedule",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "manage_access_groups",
+          "name": "Manage Access Groups & Time Slots",
+          "action": "update_access_groups",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "push_schedule_to_nodes",
+          "name": "Sync Schedules to Edge Nodes",
+          "action": "sync_schedule_manifest",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Schedules and shift permissions configuration page.",
+        "suggested_actions": ["Explain Access Group schedule logic", "Guide setting Student vs Faculty time slots"]
+      }
+    },
+    {
+      "path": "/logs",
+      "page_key": "logs",
+      "title": "Access Logs & Security Audit",
+      "description": "Inspect detailed access logs and audit trails. Filter by timestamp, result status (Granted/Denied), authentication method (Face/PIN), confidence scores, and export to CSV.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "view_access_logs_table",
+          "name": "View Access Log Records Table",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "filter_logs_by_criteria",
+          "name": "Advanced Log Filtering (Result, Method, Node, Date Range)",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "export_logs_csv",
+          "name": "Export Audit Logs to CSV",
+          "action": "export_csv_file",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "inspect_event_details",
+          "name": "Inspect Event Metrics & Liveness/Confidence Scores",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Security logs audit trail and report generation view.",
+        "suggested_actions": ["Analyze current table logs", "Count denied access attempts today", "Search access history for specific Student ID"]
+      }
+    },
+    {
+      "path": "/system",
+      "page_key": "system",
+      "title": "System Settings & Hardware Nodes",
+      "description": "Monitor Edge Node telemetry (CPU, RAM, Temperature °C, Camera FPS), adjust AI recognition thresholds (Confidence & Liveness), trigger manifest syncs, and reboot hardware services.",
+      "requires_auth": true,
+      "requires_lab_selected": true,
+      "allowed_roles": ["super_admin", "lab_admin"],
+      "features": [
+        {
+          "id": "view_node_telemetry",
+          "name": "Monitor Hardware Telemetry (CPU%, RAM%, Temp °C, FPS)",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "edit_node_thresholds",
+          "name": "Adjust Recognition & Liveness Thresholds",
+          "action": "update_node_config",
+          "allowed_roles": ["super_admin"]
+        },
+        {
+          "id": "force_manifest_sync",
+          "name": "Force Build & Push Encrypted Manifest to Nodes",
+          "action": "trigger_manifest_build",
+          "allowed_roles": ["super_admin", "lab_admin"]
+        },
+        {
+          "id": "reboot_node_hardware",
+          "name": "Reboot Edge Hardware / AI Detection Service",
+          "action": "trigger_node_reboot",
+          "allowed_roles": ["super_admin"]
+        }
+      ],
+      "ai_guide": {
+        "summary": "Edge Node hardware telemetry, system configs, and maintenance panel.",
+        "suggested_actions": ["Analyze Node CPU and temperature metrics", "Explain Confidence vs Liveness Thresholds", "Troubleshoot camera disconnection steps"]
+      }
+    }
+  ],
+  "ai_capabilities_and_guidance": {
+    "core_role": "VGU AI Assistant (Qwen 2.5 Coder 1.5B)",
+    "capabilities": [
+      "Provide step-by-step navigation and guidance for Web-App operators.",
+      "Perform table data analysis on Users, Equipment, and Access Logs views.",
+      "Direct users to appropriate URL routes based on requested actions.",
+      "Troubleshoot Edge Node offline states and camera disconnection alerts."
+    ],
+    "route_navigation_mapping": {
+      "dashboard": "/overview",
+      "overview": "/overview",
+      "users": "/users",
+      "students": "/users",
+      "enrollment": "/enrollment",
+      "biometrics": "/enrollment",
+      "equipment": "/equipment",
+      "assets": "/equipment",
+      "schedules": "/schedules",
+      "operating_hours": "/schedules",
+      "logs": "/logs",
+      "audit": "/logs",
+      "system": "/system",
+      "hardware": "/system",
+      "labs": "/labs"
+    },
+    "security_guardrails": [
+      "Never reveal or request raw user security PINs.",
+      "Enforce RBAC boundaries: Do not suggest or trigger Super Admin actions (creating labs, changing threshold limits) to Lab Admin users.",
+      "Always advise checking physical power/network connections before initiating hardware reboots."
+    ]
+  }
+}

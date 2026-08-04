@@ -1,0 +1,47 @@
+{
+  "app_name": "Access Control & Lab Management System v2",
+  "navigation_routes": [
+    {
+      "feature": "Quản lý Thiết bị & Linh kiện Phòng Lab",
+      "route": "/equipment",
+      "keywords": ["vi điều khiển", "arduino", "esp32", "mạch", "chip", "linh kiện", "thiết bị", "máy móc", "oscilloscope", "dụng cụ", "mượn", "trả", "quá hạn", "vật dụng"],
+      "description": "Quản lý kho thiết bị, danh mục linh kiện, quy trình mượn trả và danh sách thiết bị quá hạn."
+    },
+    {
+      "feature": "Lịch học & Thời khóa biểu Phòng Lab",
+      "route": "/schedules",
+      "keywords": ["lịch", "sinh viên", "ca làm", "đi làm", "trực lab", "excel", "thời khóa biểu", "tiết học", "lớp", "giảng viên", "thời gian"],
+      "description": "Xem thời khóa biểu các lớp thực hành, khung giờ mở cửa tự động, giảng viên phụ trách và nhập file Excel."
+    },
+    {
+      "feature": "Nhật ký Check-in & Điểm danh FaceID / RFID / PIN",
+      "route": "/logs",
+      "keywords": ["checkin", "khuôn mặt", "camera", "rpi5", "ai vào", "đi trễ", "quẹt thẻ", "ra vào", "nhật ký", "log", "mở cửa", "vi phạm", "hôm nay", "tới lab", "đến lab"],
+      "description": "Nhật ký truy cập thời gian thực qua FaceID, thẻ RFID, mã PIN, lịch sử ra vào và cảnh báo an ninh."
+    },
+    {
+      "feature": "Quản lý Người dùng & Phân quyền",
+      "route": "/users",
+      "keywords": ["người dùng", "sinh viên", "giảng viên", "admin", "tài khoản", "phân quyền", "role", "danh sách người dùng", "user"],
+      "description": "Quản lý danh sách sinh viên, giảng viên, quản trị viên, cấp quyền truy cập và trạng thái tài khoản."
+    },
+    {
+      "feature": "Đăng ký Sinh trắc học Face ID & Mã PIN",
+      "route": "/enrollment",
+      "keywords": ["đăng ký", "đăng ký khuôn mặt", "nạp face", "mã pin", "sinh trắc học", "enroll", "arcface", "chụp ảnh"],
+      "description": "Đăng ký trích xuất vector khuôn mặt 512-chấm ArcFace, chụp ảnh chân dung và thiết lập mã PIN 4 số."
+    },
+    {
+      "feature": "Cấu hình Hệ thống & Trạm Cửa RPi5 / Hailo-8",
+      "route": "/system",
+      "keywords": ["trạm", "node", "rpi5", "hailo", "phần cứng", "cài đặt", "cấu hình", "relay", "mqtt", "ngưỡng nhạy", "liveness"],
+      "description": "Cấu hình các trạm điều khiển Raspberry Pi 5 / Hailo-8, cài đặt thời gian chốt cửa, ngưỡng nhận diện và MQTT."
+    },
+    {
+      "feature": "Tổng quan Dashboard & Camera Live",
+      "route": "/overview",
+      "keywords": ["phòng lab", "tổng quan", "dashboard", "live", "camera", "số lượng phòng", "trạng thái", "bao nhiêu phòng", "quản lý"],
+      "description": "Báo cáo tổng quan hoạt động các phòng Lab, đếm số phòng đang bật, luồng camera thời gian thực."
+    }
+  ]
+}

@@ -10,45 +10,54 @@ from logger import get_logger
 logger = get_logger("ai_assistant")
 
 class QwenAIAssistant:
-    def __init__(self, db_path: str = "database/smart_door.db"):
+    def __init__(self, db_path: str = "database/smart_door.db", schema_path: str = "src/Newest_Version/app_schema.json"):
         self.db_path = db_path
         if not os.path.exists(self.db_path) and os.path.exists("smart_door.db"):
             self.db_path = "smart_door.db"
             
+        self.schema_path = schema_path
+        if not os.path.exists(self.schema_path) and os.path.exists("app_schema.json"):
+            self.schema_path = "app_schema.json"
+
         self.api_base = os.getenv("QWEN_API_BASE", "http://localhost:11434/v1").rstrip("/")
         self.model_name = os.getenv("QWEN_MODEL_NAME", "qwen2.5-coder:1.5b")
         self.api_key = os.getenv("QWEN_API_KEY", "ollama")
+
+        # Load App Architecture Schema (Sơ đồ tri thức)
+        self.app_schema = self._load_app_schema()
 
         # Deep-Layer In-Memory Cache for Zero-Latency RAG
         self._memory_cache: Dict[str, Any] = {}
         self._last_cache_update: float = 0.0
         self._cache_ttl_seconds: float = 15.0  # Auto-refresh every 15s
 
-        # Comprehensive Database Schema Knowledge for AI
-        self._system_knowledge = {
-            "app_name": "Access Control System v2",
-            "db_schema": {
-                "labs": ["id", "name", "code", "location", "manager", "status", "activationCode"],
-                "nodes": ["id", "clusterId", "labId", "name", "code", "deviceId", "location", "status", "onlineState"],
-                "users": ["id", "name", "university_id", "email", "role", "status", "faceStatus", "pinStatus"],
-                "equipment": ["id", "name", "code", "category", "status", "borrowedByName", "borrowerId", "borrowDate", "dueDate", "location"],
-                "schedules": ["id", "title", "room", "instructor", "dayOfWeek", "startTime", "endTime", "status"],
-                "access_events": ["id", "userName", "universityId", "accessMethod", "status", "isAuthorized", "confidence", "timestamp"],
-                "incidents": ["id", "type", "severity", "status", "summary", "createdAt"]
-            },
-            "pages": {
-                "overview": "System summary, active labs count, managers, traffic analytics, real-time live feed, connection alerts.",
-                "users": "User management, add student/staff/admin, role assignment, pin/status toggles.",
-                "enrollment": "Biometric registration, Face ID 512-dim ArcFace embedding capture, PIN setup.",
-                "equipment": "Lab inventory, equipment borrow/return workflow, overdue tracking.",
-                "schedules": "Class/lab timetables, automated door unlocking schedules, Excel .xlsx import.",
-                "logs": "Audit logs, RFID/Face/PIN entry records, security violations, CSV export.",
-                "system": "Door nodes configuration, face threshold, relay time, MQTT broker settings."
-            }
-        }
-
         # Initialize cache snapshot
         self.sync_db_cache(force=True)
+
+    def _load_app_schema(self) -> Dict[str, Any]:
+        """
+        Load App Architecture Schema from app_schema.json
+        """
+        if os.path.exists(self.schema_path):
+            try:
+                with open(self.schema_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading app_schema.json: {e}")
+        
+        # Fallback Schema
+        return {
+            "app_name": "Access Control System v2",
+            "navigation_routes": [
+                {"feature": "Quản lý Thiết bị & Linh kiện", "route": "/equipment", "keywords": ["thiết bị", "linh kiện", "mượn", "trả"]},
+                {"feature": "Lịch học & Thời khóa biểu", "route": "/schedules", "keywords": ["lịch", "thời khóa biểu", "tiết"]},
+                {"feature": "Nhật ký Check-in FaceID", "route": "/logs", "keywords": ["checkin", "log", "ra vào", "faceid"]},
+                {"feature": "Quản lý Người dùng", "route": "/users", "keywords": ["người dùng", "sinh viên", "giảng viên"]},
+                {"feature": "Đăng ký Sinh trắc học", "route": "/enrollment", "keywords": ["đăng ký", "nạp face", "pin"]},
+                {"feature": "Cấu hình Trạm cửa", "route": "/system", "keywords": ["trạm", "rpi5", "cấu hình"]},
+                {"feature": "Tổng quan Dashboard", "route": "/overview", "keywords": ["tổng quan", "dashboard", "phòng lab"]}
+            ]
+        }
 
     def check_status(self) -> Dict[str, Any]:
         """
@@ -106,7 +115,7 @@ class QwenAIAssistant:
             c.execute("SELECT id, name, code, location, manager, status FROM labs")
             lab_rows = c.fetchall()
             labs_list = [
-                f"Lab: '{r['name']}' | Code: {r['code']} | Manager: {r['manager'] or 'N/A'} | Location: {r['location'] or 'N/A'} | Status: {r['status']}"
+                f"Phòng: '{r['name']}' | Mã: {r['code']} | Quản lý: {r['manager'] or 'N/A'} | Vị trí: {r['location'] or 'N/A'} | Trạng thái: {r['status']}"
                 for r in lab_rows
             ]
             active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
@@ -115,15 +124,15 @@ class QwenAIAssistant:
             c.execute("SELECT id, name, code, deviceId, location, status, onlineState FROM nodes")
             node_rows = c.fetchall()
             nodes_list = [
-                f"Node: '{r['name']}' | Code: {r['code']} | Location: {r['location']} | Status: {r['status']} ({r['onlineState']})"
+                f"Trạm: '{r['name']}' | Mã: {r['code']} | Vị trí: {r['location']} | Trạng thái: {r['status']} ({r['onlineState']})"
                 for r in node_rows
             ]
 
-            # 3. Users Snapshot (with University ID, Email, Role, Status, Face/PIN Status)
+            # 3. Users Snapshot
             c.execute("SELECT id, name, university_id, email, role, status, faceStatus, pinStatus FROM users LIMIT 30")
             u_rows = c.fetchall()
             users_list = [
-                f"User: '{r['name']}' | ID: {r['university_id'] or r['id']} | Email: {r['email'] or 'N/A'} | Role: {r['role']} | Status: {r['status']} | Face: {r['faceStatus']} | PIN: {r['pinStatus']}"
+                f"Người dùng: '{r['name']}' | MSSV/Mã: {r['university_id'] or r['id']} | Email: {r['email'] or 'N/A'} | Vai trò: {r['role']} | Trạng thái: {r['status']} | FaceID: {r['faceStatus']}"
                 for r in u_rows
             ]
 
@@ -138,19 +147,18 @@ class QwenAIAssistant:
             equipment_list = []
             overdue_list = []
             for r in eq_rows:
-                status_str = f"Item: '{r['name']}' [Code: {r['code'] or 'N/A'}, Lab/Loc: {r['location'] or 'Main Lab'}, Category: {r['category'] or 'Module'}, Status: {r['status']}]"
+                status_str = f"Thiết bị: '{r['name']}' [Mã: {r['code'] or 'N/A'}, Phòng/Vị trí: {r['location'] or 'Main Lab'}, Loại: {r['category'] or 'Module'}, Trạng thái: {r['status']}]"
                 if r['borrowedByName']:
-                    status_str += f" (Borrowed by: {r['borrowedByName']} [ID: {r['borrowerId'] or 'N/A'}], Due: {r['dueDate'] or 'N/A'})"
+                    status_str += f" (Người mượn: {r['borrowedByName']} [Mã: {r['borrowerId'] or 'N/A'}], Hạn trả: {r['dueDate'] or 'N/A'})"
                 equipment_list.append(status_str)
                 if r['status'] in ['overdue', 'Overdue']:
-                    overdue_list.append(f"'{r['name']}' in {r['location'] or 'Main Lab'} (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
-
+                    overdue_list.append(f"'{r['name']}' tại {r['location'] or 'Main Lab'} (Người mượn: {r['borrowedByName']}, Hạn trả: {r['dueDate']})")
 
             # 5. Access Events Snapshot (Recent 10 Logs)
             c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 10")
             log_rows = c.fetchall()
             logs_list = [
-                f"Log: '{r['userName']}' | Method: {r['accessMethod']} | Status: {r['status']} | Authorized: {r['isAuthorized']} | Time: {r['timestamp']}"
+                f"Log Check-in: '{r['userName']}' | Phương thức: {r['accessMethod']} | Trạng thái: {r['status']} | Cho phép: {r['isAuthorized']} | Thời gian: {r['timestamp']}"
                 for r in log_rows
             ]
 
@@ -158,7 +166,7 @@ class QwenAIAssistant:
             c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 10")
             sch_rows = c.fetchall()
             schedules_list = [
-                f"Schedule: '{r['title']}' | Room: {r['room']} | Instructor: {r['instructor']} | Day: {r['dayOfWeek']} {r['startTime']}-{r['endTime']}"
+                f"Lịch học: '{r['title']}' | Phòng: {r['room']} | Giảng viên: {r['instructor']} | Thứ: {r['dayOfWeek']} {r['startTime']}-{r['endTime']}"
                 for r in sch_rows
             ]
 
@@ -166,7 +174,7 @@ class QwenAIAssistant:
             c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 5")
             inc_rows = c.fetchall()
             incidents_list = [
-                f"Incident: '{r['type']}' [{r['severity']}] | Status: {r['status']} | Summary: {r['summary']} | Time: {r['createdAt']}"
+                f"Sự cố: '{r['type']}' [{r['severity']}] | Trạng thái: {r['status']} | Nội dung: {r['summary']} | Thời gian: {r['createdAt']}"
                 for r in inc_rows
             ]
 
@@ -180,144 +188,149 @@ class QwenAIAssistant:
                 "users_summary": users_list,
                 "total_users": len(users_list),
                 "equipment_summary": equipment_list,
+                "available_equipment_count": len([e for e in eq_rows if str(e['status']).lower() in ['available', 'khả dụng', 'sẵn sàng']]),
+                "total_equipment_count": len(eq_rows),
                 "overdue_items": overdue_list,
-                "recent_logs": logs_list,
+                "recent_logs": logs_list[:5],
                 "schedules_summary": schedules_list,
-                "incidents_summary": incidents_list,
+                "incidents_summary": incidents_list[:5],
                 "synced_at": time.strftime("%H:%M:%S")
             }
             self._last_cache_update = now
         except Exception as e:
             logger.error(f"Error syncing DB in-memory cache: {e}")
 
-    def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview", user_prompt: str = "") -> str:
+    def _search_knowledge_docs(self, user_prompt: str) -> str:
         """
-        Smart Context Extractor: Dynamically searches ALL SQLite tables and columns for exact user prompts.
+        Lightweight RAG search across workspace Markdown documentation files for technical specs & guides.
+        """
+        prompt_lower = user_prompt.lower()
+        relevant_snippets = []
+        doc_files = ["MQTT_sensor/Sensor_Connection_Guide.md", "README_DEPLOY.md", "SECURITY_REPORT.md", "pipeline_architecture.md", "technical.md"]
+        
+        for doc_rel_path in doc_files:
+            doc_full_path = os.path.join(project_root, doc_rel_path)
+            if os.path.exists(doc_full_path):
+                try:
+                    with open(doc_full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        lines = f.readlines()
+                    matched_lines = [l.strip() for l in lines if any(k in l.lower() for k in prompt_lower.split() if len(k) > 3)]
+                    if matched_lines:
+                        relevant_snippets.append(f"--- Doc '{doc_rel_path}' ---\n" + "\n".join(matched_lines[:4]))
+                except Exception as e:
+                    logger.debug(f"Error reading doc {doc_rel_path}: {e}")
+                    
+        return "\n".join(relevant_snippets[:3]) if relevant_snippets else ""
+
+    def build_router_map_text(self) -> str:
+        """
+        Format Router Map from app_schema.json into clear Markdown links list
+        """
+        routes = self.app_schema.get("navigation_routes", [])
+        lines = []
+        for r in routes:
+            lines.append(f"- {r['feature']} -> Route: [{r['feature']}]({r['route']})")
+        return "\n".join(lines)
+
+    def detect_navigation_intent(self, user_prompt: str) -> tuple[Optional[str], Optional[str]]:
+        """
+        Detect if the user wants to navigate to a specific page on the web app.
+        Returns (action, target_route)
+        """
+        prompt_lower = user_prompt.lower()
+        nav_verbs = ["mở", "chuyển", "đến", "trỏ", "vào", "xem", "open", "go to", "navigate", "show me", "take me to"]
+        
+        route_keywords = [
+            ("/equipment", ["thiết bị", "linh kiện", "mượn", "trả", "vật tư", "máy móc", "equipment", "asset"]),
+            ("/users", ["người dùng", "sinh viên", "giảng viên", "tài khoản", "mssv", "phân quyền", "users", "student"]),
+            ("/enrollment", ["đăng ký", "nạp face", "sinh trắc", "mã pin", "chụp ảnh", "enroll", "biometric"]),
+            ("/schedules", ["lịch", "thời khóa biểu", "ca làm", "tiết", "lớp", "schedule", "timetable"]),
+            ("/logs", ["nhật ký", "log", "checkin", "ra vào", "điểm danh", "faceid log", "audit"]),
+            ("/system", ["trạm", "rpi5", "hailo", "phần cứng", "cấu hình", "cài đặt", "system", "node", "hardware"]),
+            ("/overview", ["tổng quan", "dashboard", "bảng điều khiển", "overview"]),
+            ("/labs", ["phòng lab", "chọn lab", "chuyển lab", "labs"])
+        ]
+
+        if any(verb in prompt_lower for verb in nav_verbs):
+            for route, keywords in route_keywords:
+                if any(kw in prompt_lower for kw in keywords):
+                    return ("NAVIGATE", route)
+
+        return (None, None)
+
+    def extract_realtime_snapshot(self, user_prompt: str = "", current_page: str = "overview") -> Dict[str, Any]:
+        """
+        Collect Real-time Database & Router Snapshot at THIS_MOMENT (Page-Aware Context Filtering).
         """
         self.sync_db_cache()
         prompt_lower = user_prompt.lower()
 
-        data: Dict[str, Any] = {}
+        snapshot: Dict[str, Any] = {
+            "router_map": self.build_router_map_text(),
+            "available_equipment_count": self._memory_cache.get("available_equipment_count", 0),
+            "total_equipment_count": self._memory_cache.get("total_equipment_count", 0),
+            "today_scheduled_students": self._memory_cache.get("schedules_summary", []),
+            "top_5_faceid_events": self._memory_cache.get("recent_logs", [])[:5],
+            "top_5_sensor_incidents": self._memory_cache.get("incidents_summary", [])[:5],
+            "labs_and_managers": self._memory_cache.get("labs_summary", []),
+            "nodes_state": self._memory_cache.get("nodes_summary", []),
+            "current_page": current_page,
+            "snapshot_timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
 
-        # 1. Intent: Labs, Rooms, Managers, Active Status, Nodes
-        if any(w in prompt_lower for w in ["lab", "phòng", "room", "active", "hoạt động", "bao nhiêu", "how many", "count", "trạm", "node", "quản lý", "manager", "phụ trách"]):
-            try:
-                conn = self._get_db_connection()
-                c = conn.cursor()
-                c.execute("SELECT id, name, code, location, manager, status FROM labs")
-                lab_rows = c.fetchall()
-                data["labs_list"] = [
-                    f"Name: {r['name']} | Code: {r['code']} | Manager: {r['manager'] or 'N/A'} | Location: {r['location'] or 'N/A'} | Status: {r['status']}"
-                    for r in lab_rows
-                ]
-                data["total_labs_count"] = len(lab_rows)
-                data["active_labs_count"] = sum(1 for r in lab_rows if r['status'] == 'active')
+        # Page-Aware Context Filtering (Item 3)
+        page_clean = current_page.lower().strip("/")
+        if "equipment" in page_clean:
+            snapshot["focused_page_data"] = f"User is on EQUIPMENT page. Full equipment inventory summary: {json.dumps(self._memory_cache.get('equipment_summary', []), ensure_ascii=False)}"
+        elif "users" in page_clean:
+            snapshot["focused_page_data"] = f"User is on USERS page. User directory summary: {json.dumps(self._memory_cache.get('users_summary', []), ensure_ascii=False)}"
+        elif "logs" in page_clean:
+            snapshot["focused_page_data"] = f"User is on ACCESS LOGS page. Recent access logs: {json.dumps(self._memory_cache.get('recent_logs', []), ensure_ascii=False)}"
+        elif "schedules" in page_clean:
+            snapshot["focused_page_data"] = f"User is on SCHEDULES page. Today timetables: {json.dumps(self._memory_cache.get('schedules_summary', []), ensure_ascii=False)}"
+        elif "system" in page_clean:
+            snapshot["focused_page_data"] = f"User is on SYSTEM / HARDWARE page. Node hardware telemetries: {json.dumps(self._memory_cache.get('nodes_summary', []), ensure_ascii=False)}"
+        else:
+            snapshot["focused_page_data"] = f"User is currently on '{current_page}' page."
 
-                c.execute("SELECT id, name, code, location, status, onlineState FROM nodes")
-                node_rows = c.fetchall()
-                data["nodes_list"] = [f"Node: {r['name']} ({r['location']}) - Status: {r['status']}" for r in node_rows]
-                conn.close()
-            except Exception as e:
-                logger.error(f"Error querying labs & managers: {e}")
+        # RAG Knowledge search fallback for technical queries (Item 2)
+        doc_context = self._search_knowledge_docs(user_prompt)
+        if doc_context:
+            snapshot["knowledge_rag_docs"] = doc_context
 
-        # 2. Intent: Logins, Door Access Events, Who Entered Today
-        if any(w in prompt_lower for w in ["who", "login", "log", "access", "entry", "vào", "ra", "đăng nhập", "quẹt", "hôm nay", "today", "ai", "tới", "đến", "ghé"]):
-            try:
-                conn = self._get_db_connection()
-                c = conn.cursor()
-                c.execute("SELECT userName, accessMethod, status, isAuthorized, confidence, timestamp FROM access_events ORDER BY id DESC LIMIT 15")
-                rows = c.fetchall()
-                data["today_access_events_log"] = [
-                    f"User: {r['userName']} | Method: {r['accessMethod']} | Authorized: {r['isAuthorized']} | Confidence: {r['confidence']}% | Time: {r['timestamp']}"
-                    for r in rows
-                ]
-                data["total_entries_count"] = len(rows)
-                conn.close()
-            except Exception as e:
-                logger.error(f"Error querying access events log: {e}")
+        return snapshot
 
-        # 3. Intent: Equipment, Inventory, Borrowing, Overdue in Labs
-        if any(w in prompt_lower for w in ["equipment", "item", "borrow", "overdue", "thiết bị", "mượn", "quá hạn", "đồ", "món", "có gì", "có những gì", "dụng cụ", "vật dụng"]):
-            try:
-                conn = self._get_db_connection()
-                c = conn.cursor()
-                try:
-                    c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment LIMIT 30")
-                    rows = c.fetchall()
-                except Exception:
-                    c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, borrowerId, borrowDate, returnDate as dueDate, location FROM lab_equipment LIMIT 30")
-                    rows = c.fetchall()
-
-                data["equipment_inventory_list"] = [
-                    f"Item: '{r['name']}' | Code: {r['code'] or 'N/A'} | Category: {r['category'] or 'Module'} | Lab/Location: {r['location'] or 'Main Lab'} | Status: {r['status']} | Borrower: {r['borrowedByName'] or 'None'} | Due: {r['dueDate'] or 'N/A'}"
-                    for r in rows
-                ]
-                conn.close()
-            except Exception as e:
-                logger.error(f"Error querying equipment: {e}")
-
-
-        # 4. Intent: Users, Roles, Student/Staff, Registration Status
-        if any(w in prompt_lower for w in ["user", "student", "staff", "admin", "người dùng", "sinh viên", "giảng viên", "role", "danh sách"]):
-            try:
-                conn = self._get_db_connection()
-                c = conn.cursor()
-                c.execute("SELECT name, university_id, email, role, status, faceStatus, pinStatus FROM users LIMIT 30")
-                rows = c.fetchall()
-                data["users_list"] = [
-                    f"Name: {r['name']} | UniID: {r['university_id'] or 'N/A'} | Role: {r['role']} | Status: {r['status']} | FaceID: {r['faceStatus']} | PIN: {r['pinStatus']}"
-                    for r in rows
-                ]
-                conn.close()
-            except Exception as e:
-                logger.error(f"Error querying users: {e}")
-
-        # Default fallback to page cache
-        if page in ["users", "enrollment"] and "users_list" not in data:
-            data["users"] = self._memory_cache.get("users_summary", [])
-        elif page == "equipment" and "equipment_inventory_list" not in data:
-            data["equipment"] = self._memory_cache.get("equipment_summary", [])
-            data["overdue_items"] = self._memory_cache.get("overdue_items", [])
-        elif page == "logs" and "today_access_events_log" not in data:
-            data["recent_logs"] = self._memory_cache.get("recent_logs", [])
-        elif page == "schedules":
-            data["schedules"] = self._memory_cache.get("schedules_summary", [])
-        elif not data:
-            data = {
-                "total_labs": self._memory_cache.get("total_labs", 0),
-                "active_labs": self._memory_cache.get("active_labs_count", 0),
-                "labs": self._memory_cache.get("labs_summary", []),
-                "nodes": self._memory_cache.get("nodes_summary", []),
-                "total_users": self._memory_cache.get("total_users", 0),
-                "overdue_equipment": self._memory_cache.get("overdue_items", []),
-                "latest_access_logs": self._memory_cache.get("recent_logs", [])[:3]
-            }
-
-        return json.dumps(data, ensure_ascii=False)
-
-    def get_system_instructions(self, current_page: str = "overview") -> str:
+    def build_strict_system_prompt(self, snapshot_data: Dict[str, Any], user_prompt: str) -> str:
         """
-        Natural & friendly system prompt with strict database grounding and interactive route links.
+        Construct strict context prompt according to exact 3-part layout requested.
         """
-        guide = self._system_knowledge["pages"].get(current_page, self._system_knowledge["pages"]["overview"])
+        router_map_str = snapshot_data.get("router_map", self.build_router_map_text())
+        rag_doc_str = snapshot_data.get("knowledge_rag_docs", "")
 
-        prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
+        prompt = f"""[SYSTEM INSTRUCTION - REAL-TIME SNAPSHOT CONTEXT]
+You are the AI Assistant for the VGU Smart Lab Access Control & Equipment Management System. 
+Below is the REAL-TIME SNAPSHOT of the system captured at THIS_MOMENT ({snapshot_data.get('snapshot_timestamp', '')}):
 
-### Persona & Style:
-- **Friendly & Natural**: Answer in a warm, helpful, and natural conversational tone. Avoid overly robotic or rigid templates.
-- **Strictly Grounded**: Always base your answers strictly on the facts present in the provided `DATABASE_SNAPSHOT_JSON`.
-- **Interactive Links**: Naturally embed clickable page links when guiding users or mentioning system sections:
-  - User Management: [Users Page](/users)
-  - Biometric & PIN Setup: [Enrollment Page](/enrollment)
-  - Equipment & Inventory: [Equipment Page](/equipment)
-  - Schedules & Timetables: [Schedules Page](/schedules)
-  - Access Audit Logs: [Access Logs](/logs)
-  - Door Hardware & Nodes: [System Settings](/system)
-  - Main Dashboard: [Overview Page](/overview)
-- **Language**: Respond in clear, natural **English** using clean Markdown.
+1. ROUTER MAP & NAVIGATION PATHS (Use these exact Markdown links [Feature Title](/route) to guide users):
+{router_map_str}
 
-### Current Page ({current_page.upper()}):
-{guide}
+2. CURRENT DATABASE STATE & PAGE CONTEXT:
+- Current Active View: {snapshot_data.get('focused_page_data', '')}
+- Total Available Equipment/Components: {snapshot_data.get('available_equipment_count', 0)} / {snapshot_data.get('total_equipment_count', 0)} available
+- Today's Scheduled Classes & Students: {json.dumps(snapshot_data.get('today_scheduled_students', []), ensure_ascii=False)}
+
+3. REAL-TIME LOGS & SENSOR ALERTS:
+- Top 5 Recent FaceID Check-in Events: {json.dumps(snapshot_data.get('top_5_faceid_events', []), ensure_ascii=False)}
+- Top 5 Recent Sensor Telemetry & Security Alerts: {json.dumps(snapshot_data.get('top_5_sensor_incidents', []), ensure_ascii=False)}
+- Hardware Nodes State: {json.dumps(snapshot_data.get('nodes_state', []), ensure_ascii=False)}
+{f"- RAG Technical Docs Knowledge: {rag_doc_str}" if rag_doc_str else ""}
+
+RESPONSE RULES:
+- Always answer using the exact real-time snapshot data above.
+- When referring to system pages or features, ALWAYS embed clickable Markdown links in the format [Feature Name](/route) so users can click to navigate immediately.
+- Be concise, clear, helpful, and highly professional.
+
+[USER QUESTION]: "{user_prompt}"
 """
         return prompt
 
@@ -330,7 +343,8 @@ class QwenAIAssistant:
         custom_table_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint with natural 0.2 temperature.
+        Send prompt and extracted real-time snapshot to Qwen 2.5 Coder local API endpoint.
+        Hyperparameters tuned: temperature = 0.15, max_tokens = 700.
         """
         status_info = self.check_status()
         if status_info["status"] == "offline":
@@ -343,31 +357,34 @@ class QwenAIAssistant:
                 "offline": True
             }
 
-        table_context = custom_table_data or self.extract_table_context(lab_id=lab_id, page=current_page, user_prompt=user_prompt)
-        system_instructions = self.get_system_instructions(current_page=current_page)
+        # Item 1: Dynamic Intent Detection for Auto-Navigation
+        action, target_route = self.detect_navigation_intent(user_prompt)
+
+        # Item 3: Page-Aware Real-time Snapshot
+        snapshot_data = self.extract_realtime_snapshot(user_prompt=user_prompt, current_page=current_page)
+        system_instructions = self.build_strict_system_prompt(snapshot_data=snapshot_data, user_prompt=user_prompt)
 
         messages = [
             {"role": "system", "content": system_instructions}
         ]
 
         if history:
-            for item in history[-2:]: # Keep last 2 messages for ultra-fast processing
+            for item in history[-2:]: # Keep last 2 messages for fast processing
                 role = item.get("role", "user")
                 content = item.get("content", "")
                 if role in ["user", "assistant"] and content:
                     messages.append({"role": role, "content": content})
 
-        full_user_content = f"FULL_DATABASE_SNAPSHOT_JSON: {table_context}\n\nUser Question: {user_prompt}"
-        messages.append({"role": "user", "content": full_user_content})
+        messages.append({"role": "user", "content": user_prompt})
 
+        # Item 5: Max Tokens 700 & Low Temperature 0.15 Tuning
         payload = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": 0.2,
+            "temperature": 0.15,
             "top_p": 0.9,
-            "max_tokens": 450
+            "max_tokens": 700
         }
-
 
         try:
             req_url = f"{self.api_base}/chat/completions"
@@ -384,6 +401,8 @@ class QwenAIAssistant:
                     return {
                         "success": True,
                         "response": ai_reply,
+                        "action": action,
+                        "target_route": target_route,
                         "model": resp_data.get("model", self.model_name)
                     }
                 else:
