@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import sqlite3
 import urllib.request
 import urllib.error
@@ -17,6 +18,28 @@ class QwenAIAssistant:
         self.api_base = os.getenv("QWEN_API_BASE", "http://localhost:11434/v1").rstrip("/")
         self.model_name = os.getenv("QWEN_MODEL_NAME", "qwen2.5-coder:1.5b")
         self.api_key = os.getenv("QWEN_API_KEY", "ollama")
+
+        # Deep-Layer In-Memory Cache for Zero-Latency RAG
+        self._memory_cache: Dict[str, Any] = {}
+        self._last_cache_update: float = 0.0
+        self._cache_ttl_seconds: float = 15.0  # Auto-refresh every 15s
+
+        # Pre-load system static knowledge base into memory
+        self._system_knowledge = {
+            "app_name": "Access Control System v2",
+            "pages": {
+                "overview": "System summary, traffic analytics, real-time live feed, connection alerts.",
+                "users": "User management, add student/staff/admin, role assignment, pin/status toggles.",
+                "enrollment": "Biometric registration, Face ID 512-dim ArcFace embedding capture, PIN setup.",
+                "equipment": "Lab inventory, equipment borrow/return workflow, overdue tracking.",
+                "schedules": "Class/lab timetables, automated door unlocking schedules, Excel .xlsx import.",
+                "logs": "Audit logs, RFID/Face/PIN entry records, security violations, CSV export.",
+                "system": "Door nodes configuration, face threshold, relay time, MQTT broker settings."
+            }
+        }
+
+        # Initialize cache snapshot
+        self.sync_db_cache(force=True)
 
     def check_status(self) -> Dict[str, Any]:
         """
@@ -44,7 +67,7 @@ class QwenAIAssistant:
             "status": "offline",
             "model": self.model_name,
             "api_base": self.api_base,
-            "error": "Cannot connect to Qwen 2.5 Coder LLM service. Ensure Ollama/vLLM is running on port 11434."
+            "error": "Cannot connect to Qwen 2.5 Coder LLM service. Ensure Ollama is running."
         }
 
     def _get_db_connection(self):
@@ -52,124 +75,108 @@ class QwenAIAssistant:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview") -> str:
+    def invalidate_cache(self):
         """
-        Extract concise, page-focused table data from SQLite DB formatted as Markdown for high-speed CPU inference.
+        Call this whenever database mutations occur to invalidate cache immediately.
         """
-        context_parts = []
+        self._last_cache_update = 0.0
+
+    def sync_db_cache(self, force: bool = False):
+        """
+        Synchronize in-memory snapshot of SQLite DB tables to minimize prompt token overhead.
+        """
+        now = time.time()
+        if not force and (now - self._last_cache_update) < self._cache_ttl_seconds:
+            return
+
         try:
             conn = self._get_db_connection()
             c = conn.cursor()
 
-            # 1. Users Table (Targeted for users & enrollment pages)
-            if page in ["users", "enrollment"]:
-                query = "SELECT id, name, university_id, email, role, status FROM users LIMIT 15"
-                c.execute(query)
-                rows = c.fetchall()
-                if rows:
-                    user_lines = ["### Users Table:"]
-                    user_lines.append("| ID | Name | Staff/Student ID | Email | Role | Status |")
-                    user_lines.append("|---|---|---|---|---|---|")
-                    for r in rows:
-                        user_lines.append(f"| {r['id']} | {r['name'] or ''} | {r['university_id'] or ''} | {r['email'] or ''} | {r['role'] or ''} | {r['status'] or ''} |")
-                    context_parts.append("\n".join(user_lines))
+            # 1. Users Snapshot
+            c.execute("SELECT id, name, role, status FROM users LIMIT 20")
+            u_rows = c.fetchall()
+            users_list = [f"{r['name']} ({r['role']}/{r['status']})" for r in u_rows]
 
-            # 2. Equipment Table (Targeted for equipment page)
-            elif page == "equipment":
-                query = "SELECT id, name, code, category, status, borrowedByName, dueDate FROM equipment"
-                if lab_id:
-                    c.execute(query + " WHERE labId = ? LIMIT 15", (lab_id,))
-                else:
-                    c.execute(query + " LIMIT 15")
-                rows = c.fetchall()
-                if rows:
-                    eq_lines = ["### Equipment Table:"]
-                    eq_lines.append("| ID | Name | Code | Category | Status | Borrower | Due Date |")
-                    eq_lines.append("|---|---|---|---|---|---|---|")
-                    for r in rows:
-                        eq_lines.append(f"| {r['id']} | {r['name'] or ''} | {r['code'] or ''} | {r['category'] or ''} | {r['status'] or ''} | {r['borrowedByName'] or 'N/A'} | {r['dueDate'] or 'N/A'} |")
-                    context_parts.append("\n".join(eq_lines))
+            # 2. Equipment Snapshot
+            c.execute("SELECT name, code, status, borrowedByName, dueDate FROM equipment")
+            eq_rows = c.fetchall()
+            equipment_list = []
+            overdue_list = []
+            for r in eq_rows:
+                status_str = f"{r['name']} [{r['status']}]"
+                if r['borrowedByName']:
+                    status_str += f" (Borrower: {r['borrowedByName']})"
+                equipment_list.append(status_str)
+                if r['status'] in ['overdue', 'Overdue']:
+                    overdue_list.append(f"{r['name']} (Borrowed by {r['borrowedByName']})")
 
-            # 3. Access Events / Logs Table (Targeted for logs page)
-            elif page == "logs":
-                query = "SELECT id, userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 15"
-                c.execute(query)
-                rows = c.fetchall()
-                if rows:
-                    log_lines = ["### Access Logs Table:"]
-                    log_lines.append("| ID | User | Method | Status | Authorized | Timestamp |")
-                    log_lines.append("|---|---|---|---|---|---|")
-                    for r in rows:
-                        auth_str = "Authorized" if r['isAuthorized'] else "Unauthorized"
-                        log_lines.append(f"| {r['id']} | {r['userName'] or 'Guest'} | {r['accessMethod'] or 'N/A'} | {r['status'] or ''} | {auth_str} | {r['timestamp'] or ''} |")
-                    context_parts.append("\n".join(log_lines))
+            # 3. Access Events Snapshot (Recent 5)
+            c.execute("SELECT userName, accessMethod, status, timestamp FROM access_events ORDER BY id DESC LIMIT 5")
+            log_rows = c.fetchall()
+            logs_list = [f"{r['userName']} ({r['accessMethod']}/{r['status']} at {r['timestamp']})" for r in log_rows]
 
-            # 4. Schedules Table (Targeted for schedules page)
-            elif page == "schedules":
-                query = "SELECT id, title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 15"
-                c.execute(query)
-                rows = c.fetchall()
-                if rows:
-                    sch_lines = ["### Schedules Table:"]
-                    sch_lines.append("| ID | Title | Room | Instructor | Day | Time |")
-                    sch_lines.append("|---|---|---|---|---|---|")
-                    for r in rows:
-                        sch_lines.append(f"| {r['id']} | {r['title'] or ''} | {r['room'] or ''} | {r['instructor'] or ''} | {r['dayOfWeek'] or ''} | {r['startTime'] or ''}-{r['endTime'] or ''} |")
-                    context_parts.append("\n".join(sch_lines))
-
-            # 5. Overview page (Concise combined summary: 5 users + 5 equipment + 5 logs)
-            else:
-                c.execute("SELECT id, name, role, status FROM users LIMIT 5")
-                u_rows = c.fetchall()
-                if u_rows:
-                    context_parts.append("### Users Summary: " + ", ".join([f"{r['name']} ({r['role']})" for r in u_rows]))
-
-                c.execute("SELECT id, name, status, borrowedByName FROM equipment LIMIT 5")
-                eq_rows = c.fetchall()
-                if eq_rows:
-                    context_parts.append("### Equipment Summary: " + ", ".join([f"{r['name']} [{r['status']}]" for r in eq_rows]))
-
-                c.execute("SELECT id, userName, status, timestamp FROM access_events ORDER BY id DESC LIMIT 5")
-                log_rows = c.fetchall()
-                if log_rows:
-                    context_parts.append("### Recent Access Logs: " + ", ".join([f"{r['userName']} ({r['status']})" for r in log_rows]))
+            # 4. Schedules Snapshot
+            c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 10")
+            sch_rows = c.fetchall()
+            schedules_list = [f"{r['title']} ({r['room']} - {r['instructor']} - {r['dayOfWeek']} {r['startTime']}-{r['endTime']})" for r in sch_rows]
 
             conn.close()
-        except Exception as e:
-            logger.error(f"Error reading table context: {e}")
-            context_parts.append(f"*(Unable to fetch table data: {e})*")
 
-        return "\n\n".join(context_parts) if context_parts else "*(No table data available)*"
+            self._memory_cache = {
+                "users_summary": users_list,
+                "total_users": len(users_list),
+                "equipment_summary": equipment_list,
+                "overdue_items": overdue_list,
+                "recent_logs": logs_list,
+                "schedules_summary": schedules_list,
+                "synced_at": time.strftime("%H:%M:%S")
+            }
+            self._last_cache_update = now
+        except Exception as e:
+            logger.error(f"Error syncing DB in-memory cache: {e}")
+
+    def extract_table_context(self, lab_id: Optional[str] = None, page: str = "overview") -> str:
+        """
+        Extract pre-cached, ultra-compact micro JSON summary (Zero prefill latency).
+        """
+        self.sync_db_cache()
+
+        if page in ["users", "enrollment"]:
+            data = {"users": self._memory_cache.get("users_summary", []), "page": page}
+        elif page == "equipment":
+            data = {
+                "equipment": self._memory_cache.get("equipment_summary", []),
+                "overdue_items": self._memory_cache.get("overdue_items", [])
+            }
+        elif page == "logs":
+            data = {"recent_logs": self._memory_cache.get("recent_logs", [])}
+        elif page == "schedules":
+            data = {"schedules": self._memory_cache.get("schedules_summary", [])}
+        else:
+            data = {
+                "active_users": self._memory_cache.get("total_users", 0),
+                "overdue": self._memory_cache.get("overdue_items", []),
+                "latest_access": self._memory_cache.get("recent_logs", [])[:3]
+            }
+
+        return json.dumps(data, ensure_ascii=False)
 
     def get_system_instructions(self, current_page: str = "overview") -> str:
         """
-        Detailed system prompt instructing Qwen 2.5 Coder to act as an expert AI Assistant for Access Control System in English.
+        Ultra-concise system prompt for instant TTFT execution.
         """
-        page_guides = {
-            "overview": "Overview Page: Displays system stats, live feed, entry counts.",
-            "users": "Users Page: Add users, assign roles (Student/Lecturer/Admin), register biometrics/PIN.",
-            "enrollment": "Enrollment Page: Register Face ID (512-dim ArcFace embedding) and PIN codes.",
-            "equipment": "Equipment Page: Inventory management, borrow/return workflows, overdue tracking.",
-            "schedules": "Schedules Page: Manage practice sessions, import timetable .xlsx files.",
-            "logs": "Logs Page: Audit RFID/Face access events, security violations, export reports.",
-            "system": "System Page: Configure door nodes, face recognition threshold, MQTT broker IP."
-        }
+        guide = self._system_knowledge["pages"].get(current_page, self._system_knowledge["pages"]["overview"])
 
-        active_guide = page_guides.get(current_page, page_guides["overview"])
+        prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the Access Control System v2.
 
-        prompt = f"""You are **Qwen 2.5 Coder AI Assistant** for the **Lab Access Control Management System v2**.
+### Rules:
+1. **Factual**: Answer using the cached DB JSON provided in user prompt.
+2. **Missing Data**: If requested info is not in context, state: *"This data is currently not available in the system"*.
+3. **Format**: Respond concisely in **English**.
 
-### Duties:
-1. **Analyze Table Data**: Read and summarize the table data provided in context below.
-2. **User Guidance**: Provide concise step-by-step instructions for operating the system.
-3. **Format**: Respond in clean Markdown (bullet lists, bold text, tables) in **English**.
-
-### ⚠️ STRICT GROUNDING RULES:
-- Do NOT fabricate or invent names, IDs, equipment, or stats.
-- If data is not found in the context below, explicitly reply: *"This data is currently not available in the system"*.
-
-### Page Context ({current_page.upper()}):
-{active_guide}
+### Page ({current_page.upper()}):
+{guide}
 """
         return prompt
 
@@ -182,7 +189,7 @@ class QwenAIAssistant:
         custom_table_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint with 120s timeout and optimized prompt size.
+        Send ultra-compact context to local Qwen 2.5 Coder with instant response speed.
         """
         status_info = self.check_status()
         if status_info["status"] == "offline":
@@ -203,20 +210,20 @@ class QwenAIAssistant:
         ]
 
         if history:
-            for item in history[-4:]: # Keep last 4 messages to save context memory
+            for item in history[-2:]: # Keep last 2 messages for ultra-fast processing
                 role = item.get("role", "user")
                 content = item.get("content", "")
                 if role in ["user", "assistant"] and content:
                     messages.append({"role": role, "content": content})
 
-        full_user_content = f"--- DATABASE CONTEXT ---\n{table_context}\n------------------------\n\nUser Request: {user_prompt}"
+        full_user_content = f"DB_CACHE_JSON: {table_context}\n\nUser Question: {user_prompt}"
         messages.append({"role": "user", "content": full_user_content})
 
         payload = {
             "model": self.model_name,
             "messages": messages,
             "temperature": 0.0,
-            "max_tokens": 384
+            "max_tokens": 300
         }
 
         try:
@@ -227,7 +234,6 @@ class QwenAIAssistant:
             if self.api_key:
                 req.add_header("Authorization", f"Bearer {self.api_key}")
 
-            # Increased socket timeout to 120 seconds for CPU execution
             with urllib.request.urlopen(req, timeout=120) as resp:
                 if resp.status == 200:
                     resp_data = json.loads(resp.read().decode('utf-8'))
