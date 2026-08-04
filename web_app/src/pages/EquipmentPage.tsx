@@ -385,7 +385,6 @@ export function EquipmentPage() {
             Right-click any equipment row to <strong>Borrow</strong>, <strong>Return</strong>, or <strong>Delete</strong> it. Hover over an item to preview its photo.
           </p>
         </div>
-        <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Device</Button>
       </div>
 
       {/* Stats Cards */}
@@ -408,8 +407,8 @@ export function EquipmentPage() {
       <Panel pad={false} className="overflow-x-auto">
         {/* Controls Layout in 2 distinct rows */}
         <div className="p-5 border-b border-line flex flex-col gap-3">
-          {/* Row 1: Search Box */}
-          <div className="flex items-center">
+          {/* Row 1: Search Box & Add Equipment Button */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <input
               type="text"
               placeholder="Search by serial number, name, category, or student borrower..."
@@ -417,6 +416,7 @@ export function EquipmentPage() {
               onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
               className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors w-full sm:w-96"
             />
+            <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Device</Button>
           </div>
 
           {/* Row 2: Filter Option Chips */}
