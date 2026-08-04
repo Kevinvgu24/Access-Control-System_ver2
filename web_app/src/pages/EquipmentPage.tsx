@@ -430,8 +430,18 @@ export function EquipmentPage() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-raised">
-              {['Serial Number', 'Equipment Name', 'Category', 'Status', 'Borrower / User', 'Return Date', 'Actions'].map(h => (
-                <th key={h} className={`px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h === 'Actions' ? 'text-right' : 'text-left'}`}>{h}</th>
+              {[
+                { label: 'Serial Number', class: 'w-[140px] text-left whitespace-nowrap' },
+                { label: 'Equipment Name', class: 'min-w-[200px] text-left' },
+                { label: 'Category', class: 'w-[120px] text-left whitespace-nowrap' },
+                { label: 'Status', class: 'w-[130px] text-left whitespace-nowrap' },
+                { label: 'Borrower / User', class: 'min-w-[240px] text-left whitespace-nowrap' },
+                { label: 'Return Date', class: 'w-[130px] text-left whitespace-nowrap' },
+                { label: 'Actions', class: 'w-[140px] text-right whitespace-nowrap' }
+              ].map(h => (
+                <th key={h.label} className={`px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h.class}`}>
+                  {h.label}
+                </th>
               ))}
             </tr>
           </thead>
@@ -450,7 +460,7 @@ export function EquipmentPage() {
                   className={`${rowBgClass} transition-colors cursor-pointer select-none`}
                   title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                 >
-                  <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
+                  <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
                   <td 
                     className="px-5 py-4 font-medium text-sm text-[#0f172a]"
                     onMouseMove={(e) => handleCellMouseMove(e, item)}
@@ -471,22 +481,22 @@ export function EquipmentPage() {
                     </div>
                   </td>
                   <td className="px-5 py-4 text-xs text-[#475569]">
-                    <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px]">{item.category}</span>
+                    <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px] whitespace-nowrap">{item.category}</span>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 whitespace-nowrap">
                     <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
                   </td>
-                  <td className="px-5 py-4 text-xs font-medium text-[#0f172a]">
+                  <td className="px-5 py-4 text-xs font-medium text-[#0f172a] min-w-[240px]">
                     {item.borrowerName ? (
                       <div>
-                        <p className="font-bold text-[#0f172a]">{item.borrowerName}</p>
+                        <p className="font-bold text-[#0f172a] whitespace-nowrap">{item.borrowerName}</p>
                         <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
                       </div>
                     ) : (
                       <span className="text-[#cbd5e1] font-mono">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-xs font-mono text-[#475569]">
+                  <td className="px-5 py-4 text-xs font-mono text-[#475569] whitespace-nowrap">
                     {item.returnDate ? (
                       <div className="flex flex-col gap-1 items-start">
                         <span className={isOverdue ? "bg-red-100 text-red-800 font-bold border border-red-300 px-2 py-0.5 rounded text-[11px]" : "bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]"}>
@@ -502,7 +512,7 @@ export function EquipmentPage() {
                       <span className="text-[#cbd5e1]">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex items-center justify-end gap-1.5">
                         {item.status === 'in_use' ? (
