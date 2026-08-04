@@ -457,7 +457,7 @@ export function EquipmentPage() {
                 { label: 'Return Date', class: 'text-left whitespace-nowrap px-4 py-3' },
                 { label: 'Actions', class: 'text-right whitespace-nowrap px-4 py-3' }
               ].map(h => (
-                <th key={h.label} className={`font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line ${h.class}`}>
+                <th key={h.label} className={`font-mono text-[11px] uppercase tracking-wider font-bold text-[#1e293b] border-b border-line bg-slate-100/70 ${h.class}`}>
                   {h.label}
                 </th>
               ))}
