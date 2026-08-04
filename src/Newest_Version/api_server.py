@@ -364,9 +364,45 @@ def api_login():
     )
     return resp
 
-# 2. Labs List
-@app.route("/api/labs", methods=["GET"])
-def get_labs():
+# 2. Labs List & Create
+@app.route("/api/labs", methods=["GET", "POST"])
+def handle_labs():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "Lab name is required"}), 400
+            
+        lab_id = f"lab-{int(time.time() * 1000)}"
+        code = data.get("code", "").strip() or name.upper().replace(" ", "-")[:12]
+        location = data.get("location", "").strip() or "Building A"
+        timezone = data.get("timezone", "Asia/Ho_Chi_Minh")
+        manager = data.get("manager", "Admin")
+        activation_code = f"ACT-{code}"
+        now_str = datetime.now().isoformat()
+        
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        try:
+            c.execute("""
+                INSERT INTO labs (id, name, code, location, timezone, manager, activationCode, status, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+            """, (lab_id, name, code, location, timezone, manager, activation_code, now_str, now_str))
+            
+            cluster_id = f"cluster-{int(time.time() * 1000)}"
+            c.execute("""
+                INSERT INTO clusters (id, labId, name, code, createdAt, updatedAt)
+                VALUES (?, ?, 'Main Cluster', 'MAIN', ?, ?)
+            """, (cluster_id, lab_id, now_str, now_str))
+            
+            conn.commit()
+            return jsonify({"success": True, "id": lab_id}), 201
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            conn.close()
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
@@ -394,9 +430,34 @@ def get_labs():
     
     return jsonify(labs_list)
 
-# 3. Lab Clusters List
-@app.route("/api/labs/<lab_id>/clusters", methods=["GET"])
-def get_clusters(lab_id):
+# 3. Lab Clusters List & Create
+@app.route("/api/labs/<lab_id>/clusters", methods=["GET", "POST"])
+def handle_clusters(lab_id):
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "Cluster name is required"}), 400
+            
+        cluster_id = f"cluster-{int(time.time() * 1000)}"
+        code = data.get("code", "").strip() or name.upper().replace(" ", "-")[:12]
+        now_str = datetime.now().isoformat()
+        
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        try:
+            c.execute("""
+                INSERT INTO clusters (id, labId, name, code, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (cluster_id, lab_id, name, code, now_str, now_str))
+            conn.commit()
+            return jsonify({"success": True, "id": cluster_id}), 201
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            conn.close()
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
@@ -407,9 +468,47 @@ def get_clusters(lab_id):
     clusters_list = [dict(row) for row in rows]
     return jsonify(clusters_list)
 
-# 4. Cluster Nodes List
-@app.route("/api/labs/<lab_id>/clusters/<cluster_id>/nodes", methods=["GET"])
-def get_nodes(lab_id, cluster_id):
+# 4. Cluster Nodes List & Create (Add Device)
+@app.route("/api/labs/<lab_id>/clusters/<cluster_id>/nodes", methods=["GET", "POST"])
+def handle_nodes(lab_id, cluster_id):
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "Device/Node name is required"}), 400
+            
+        device_id = data.get("deviceId", "").strip() or f"DEV-{int(time.time())}"
+        location = data.get("location", "").strip() or "Main Entrance"
+        code = data.get("code", "").strip() or name.upper().replace(" ", "-")[:24]
+        
+        node_id = f"node-{int(time.time() * 1000)}"
+        now_str = datetime.now().isoformat()
+        
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        try:
+            # Insert new node (device) into SQLite
+            c.execute("""
+                INSERT INTO nodes (id, clusterId, labId, name, code, deviceId, location, status, onlineState, currentConfigVersion, currentManifestVersion, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'offline', 'offline', 1, 1, ?, ?)
+            """, (node_id, cluster_id, lab_id, name, code, device_id, location, now_str, now_str))
+            
+            # Insert default node configuration
+            c.execute("""
+                INSERT INTO node_config (nodeId, confidenceThreshold, livenessThreshold, pinFallbackEnabled, faceRequired, pinRequired, version, updatedAt, updatedBy)
+                VALUES (?, 90, 78, 1, 1, 1, 1, ?, 'system')
+            """, (node_id, now_str))
+            
+            conn.commit()
+            logger.info(f"Successfully added new device/node: {node_id} ('{name}') to lab '{lab_id}' cluster '{cluster_id}'")
+            return jsonify({"success": True, "id": node_id}), 201
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to create device/node: {e}")
+            return jsonify({"error": str(e)}), 500
+        finally:
+            conn.close()
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
@@ -457,6 +556,47 @@ def get_nodes(lab_id, cluster_id):
         nodes_list.append(node_dict)
         
     return jsonify(nodes_list)
+
+# 4b. Update or Delete specific Node (Device)
+@app.route("/api/labs/<lab_id>/clusters/<cluster_id>/nodes/<node_id>", methods=["PUT", "DELETE"])
+def update_or_delete_node(lab_id, cluster_id, node_id):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    try:
+        if request.method == "DELETE":
+            c.execute("DELETE FROM nodes WHERE id = ? AND labId = ? AND clusterId = ?", (node_id, lab_id, cluster_id))
+            c.execute("DELETE FROM node_config WHERE nodeId = ?", (node_id,))
+            conn.commit()
+            logger.info(f"Deleted device/node: {node_id}")
+            return jsonify({"success": True})
+        else:
+            data = request.get_json() or {}
+            now_str = datetime.now().isoformat()
+            
+            fields = []
+            values = []
+            for k in ["name", "code", "deviceId", "location", "status", "onlineState"]:
+                if k in data:
+                    fields.append(f"{k} = ?")
+                    values.append(data[k])
+            
+            if fields:
+                fields.append("updatedAt = ?")
+                values.append(now_str)
+                values.extend([node_id, lab_id, cluster_id])
+                
+                query = f"UPDATE nodes SET {', '.join(fields)} WHERE id = ? AND labId = ? AND clusterId = ?"
+                c.execute(query, values)
+                conn.commit()
+                logger.info(f"Updated device/node: {node_id}")
+                
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error updating/deleting node {node_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 # 5. Node Current Config
 @app.route("/api/labs/<lab_id>/clusters/<cluster_id>/nodes/<node_id>/config/current", methods=["GET", "PUT"])
