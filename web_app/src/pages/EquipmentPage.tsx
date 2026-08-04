@@ -99,7 +99,10 @@ export function EquipmentPage() {
     x: number
     y: number
     item: Equipment
+    visible: boolean
   } | null>(null)
+
+  const leaveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Form State - Add/Edit
   const [serialNumber, setSerialNumber] = useState('')
@@ -134,7 +137,6 @@ export function EquipmentPage() {
 
   const handleRowContextMenu = (e: React.MouseEvent, item: Equipment) => {
     e.preventDefault()
-    e.stopPropagation()
     setHoverPreview(null)
     setContextMenu({
       x: e.clientX,
@@ -143,16 +145,24 @@ export function EquipmentPage() {
     })
   }
 
-  const handleRowMouseMove = (e: React.MouseEvent, item: Equipment) => {
+  const handleCellMouseMove = (e: React.MouseEvent, item: Equipment) => {
     if (contextMenu) return
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current)
+      leaveTimerRef.current = null
+    }
     // Calculate tooltip coordinates keeping within viewport
-    const x = Math.min(e.clientX + 16, window.innerWidth - 300)
-    const y = Math.min(e.clientY + 16, window.innerHeight - 340)
-    setHoverPreview({ x, y, item })
+    const x = Math.min(e.clientX + 16, window.innerWidth - 180)
+    const y = Math.min(e.clientY + 16, window.innerHeight - 180)
+    setHoverPreview(prev => (prev ? { ...prev, x, y, item, visible: true } : { x, y, item, visible: true }))
   }
 
-  const handleRowMouseLeave = () => {
-    setHoverPreview(null)
+  const handleCellMouseLeave = () => {
+    setHoverPreview(prev => (prev ? { ...prev, visible: false } : null))
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
+    leaveTimerRef.current = setTimeout(() => {
+      setHoverPreview(null)
+    }, 200)
   }
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,13 +447,15 @@ export function EquipmentPage() {
                 <tr
                   key={item.id}
                   onContextMenu={(e) => handleRowContextMenu(e, item)}
-                  onMouseMove={(e) => handleRowMouseMove(e, item)}
-                  onMouseLeave={handleRowMouseLeave}
                   className={`${rowBgClass} transition-colors cursor-pointer select-none`}
-                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover for photo preview. Right-click for options.'}
+                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                 >
                   <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
-                  <td className="px-5 py-4 font-medium text-sm text-[#0f172a]">
+                  <td 
+                    className="px-5 py-4 font-medium text-sm text-[#0f172a]"
+                    onMouseMove={(e) => handleCellMouseMove(e, item)}
+                    onMouseLeave={handleCellMouseLeave}
+                  >
                     <div className="flex items-center gap-3">
                       {item.image ? (
                         <img src={item.image} alt={item.name} className="w-9 h-9 rounded object-cover border border-line shadow-sm shrink-0" />
@@ -517,14 +529,16 @@ export function EquipmentPage() {
       {hoverPreview && !contextMenu && (
         <div
           style={{ top: hoverPreview.y, left: hoverPreview.x }}
-          className="fixed z-40 bg-surface border border-line rounded-xl shadow-2xl p-2 w-64 h-64 pointer-events-none animate-in fade-in zoom-in-95 duration-100 flex items-center justify-center"
+          className={`fixed z-40 bg-surface border border-line rounded-xl shadow-2xl p-2 w-[154px] h-[154px] pointer-events-none flex items-center justify-center transition-all duration-200 ease-out transform ${
+            hoverPreview.visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-1'
+          }`}
         >
           {hoverPreview.item.image ? (
-            <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover rounded-lg" />
+            <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover rounded-lg shadow-sm" />
           ) : (
-            <div className="flex flex-col items-center justify-center gap-2 text-slate-400 w-full h-full bg-slate-50 rounded-lg">
-              <span className="text-4xl">📷</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider">No Image</span>
+            <div className="flex flex-col items-center justify-center gap-1.5 text-slate-400 w-full h-full bg-slate-50 rounded-lg">
+              <span className="text-3xl">📷</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider">No Image</span>
             </div>
           )}
         </div>
