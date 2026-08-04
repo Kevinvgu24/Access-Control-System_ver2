@@ -154,13 +154,13 @@ export function UsersPage() {
       <Panel pad={false} className="overflow-x-auto">
         <div className="flex gap-3 items-center p-5 border-b border-line flex-wrap">
           <input type="text" placeholder="Search name or university ID..." value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
             className="flex-1 min-w-[160px] bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
           />
           <div className="flex gap-1.5 flex-wrap">
             <button onClick={() => setRoleFilter('all')} className={chipClass(roleFilter === 'all')}>All</button>
             {ROLE_OPTS.map(r => (
-              <button key={r} onClick={() => setRoleFilter(r)} className={chipClass(roleFilter === r)}>
+              <button key={r} onClick={() => { setRoleFilter(r); setCurrentPage(1) }} className={chipClass(roleFilter === r)}>
                 {ROLE_LABEL[r]}
               </button>
             ))}

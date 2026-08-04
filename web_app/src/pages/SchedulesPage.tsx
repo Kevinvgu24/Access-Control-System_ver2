@@ -35,7 +35,7 @@ export function SchedulesPage() {
   const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const ITEMS_PER_PAGE = 50
+  const ITEMS_PER_PAGE = 25
   const [templateType, setTemplateType] = useState<string>('type1')
   const fileInputRef = useRef<HTMLInputElement>(null)
 

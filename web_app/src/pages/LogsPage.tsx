@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
+import { Pagination } from '@/components/ui/Pagination'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +19,7 @@ const OPTS: { value: AccessResult | 'all'; label: string }[] = [
 export function LogsPage() {
   const { events } = useAdminStore()
   const [search, setSearch]             = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [resultFilter, setResultFilter] = useState<AccessResult | 'all'>('all')
   const [dateFrom, setDateFrom]         = useState('')
   const [dateTo, setDateTo]             = useState('')
@@ -73,7 +75,7 @@ export function LogsPage() {
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <input type="text" placeholder="Search by name or university ID..." value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
               className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
             />
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
@@ -90,6 +92,7 @@ export function LogsPage() {
             ))}
           </div>
         </div>
+        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={25} onPageChange={setCurrentPage} />
       </Panel>
 
       <Panel pad={false} className="overflow-x-auto">
