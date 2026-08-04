@@ -39,14 +39,25 @@ class QwenAIAssistant:
 
     def _load_app_schema(self) -> Dict[str, Any]:
         """
-        Load App Architecture Schema from app_schema.json
+        Load App Architecture Schema from app_routes_permissions.json or app_schema.json
         """
-        if os.path.exists(self.schema_path):
-            try:
-                with open(self.schema_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.error(f"Error loading app_schema.json: {e}")
+        candidate_paths = [
+            os.path.join(project_root, "web_app", "public", "app_routes_permissions.json"),
+            os.path.join(project_root, "web_app", "src", "config", "app_routes_permissions.json"),
+            os.path.join(project_root, "src", "Newest_Version", "app_routes_permissions.json"),
+            os.path.join(project_root, "src", "Newest_Version", "app_schema.json"),
+            self.schema_path
+        ]
+        
+        for p in candidate_paths:
+            if os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        logger.info(f"Successfully loaded app schema/roadmap from: {p}")
+                        return data
+                except Exception as e:
+                    logger.error(f"Error loading schema file from {p}: {e}")
         
         # Fallback Schema
         return {
@@ -227,12 +238,17 @@ class QwenAIAssistant:
 
     def build_router_map_text(self) -> str:
         """
-        Format Router Map from app_schema.json into clear Markdown links list
+        Format Router Map from app_routes_permissions.json or app_schema.json into clear Markdown links list
         """
-        routes = self.app_schema.get("navigation_routes", [])
+        routes = self.app_schema.get("routes") or self.app_schema.get("navigation_routes") or []
         lines = []
         for r in routes:
-            lines.append(f"- {r['feature']} -> Route: [{r['feature']}]({r['route']})")
+            title = r.get("title") or r.get("title_vi") or r.get("feature") or r.get("page_key") or "Page"
+            path = r.get("path") or r.get("route") or "/"
+            desc = r.get("description", "")
+            roles = r.get("allowed_roles", [])
+            role_str = f" [Roles: {', '.join(roles)}]" if roles else ""
+            lines.append(f"- [{title}]({path}){role_str}: {desc}")
         return "\n".join(lines)
 
     def detect_navigation_intent(self, user_prompt: str) -> tuple[Optional[str], Optional[str]]:
@@ -241,16 +257,16 @@ class QwenAIAssistant:
         Returns (action, target_route)
         """
         prompt_lower = user_prompt.lower()
-        nav_verbs = ["mở", "chuyển", "đến", "trỏ", "vào", "xem", "open", "go to", "navigate", "show me", "take me to"]
+        nav_verbs = ["mở", "chuyển", "đến", "trỏ", "vào", "xem", "open", "go to", "navigate", "show me", "take me to", "bật", "truy cập"]
         
         route_keywords = [
-            ("/equipment", ["thiết bị", "linh kiện", "mượn", "trả", "vật tư", "máy móc", "equipment", "asset"]),
-            ("/users", ["người dùng", "sinh viên", "giảng viên", "tài khoản", "mssv", "phân quyền", "users", "student"]),
-            ("/enrollment", ["đăng ký", "nạp face", "sinh trắc", "mã pin", "chụp ảnh", "enroll", "biometric"]),
-            ("/schedules", ["lịch", "thời khóa biểu", "ca làm", "tiết", "lớp", "schedule", "timetable"]),
-            ("/logs", ["nhật ký", "log", "checkin", "ra vào", "điểm danh", "faceid log", "audit"]),
-            ("/system", ["trạm", "rpi5", "hailo", "phần cứng", "cấu hình", "cài đặt", "system", "node", "hardware"]),
-            ("/overview", ["tổng quan", "dashboard", "bảng điều khiển", "overview"]),
+            ("/equipment", ["thiết bị", "linh kiện", "mượn", "trả", "vật tư", "máy móc", "equipment", "asset", "dụng cụ", "kho"]),
+            ("/users", ["người dùng", "sinh viên", "giảng viên", "tài khoản", "mssv", "phân quyền", "users", "student", "thành viên"]),
+            ("/enrollment", ["đăng ký", "nạp face", "sinh trắc", "mã pin", "chụp ảnh", "enroll", "biometric", "nhận diện"]),
+            ("/schedules", ["lịch", "thời khóa biểu", "ca làm", "tiết", "lớp", "schedule", "timetable", "giờ mở cửa"]),
+            ("/logs", ["nhật ký", "log", "checkin", "ra vào", "điểm danh", "faceid log", "audit", "lịch sử"]),
+            ("/system", ["trạm", "rpi5", "hailo", "phần cứng", "cấu hình", "cài đặt", "system", "node", "hardware", "ngưỡng"]),
+            ("/overview", ["tổng quan", "dashboard", "bảng điều khiển", "overview", "trang chủ"]),
             ("/labs", ["phòng lab", "chọn lab", "chuyển lab", "labs"])
         ]
 
@@ -309,20 +325,29 @@ class QwenAIAssistant:
         """
         router_map_str = snapshot_data.get("router_map", self.build_router_map_text())
         rag_doc_str = snapshot_data.get("knowledge_rag_docs", "")
+        
+        rbac_info = self.app_schema.get("roles_and_permissions", {})
+        decision_flow = self.app_schema.get("decision_flow", {})
+        guidance = self.app_schema.get("ai_capabilities_and_guidance", {})
 
-        prompt = f"""[SYSTEM INSTRUCTION - REAL-TIME SNAPSHOT CONTEXT]
+        prompt = f"""[SYSTEM INSTRUCTION - REAL-TIME SNAPSHOT & SYSTEM ROADMAP]
 You are the AI Assistant for the VGU Smart Lab Access Control & Equipment Management System. 
-Below is the REAL-TIME SNAPSHOT of the system captured at THIS_MOMENT ({snapshot_data.get('snapshot_timestamp', '')}):
+Below is the REAL-TIME SNAPSHOT & SYSTEM ROADMAP captured at THIS_MOMENT ({snapshot_data.get('snapshot_timestamp', '')}):
 
-1. ROUTER MAP & NAVIGATION PATHS (Use these exact Markdown links [Feature Title](/route) to guide users):
+1. ROUTER MAP & NAVIGATION PATHS (Use these exact Markdown links [Title](/path) to guide users):
 {router_map_str}
 
-2. CURRENT DATABASE STATE & PAGE CONTEXT:
-- Current Active View: {snapshot_data.get('focused_page_data', '')}
+2. SYSTEM ROLE PERMISSIONS & DECISION RULES:
+- RBAC Capabilities: Super Admin ({json.dumps(rbac_info.get('admin_roles', {}).get('super_admin', {}).get('capabilities', []), ensure_ascii=False)}), Lab Admin ({json.dumps(rbac_info.get('admin_roles', {}).get('lab_admin', {}).get('capabilities', []), ensure_ascii=False)})
+- Biometric & PIN Decision Flow: {json.dumps(decision_flow.get('logic_rules', []), ensure_ascii=False)}
+- Security Guardrails: {json.dumps(guidance.get('security_guardrails', []), ensure_ascii=False)}
+
+3. CURRENT DATABASE STATE & ACTIVE VIEW:
+- Active View Context: {snapshot_data.get('focused_page_data', '')}
 - Total Available Equipment/Components: {snapshot_data.get('available_equipment_count', 0)} / {snapshot_data.get('total_equipment_count', 0)} available
 - Today's Scheduled Classes & Students: {json.dumps(snapshot_data.get('today_scheduled_students', []), ensure_ascii=False)}
 
-3. REAL-TIME LOGS & SENSOR ALERTS:
+4. REAL-TIME LOGS & HARDWARE ALERTS:
 - Top 5 Recent FaceID Check-in Events: {json.dumps(snapshot_data.get('top_5_faceid_events', []), ensure_ascii=False)}
 - Top 5 Recent Sensor Telemetry & Security Alerts: {json.dumps(snapshot_data.get('top_5_sensor_incidents', []), ensure_ascii=False)}
 - Hardware Nodes State: {json.dumps(snapshot_data.get('nodes_state', []), ensure_ascii=False)}
@@ -330,7 +355,8 @@ Below is the REAL-TIME SNAPSHOT of the system captured at THIS_MOMENT ({snapshot
 
 RESPONSE RULES:
 - Always answer using the exact real-time snapshot data above.
-- When referring to system pages or features, ALWAYS embed clickable Markdown links in the format [Feature Name](/route) so users can click to navigate immediately.
+- When referring to system pages or features, ALWAYS embed clickable Markdown links in the format [Title](/path) so users can click to navigate immediately.
+- Enforce RBAC: Never advise a Lab Admin to execute Super Admin actions (creating labs, changing global AI thresholds).
 - Be concise, clear, helpful, and highly professional.
 
 [USER QUESTION]: "{user_prompt}"
