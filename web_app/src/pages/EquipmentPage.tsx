@@ -281,11 +281,12 @@ export function EquipmentPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         {[
           { label: 'Total Inventory', value: totalCount, color: 'text-[#0f172a]' },
           { label: 'Available In Lab', value: availableCount, color: 'text-green' },
           { label: 'Borrowed / In Use', value: inUseCount, color: 'text-blue' },
+          { label: 'Overdue Borrowed', value: (equipment || []).filter(i => i.status === 'in_use' && i.returnDate && i.returnDate < getTodayStr()).length, color: 'text-red font-extrabold' },
           { label: 'Maintenance / Issues', value: issueCount, color: 'text-amber' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-5 shadow-sm">
@@ -345,56 +346,71 @@ export function EquipmentPage() {
             </tr>
           </thead>
           <tbody>
-            {paginatedEquipment.map(item => (
-              <tr
-                key={item.id}
-                onContextMenu={(e) => handleRowContextMenu(e, item)}
-                className="border-b border-line hover:bg-orange-50/40 transition-colors cursor-pointer select-none"
-                title="Right-click for options (Borrow / Return / Delete)"
-              >
-                <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
-                <td className="px-5 py-4 font-medium text-sm text-[#0f172a]">
-                  {item.name}
-                  {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
-                </td>
-                <td className="px-5 py-4 text-xs text-[#475569]">
-                  <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px]">{item.category}</span>
-                </td>
-                <td className="px-5 py-4">
-                  <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
-                </td>
-                <td className="px-5 py-4 text-xs font-medium text-[#0f172a]">
-                  {item.borrowerName ? (
-                    <div>
-                      <p className="font-bold text-[#0f172a]">{item.borrowerName}</p>
-                      <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
-                    </div>
-                  ) : (
-                    <span className="text-[#cbd5e1] font-mono">-</span>
-                  )}
-                </td>
-                <td className="px-5 py-4 text-xs font-mono text-[#475569]">
-                  {item.returnDate ? (
-                    <span className="bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]">
-                      {item.returnDate}
-                    </span>
-                  ) : (
-                    <span className="text-[#cbd5e1]">-</span>
-                  )}
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex gap-2">
-                    {item.status === 'in_use' ? (
-                      <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5">Return</Button>
+            {paginatedEquipment.map(item => {
+              const todayStr = getTodayStr()
+              const isOverdue = item.status === 'in_use' && !!item.returnDate && item.returnDate < todayStr
+              const rowBgClass = isOverdue
+                ? 'bg-red-50/90 hover:bg-red-100/90 border-l-4 border-l-red-500'
+                : 'border-b border-line hover:bg-orange-50/40'
+
+              return (
+                <tr
+                  key={item.id}
+                  onContextMenu={(e) => handleRowContextMenu(e, item)}
+                  className={`${rowBgClass} transition-colors cursor-pointer select-none`}
+                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Right-click for options (Borrow / Return / Delete)'}
+                >
+                  <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
+                  <td className="px-5 py-4 font-medium text-sm text-[#0f172a]">
+                    {item.name}
+                    {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
+                  </td>
+                  <td className="px-5 py-4 text-xs text-[#475569]">
+                    <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px]">{item.category}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
+                  </td>
+                  <td className="px-5 py-4 text-xs font-medium text-[#0f172a]">
+                    {item.borrowerName ? (
+                      <div>
+                        <p className="font-bold text-[#0f172a]">{item.borrowerName}</p>
+                        <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
+                      </div>
                     ) : (
-                      <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50">Borrow</Button>
+                      <span className="text-[#cbd5e1] font-mono">-</span>
                     )}
-                    <Button variant="ghost" size="xs" onClick={() => openEditModal(item)}>Edit</Button>
-                    <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5">Delete</Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-5 py-4 text-xs font-mono text-[#475569]">
+                    {item.returnDate ? (
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={isOverdue ? "bg-red-100 text-red-800 font-bold border border-red-300 px-2 py-0.5 rounded text-[11px]" : "bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]"}>
+                          {item.returnDate}
+                        </span>
+                        {isOverdue && (
+                          <span className="bg-red-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">
+                            OVERDUE WARNING
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[#cbd5e1]">-</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex gap-2">
+                      {item.status === 'in_use' ? (
+                        <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5">Return</Button>
+                      ) : (
+                        <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50">Borrow</Button>
+                      )}
+                      <Button variant="ghost" size="xs" onClick={() => openEditModal(item)}>Edit</Button>
+                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5">Delete</Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
 
