@@ -580,6 +580,11 @@ export function EquipmentPage() {
           setSubmitting(false)
           return
         }
+        if (!removeNotes.trim()) {
+          showToast('Please enter Removal / Transfer Notes before proceeding with relocation.', 'error')
+          setSubmitting(false)
+          return
+        }
 
         const targetLab = availableLabs.find(l => l.id === targetLabId)
         const targetLabName = targetLab ? targetLab.name : targetLabId
@@ -1370,15 +1375,27 @@ export function EquipmentPage() {
 
               {/* Notes / Reason Details */}
               <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">
-                  Removal / Transfer Notes (Optional)
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold flex items-center justify-between">
+                  <span>Removal / Transfer Notes {removeReason === 'relocate' ? '*' : '(Optional)'}</span>
+                  {removeReason === 'relocate' && !removeNotes.trim() && (
+                    <span className="text-[10px] text-amber-700 font-normal normal-case">Required for relocation</span>
+                  )}
                 </label>
                 <textarea
-                  placeholder="Provide reason, defect description, or transfer authorization details..."
+                  required={removeReason === 'relocate'}
+                  placeholder={
+                    removeReason === 'relocate'
+                      ? "Required: Provide transfer authorization, reason, or destination details..."
+                      : "Provide reason, defect description, or decommission details..."
+                  }
                   value={removeNotes}
                   onChange={e => setRemoveNotes(e.target.value)}
                   rows={2}
-                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full resize-none"
+                  className={`bg-raised border rounded px-3 py-2 text-sm text-[#0f172a] outline-none w-full resize-none transition-colors ${
+                    removeReason === 'relocate' && !removeNotes.trim()
+                      ? 'border-amber-400 focus:border-amber-500 bg-amber-50/20'
+                      : 'border-line focus:border-[#ea580c]/50'
+                  }`}
                 />
               </div>
 
@@ -1389,7 +1406,7 @@ export function EquipmentPage() {
                 <Button
                   variant="primary"
                   type="submit"
-                  disabled={submitting || (removeReason === 'relocate' && !targetLabId)}
+                  disabled={submitting || (removeReason === 'relocate' && (!targetLabId || !removeNotes.trim()))}
                   className={removeReason === 'relocate' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'}
                 >
                   {submitting
