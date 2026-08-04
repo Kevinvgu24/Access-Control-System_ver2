@@ -1086,7 +1086,7 @@ export function EquipmentPage() {
       {(showAddModal || editingItem) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={() => !submitting && (setShowAddModal(false), setEditingItem(null))} />
-          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+          <div className="relative z-10 w-full max-w-xl bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-line pb-3">
               <h3 className="text-lg font-bold text-[#0f172a]">
                 {editingItem ? 'Edit Equipment Details' : 'Add New Equipment / Device'}
@@ -1163,9 +1163,11 @@ export function EquipmentPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">
-                    {entryMode === 'batch' ? 'Batch Code / Serial ID *' : 'University Asset Tag / Serial *'}
-                  </label>
+                  <div className="h-5 flex items-end">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">
+                      {entryMode === 'batch' ? 'Batch Code / Serial ID *' : 'Asset Tag / Serial Number *'}
+                    </label>
+                  </div>
                   <input
                     type="text"
                     required
@@ -1177,7 +1179,9 @@ export function EquipmentPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Category</label>
+                  <div className="h-5 flex items-end">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">Category</label>
+                  </div>
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value)}
@@ -1263,7 +1267,9 @@ export function EquipmentPage() {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Purchase Contract No.</label>
+                    <div className="h-4 flex items-end">
+                      <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Purchase Contract No.</label>
+                    </div>
                     <input
                       type="text"
                       placeholder="e.g. CTR-2026-LAB01"
@@ -1274,7 +1280,9 @@ export function EquipmentPage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Invoice No.</label>
+                    <div className="h-4 flex items-end">
+                      <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Invoice No.</label>
+                    </div>
                     <input
                       type="text"
                       placeholder="e.g. INV-984021"
@@ -1285,7 +1293,9 @@ export function EquipmentPage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Purchase Date</label>
+                    <div className="h-4 flex items-end">
+                      <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Purchase Date</label>
+                    </div>
                     <input
                       type="date"
                       value={purchaseDate}
@@ -1295,7 +1305,9 @@ export function EquipmentPage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold">Batch / Lot No.</label>
+                    <div className="h-4 flex items-end">
+                      <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Batch / Lot No.</label>
+                    </div>
                     <input
                       type="text"
                       placeholder="e.g. LOT-2026-B2"
