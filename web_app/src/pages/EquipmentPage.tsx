@@ -1355,46 +1355,16 @@ export function EquipmentPage() {
                 </select>
               </div>
 
-              {isGroupBatch ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="h-5 flex items-end">
-                      <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">Location / Storage Bin</label>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="e.g. Shelf A - Bin 3"
-                      value={location}
-                      onChange={e => setLocation(e.target.value)}
-                      className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <div className="h-5 flex items-end">
-                      <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold whitespace-nowrap">Batch / Lot No. (Lô hàng)</label>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="e.g. LOT-2026-B1"
-                      value={batchNumber}
-                      onChange={e => setBatchNumber(e.target.value)}
-                      className="bg-raised border border-orange-200 rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Location / Storage Bin</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Shelf A - Bin 3"
-                    value={location}
-                    onChange={e => setLocation(e.target.value)}
-                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
-                  />
-                </div>
-              )}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Location / Storage Bin</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Shelf A - Bin 3"
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
+                />
+              </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Notes / Specs</label>
@@ -1439,7 +1409,7 @@ export function EquipmentPage() {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 col-span-2">
                     <div className="h-4 flex items-end">
                       <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Purchase Date</label>
                     </div>
@@ -1448,19 +1418,6 @@ export function EquipmentPage() {
                       value={purchaseDate}
                       onChange={e => setPurchaseDate(e.target.value)}
                       className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <div className="h-4 flex items-end">
-                      <label className="font-mono text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">Batch / Lot No.</label>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="e.g. LOT-2026-B2"
-                      value={batchNumber}
-                      onChange={e => setBatchNumber(e.target.value)}
-                      className="bg-raised border border-line rounded px-3 py-1.5 text-xs text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
                     />
                   </div>
                 </div>
