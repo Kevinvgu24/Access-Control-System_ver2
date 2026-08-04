@@ -358,6 +358,7 @@ export function EquipmentPage() {
     }
 
     const autoSerial = `${prefix}-${String(nextSeq).padStart(3, '0')}`
+    const existingBatchNumber = groupItems.find(i => !!i.batchNumber)?.batchNumber || ''
 
     setEntryMode('individual')
     setSerialNumber(autoSerial)
@@ -371,7 +372,7 @@ export function EquipmentPage() {
     setContractNumber('')
     setInvoiceNumber('')
     setPurchaseDate(getTodayStr())
-    setBatchNumber('')
+    setBatchNumber(existingBatchNumber)
     setImage(groupImage || '')
     setShowAddModal(true)
   }
@@ -742,13 +743,20 @@ export function EquipmentPage() {
                                 }`}
                               >
                                 <td className="px-5 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                                  <div className="flex flex-col">
+                                  <div className="flex flex-col gap-0.5">
                                     <span>{item.serialNumber}</span>
-                                    {item.purchaseDate && (
-                                      <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
-                                        Added: {item.purchaseDate}
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      {item.purchaseDate && (
+                                        <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
+                                          Added: {item.purchaseDate}
+                                        </span>
+                                      )}
+                                      {item.batchNumber && (
+                                        <span className="text-[9px] font-mono font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                                          Lot: {item.batchNumber}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="px-5 py-3 text-xs text-slate-700 font-medium">
@@ -852,13 +860,20 @@ export function EquipmentPage() {
                       title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-0.5">
                           <span>{item.serialNumber}</span>
-                          {item.purchaseDate && (
-                            <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
-                              Added: {item.purchaseDate}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {item.purchaseDate && (
+                              <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
+                                Added: {item.purchaseDate}
+                              </span>
+                            )}
+                            {item.batchNumber && (
+                              <span className="text-[9px] font-mono font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                                Lot: {item.batchNumber}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td 
@@ -1326,15 +1341,32 @@ export function EquipmentPage() {
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Location / Storage Bin</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Shelf A - Bin 3"
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <div className="h-5 flex items-end">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold whitespace-nowrap">Location / Storage Bin</label>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Shelf A - Bin 3"
+                    value={location}
+                    onChange={e => setLocation(e.target.value)}
+                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="h-5 flex items-end">
+                    <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold whitespace-nowrap">Batch / Lot No. (Lô hàng)</label>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. LOT-2026-B1"
+                    value={batchNumber}
+                    onChange={e => setBatchNumber(e.target.value)}
+                    className="bg-raised border border-orange-200 rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
