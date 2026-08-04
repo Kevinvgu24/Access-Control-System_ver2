@@ -223,6 +223,56 @@ export function EquipmentPage() {
     })
   }, [equipment, search, statusFilter, categoryFilter])
 
+  // View Mode & Grouping state
+  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('flat')
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }))
+  }
+
+  const groupedEquipment = useMemo(() => {
+    const groups: Record<string, {
+      name: string
+      category: string
+      image: string
+      items: Equipment[]
+      total: number
+      available: number
+      inUse: number
+      issues: number
+    }> = {}
+
+    for (const item of filtered) {
+      const key = (item.name || 'Unnamed Equipment').trim()
+      if (!groups[key]) {
+        groups[key] = {
+          name: key,
+          category: item.category || 'Module',
+          image: item.image || '',
+          items: [],
+          total: 0,
+          available: 0,
+          inUse: 0,
+          issues: 0
+        }
+      }
+      groups[key].items.push(item)
+      groups[key].total += 1
+      if (item.status === 'available') groups[key].available += 1
+      else if (item.status === 'in_use') groups[key].inUse += 1
+      else if (item.status === 'maintenance' || item.status === 'broken') groups[key].issues += 1
+      if (!groups[key].image && item.image) {
+        groups[key].image = item.image
+      }
+    }
+
+    return Object.values(groups)
+  }, [filtered])
+
   const PAGE_SIZE = 25
   const paginatedEquipment = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE
@@ -245,6 +295,18 @@ export function EquipmentPage() {
     setSpecs('')
     setNotes('')
     setImage('')
+    setShowAddModal(true)
+  }
+
+  const openAddModalForGroup = (groupName: string, groupCategory: string, groupImage: string) => {
+    setSerialNumber('')
+    setName(groupName)
+    setCategory(groupCategory || 'Module')
+    setStatus('available')
+    setLocation('')
+    setSpecs('')
+    setNotes('')
+    setImage(groupImage || '')
     setShowAddModal(true)
   }
 
@@ -409,15 +471,49 @@ export function EquipmentPage() {
       <Panel pad={false} className="overflow-x-auto">
         {/* Controls Layout in 2 distinct rows */}
         <div className="p-5 border-b border-line flex flex-col gap-3">
-          {/* Row 1: Search Box & Add Equipment Button */}
+          {/* Row 1: Search Box, View Mode Switch & Add Equipment Button */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <input
-              type="text"
-              placeholder="Search by serial number, name, category, or student borrower..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors w-full sm:w-96"
-            />
+            <div className="flex items-center gap-3 flex-wrap flex-1">
+              <input
+                type="text"
+                placeholder="Search by serial number, name, category, or student borrower..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors w-full sm:w-80"
+              />
+
+              {/* View Mode Toggle Switch */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('flat')}
+                  className={`px-3 py-1 rounded-md font-mono text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'flat'
+                      ? 'bg-white text-[#ea580c] shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  📋 Flat View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('grouped')
+                    const allExpanded: Record<string, boolean> = {}
+                    groupedEquipment.forEach(g => { allExpanded[g.name] = true })
+                    setExpandedGroups(allExpanded)
+                  }}
+                  className={`px-3 py-1 rounded-md font-mono text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'grouped'
+                      ? 'bg-white text-[#ea580c] shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  📦 Grouped View ({groupedEquipment.length})
+                </button>
+              </div>
+            </div>
+
             <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Device</Button>
           </div>
 
@@ -446,114 +542,265 @@ export function EquipmentPage() {
           </div>
         </div>
 
-        {/* Equipment Table */}
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-raised">
-              {[
-                { label: 'Serial Number', class: 'text-left whitespace-nowrap px-4 py-3' },
-                { label: 'Equipment Name', class: 'text-left px-4 py-3' },
-                { label: 'Category', class: 'text-left whitespace-nowrap px-4 py-3' },
-                { label: 'Status', class: 'text-left whitespace-nowrap px-4 py-3' },
-                { label: 'Borrower / User', class: 'text-left whitespace-nowrap px-4 py-3 w-full' },
-                { label: 'Return Date', class: 'text-left whitespace-nowrap px-4 py-3' },
-                { label: 'Actions', class: 'text-right whitespace-nowrap px-4 py-3' }
-              ].map(h => (
-                <th key={h.label} className={`font-mono text-[11px] uppercase tracking-wider font-bold text-[#1e293b] border-b border-line bg-slate-100/70 ${h.class}`}>
-                  {h.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedEquipment.map(item => {
-              const todayStr = getTodayStr()
-              const isOverdue = item.status === 'in_use' && !!item.returnDate && item.returnDate < todayStr
-              const rowBgClass = isOverdue
-                ? 'bg-red-50/90 hover:bg-red-100/90 border-l-4 border-l-red-500'
-                : 'border-b border-line hover:bg-orange-50/40'
-
+        {/* View Mode Rendering: Grouped View vs Flat View */}
+        {viewMode === 'grouped' ? (
+          <div className="flex flex-col gap-4 p-5">
+            {groupedEquipment.map(group => {
+              const isExpanded = expandedGroups[group.name] !== false
               return (
-                <tr
-                  key={item.id}
-                  onContextMenu={(e) => handleRowContextMenu(e, item)}
-                  className={`${rowBgClass} transition-colors cursor-pointer select-none`}
-                  title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
-                >
-                  <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
-                  <td 
-                    className="px-4 py-3 font-medium text-sm text-[#0f172a]"
-                    onMouseMove={(e) => handleCellMouseMove(e, item)}
-                    onMouseLeave={handleCellMouseLeave}
+                <div key={group.name} className="border border-line rounded-xl overflow-hidden bg-surface shadow-sm transition-all">
+                  {/* Group Header Card */}
+                  <div
+                    onClick={() => toggleGroup(group.name)}
+                    className="p-4 bg-raised hover:bg-slate-100/80 transition-colors cursor-pointer flex items-center justify-between gap-4 flex-wrap border-b border-line"
                   >
-                    <div className="flex items-center gap-2.5">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-8 h-8 rounded object-cover border border-line shadow-sm shrink-0" />
+                    <div className="flex items-center gap-3.5">
+                      {group.image ? (
+                        <img src={group.image} alt={group.name} className="w-11 h-11 rounded-lg object-cover border border-line shadow-sm shrink-0" />
                       ) : (
-                        <div className="w-8 h-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
-                          📷
+                        <div className="w-11 h-11 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-500 font-bold text-lg shrink-0">
+                          📦
                         </div>
                       )}
                       <div>
-                        <span className="font-semibold text-[#0f172a] block">{item.name}</span>
-                        {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-base text-[#0f172a]">{group.name}</h3>
+                          <span className="bg-slate-200 text-slate-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded">{group.category}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                          {group.items.length} unit{group.items.length > 1 ? 's' : ''} registered in lab
+                        </p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[#475569]">
-                    <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px] whitespace-nowrap">{item.category}</span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-xs font-medium text-[#0f172a]">
-                    {item.borrowerName ? (
-                      <div>
-                        <p className="font-bold text-[#0f172a] whitespace-nowrap">{item.borrowerName}</p>
-                        <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
-                      </div>
-                    ) : (
-                      <span className="text-[#cbd5e1] font-mono">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs font-mono text-[#475569] whitespace-nowrap">
-                    {item.returnDate ? (
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={isOverdue ? "bg-red-100 text-red-800 font-bold border border-red-300 px-2 py-0.5 rounded text-[11px]" : "bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]"}>
-                          {item.returnDate}
+
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Group Status Counters */}
+                      <div className="flex items-center gap-2">
+                        <span className="bg-emerald-50 text-emerald-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-200">
+                          {group.available} Available
                         </span>
-                        {isOverdue && (
-                          <span className="bg-red-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">
-                            OVERDUE WARNING
+                        {group.inUse > 0 && (
+                          <span className="bg-blue-50 text-blue-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200">
+                            {group.inUse} In Use
+                          </span>
+                        )}
+                        {group.issues > 0 && (
+                          <span className="bg-amber-50 text-amber-800 font-mono font-bold text-xs px-2.5 py-1 rounded-md border border-amber-200">
+                            {group.issues} Issues
                           </span>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-[#cbd5e1]">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {item.status === 'in_use' ? (
-                          <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
-                        ) : (
-                          <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
-                        )}
-                        <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
-                      </div>
-                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+
+                      {/* Add Serial Unit button pre-filled with Group Name */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openAddModalForGroup(group.name, group.category, group.image)
+                        }}
+                        className="text-xs font-bold text-[#ea580c] hover:bg-orange-100/60 px-3 py-1 rounded-md transition-colors border border-[#ea580c]/30 cursor-pointer"
+                      >
+                        + Add Serial Unit
+                      </button>
+
+                      <span className="text-slate-400 font-bold text-sm ml-1">
+                        {isExpanded ? '▲' : '▼'}
+                      </span>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+
+                  {/* Group Unit Sub-Table (Expanded) */}
+                  {isExpanded && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100/60 border-b border-line">
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Serial Number</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Location / Storage</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Status</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 w-full">Borrower / User</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Return Date</th>
+                            <th className="px-5 py-2.5 text-right font-mono text-[10px] font-bold uppercase text-slate-600">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map(item => {
+                            const todayStr = getTodayStr()
+                            const isOverdue = item.status === 'in_use' && !!item.returnDate && item.returnDate < todayStr
+                            return (
+                              <tr
+                                key={item.id}
+                                onContextMenu={(e) => handleRowContextMenu(e, item)}
+                                className={`border-b border-line hover:bg-orange-50/30 transition-colors ${
+                                  isOverdue ? 'bg-red-50/90' : ''
+                                }`}
+                              >
+                                <td className="px-5 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
+                                  {item.serialNumber}
+                                </td>
+                                <td className="px-5 py-3 text-xs text-slate-700 font-medium">
+                                  {item.location ? `Bin: ${item.location}` : <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="px-5 py-3 whitespace-nowrap">
+                                  <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
+                                </td>
+                                <td className="px-5 py-3 text-xs font-medium text-[#0f172a]">
+                                  {item.borrowerName ? (
+                                    <div>
+                                      <p className="font-bold text-[#0f172a] whitespace-nowrap">{item.borrowerName}</p>
+                                      <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300 font-mono">-</span>
+                                  )}
+                                </td>
+                                <td className="px-5 py-3 text-xs font-mono text-[#475569] whitespace-nowrap">
+                                  {item.returnDate ? (
+                                    <span className={isOverdue ? "bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[11px]" : "bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[11px]"}>
+                                      {item.returnDate}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
+                                <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {item.status === 'in_use' ? (
+                                      <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
+                                    ) : (
+                                      <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
+                                    )}
+                                    <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
+                                    <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               )
             })}
-          </tbody>
-        </table>
 
-        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
-        {filtered.length === 0 && (
-          <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No equipment matches the selected filters for this lab.</p>
+            {groupedEquipment.length === 0 && (
+              <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No equipment matches the selected filters for this lab.</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Equipment Table (Flat View) */}
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-raised">
+                  {[
+                    { label: 'Serial Number', class: 'text-left whitespace-nowrap px-4 py-3' },
+                    { label: 'Equipment Name', class: 'text-left px-4 py-3' },
+                    { label: 'Category', class: 'text-left whitespace-nowrap px-4 py-3' },
+                    { label: 'Status', class: 'text-left whitespace-nowrap px-4 py-3' },
+                    { label: 'Borrower / User', class: 'text-left whitespace-nowrap px-4 py-3 w-full' },
+                    { label: 'Return Date', class: 'text-left whitespace-nowrap px-4 py-3' },
+                    { label: 'Actions', class: 'text-right whitespace-nowrap px-4 py-3' }
+                  ].map(h => (
+                    <th key={h.label} className={`font-mono text-[11px] uppercase tracking-wider font-bold text-[#1e293b] border-b border-line bg-slate-100/70 ${h.class}`}>
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedEquipment.map(item => {
+                  const todayStr = getTodayStr()
+                  const isOverdue = item.status === 'in_use' && !!item.returnDate && item.returnDate < todayStr
+                  const rowBgClass = isOverdue
+                    ? 'bg-red-50/90 hover:bg-red-100/90 border-l-4 border-l-red-500'
+                    : 'border-b border-line hover:bg-orange-50/40'
+
+                  return (
+                    <tr
+                      key={item.id}
+                      onContextMenu={(e) => handleRowContextMenu(e, item)}
+                      className={`${rowBgClass} transition-colors cursor-pointer select-none`}
+                      title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
+                    >
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">{item.serialNumber}</td>
+                      <td 
+                        className="px-4 py-3 font-medium text-sm text-[#0f172a]"
+                        onMouseMove={(e) => handleCellMouseMove(e, item)}
+                        onMouseLeave={handleCellMouseLeave}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="w-8 h-8 rounded object-cover border border-line shadow-sm shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
+                              📷
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-semibold text-[#0f172a] block">{item.name}</span>
+                            {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[#475569]">
+                        <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px] whitespace-nowrap">{item.category}</span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-medium text-[#0f172a]">
+                        {item.borrowerName ? (
+                          <div>
+                            <p className="font-bold text-[#0f172a] whitespace-nowrap">{item.borrowerName}</p>
+                            <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
+                          </div>
+                        ) : (
+                          <span className="text-[#cbd5e1] font-mono">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-[#475569] whitespace-nowrap">
+                        {item.returnDate ? (
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className={isOverdue ? "bg-red-100 text-red-800 font-bold border border-red-300 px-2 py-0.5 rounded text-[11px]" : "bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]"}>
+                              {item.returnDate}
+                            </span>
+                            {isOverdue && (
+                              <span className="bg-red-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">
+                                OVERDUE WARNING
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[#cbd5e1]">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {item.status === 'in_use' ? (
+                              <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5 h-6 px-2 text-[11px]">Return</Button>
+                            ) : (
+                              <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50 h-6 px-2 text-[11px]">Borrow</Button>
+                            )}
+                            <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
+                          </div>
+                          <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
+            {filtered.length === 0 && (
+              <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No equipment matches the selected filters for this lab.</p>
+            )}
+          </>
         )}
       </Panel>
 
