@@ -542,10 +542,10 @@ class FaceDatabase:
                 "image": r[15] or "",
                 "createdAt": r[16] or "",
                 "updatedAt": r[17] or "",
-                "contractNumber": r[18] or "" if len(r) > 18 else "",
-                "invoiceNumber": r[19] or "" if len(r) > 19 else "",
-                "purchaseDate": r[20] or "" if len(r) > 20 else "",
-                "batchNumber": r[21] or "" if len(r) > 21 else ""
+                "contractNumber": (r[18] if len(r) > 18 else "") or "",
+                "invoiceNumber": (r[19] if len(r) > 19 else "") or "",
+                "purchaseDate": (r[20] if len(r) > 20 else "") or "",
+                "batchNumber": (r[21] if len(r) > 21 else "") or ""
             })
         return items
 
