@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
@@ -16,16 +16,27 @@ const STATUS_TONE: Record<EquipmentStatus, 'green' | 'blue' | 'amber' | 'red'> =
 
 const STATUS_LABEL: Record<EquipmentStatus, string> = {
   available: 'Available',
-  in_use: 'In Use',
+  in_use: 'In Use / Borrowed',
   maintenance: 'Maintenance',
   broken: 'Broken'
 }
 
 const CATEGORY_OPTS = ['All', 'Module', 'Sensor', 'Microcontroller', 'Device', 'Tool']
 
+function getTodayStr() {
+  const d = new Date()
+  return d.toISOString().split('T')[0]
+}
+
+function getNextWeekStr() {
+  const d = new Date()
+  d.setDate(d.getDate() + 7)
+  return d.toISOString().split('T')[0]
+}
+
 export function EquipmentPage() {
   const { selectedLabId } = useLabStore()
-  const { equipment, fetchEquipment, addEquipment, updateEquipment, deleteEquipment } = useAdminStore()
+  const { equipment, fetchEquipment, addEquipment, updateEquipment, deleteEquipment, borrowEquipment, returnEquipment } = useAdminStore()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | 'all'>('all')
@@ -35,17 +46,31 @@ export function EquipmentPage() {
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
+  const [borrowingItem, setBorrowingItem] = useState<Equipment | null>(null)
 
-  // Form State
+  // Context Menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    item: Equipment
+  } | null>(null)
+
+  // Form State - Add/Edit
   const [serialNumber, setSerialNumber] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState('Module')
   const [status, setStatus] = useState<EquipmentStatus>('available')
-  const [assignedTo, setAssignedTo] = useState('')
   const [location, setLocation] = useState('')
   const [specs, setSpecs] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Form State - Borrowing
+  const [borrowerName, setBorrowerName] = useState('')
+  const [borrowerId, setBorrowerId] = useState('')
+  const [borrowDate, setBorrowDate] = useState(getTodayStr())
+  const [returnDate, setReturnDate] = useState(getNextWeekStr())
+  const [borrowNotes, setBorrowNotes] = useState('')
 
   useEffect(() => {
     if (selectedLabId) {
@@ -53,13 +78,31 @@ export function EquipmentPage() {
     }
   }, [selectedLabId, fetchEquipment])
 
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = () => setContextMenu(null)
+    window.addEventListener('click', handleOutsideClick)
+    return () => window.removeEventListener('click', handleOutsideClick)
+  }, [])
+
+  const handleRowContextMenu = (e: React.MouseEvent, item: Equipment) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      item
+    })
+  }
+
   const filtered = useMemo(() => {
     return (equipment || []).filter(item => {
       if (!item) return false
       const sNum = (item.serialNumber || '').toLowerCase()
       const eqName = (item.name || '').toLowerCase()
       const eqCat = (item.category || '').toLowerCase()
-      const eqAssigned = (item.assignedTo || '').toLowerCase()
+      const eqBorrower = (item.borrowerName || '').toLowerCase()
+      const eqBorrowerId = (item.borrowerId || '').toLowerCase()
       const searchLower = (search || '').toLowerCase()
 
       const matchesSearch =
@@ -67,7 +110,8 @@ export function EquipmentPage() {
         sNum.includes(searchLower) ||
         eqName.includes(searchLower) ||
         eqCat.includes(searchLower) ||
-        eqAssigned.includes(searchLower)
+        eqBorrower.includes(searchLower) ||
+        eqBorrowerId.includes(searchLower)
 
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter
       const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter
@@ -93,7 +137,6 @@ export function EquipmentPage() {
     setName('')
     setCategory('Module')
     setStatus('available')
-    setAssignedTo('')
     setLocation('')
     setSpecs('')
     setNotes('')
@@ -106,13 +149,21 @@ export function EquipmentPage() {
     setName(item.name)
     setCategory(item.category)
     setStatus(item.status)
-    setAssignedTo(item.assignedTo || '')
     setLocation(item.location || '')
     setSpecs(item.specs || '')
     setNotes(item.notes || '')
   }
 
-  const handleSave = async (e: React.FormEvent) => {
+  const openBorrowModal = (item: Equipment) => {
+    setBorrowingItem(item)
+    setBorrowerName(item.borrowerName || '')
+    setBorrowerId(item.borrowerId || '')
+    setBorrowDate(item.borrowDate || getTodayStr())
+    setReturnDate(item.returnDate || getNextWeekStr())
+    setBorrowNotes(item.borrowNotes || '')
+  }
+
+  const handleSaveAddEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedLabId) return
     if (!serialNumber.trim() || !name.trim()) {
@@ -128,7 +179,6 @@ export function EquipmentPage() {
           name: name.trim(),
           category,
           status,
-          assignedTo: assignedTo.trim(),
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim()
@@ -141,7 +191,6 @@ export function EquipmentPage() {
           name: name.trim(),
           category,
           status,
-          assignedTo: assignedTo.trim(),
           location: location.trim(),
           specs: specs.trim(),
           notes: notes.trim()
@@ -153,6 +202,50 @@ export function EquipmentPage() {
       alert(err instanceof Error ? err.message : 'Failed to save equipment')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleConfirmBorrow = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLabId || !borrowingItem) return
+    if (!borrowerName.trim() || !borrowerId.trim()) {
+      alert('Student Name and Student ID are required to checkout equipment.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await borrowEquipment(
+        selectedLabId,
+        borrowingItem.id,
+        {
+          borrowerName: borrowerName.trim(),
+          borrowerId: borrowerId.trim(),
+          borrowDate,
+          returnDate,
+          borrowNotes: borrowNotes.trim()
+        },
+        borrowingItem.name,
+        borrowingItem.serialNumber
+      )
+      alert(`Equipment [${borrowingItem.serialNumber}] successfully checked out to ${borrowerName.trim()}! Notification pushed to Dashboard.`)
+      setBorrowingItem(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to process equipment borrowing')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleReturnEquipment = async (item: Equipment) => {
+    if (!selectedLabId) return
+    if (confirm(`Confirm return of equipment "${item.name}" [${item.serialNumber}] to lab storage?`)) {
+      try {
+        await returnEquipment(selectedLabId, item.id, item.name, item.serialNumber)
+        alert(`Equipment [${item.serialNumber}] returned to available inventory! Notification pushed to Dashboard.`)
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to return equipment')
+      }
     }
   }
 
@@ -174,13 +267,15 @@ export function EquipmentPage() {
     }`
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-7 relative">
       {/* Header */}
       <div className="flex justify-between items-end gap-4 flex-wrap">
         <div>
           <p className="font-mono text-xs uppercase tracking-widest text-[#ea580c] font-bold mb-1">INVENTORY</p>
           <h1 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">Lab Equipment & Modules</h1>
-          <p className="text-sm text-[#475569] mt-1">Manage hardware modules, sensors, and equipment for room <strong className="font-mono text-[#ea580c]">{selectedLabId}</strong>.</p>
+          <p className="text-sm text-[#475569] mt-1">
+            Right-click any equipment row to <strong>Borrow (Mượn)</strong>, <strong>Return (Trả)</strong>, or <strong>Delete (Xóa)</strong>.
+          </p>
         </div>
         <Button variant="primary" onClick={openAddModal}>+ Add Equipment / Module</Button>
       </div>
@@ -189,8 +284,8 @@ export function EquipmentPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Inventory', value: totalCount, color: 'text-[#0f172a]' },
-          { label: 'Available', value: availableCount, color: 'text-green' },
-          { label: 'In Use / Borrowed', value: inUseCount, color: 'text-blue' },
+          { label: 'Available In Lab', value: availableCount, color: 'text-green' },
+          { label: 'Borrowed / In Use', value: inUseCount, color: 'text-blue' },
           { label: 'Maintenance / Issues', value: issueCount, color: 'text-amber' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-5 shadow-sm">
@@ -208,7 +303,7 @@ export function EquipmentPage() {
           <div className="flex items-center">
             <input
               type="text"
-              placeholder="Search by serial number, name, category, or assigned user..."
+              placeholder="Search by serial number, name, category, or student borrower..."
               value={search}
               onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
               className="bg-raised border border-line rounded px-4 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors w-full sm:w-96"
@@ -244,18 +339,23 @@ export function EquipmentPage() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-raised">
-              {['Serial Number', 'Equipment Name', 'Category', 'Status', 'Assigned To', 'Location', 'Actions'].map(h => (
+              {['Serial Number', 'Equipment Name', 'Category', 'Status', 'Borrower / User', 'Return Date', 'Actions'].map(h => (
                 <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {paginatedEquipment.map(item => (
-              <tr key={item.id} className="border-b border-line hover:bg-slate-50/50 transition-colors">
+              <tr
+                key={item.id}
+                onContextMenu={(e) => handleRowContextMenu(e, item)}
+                className="border-b border-line hover:bg-orange-50/40 transition-colors cursor-pointer select-none"
+                title="Right-click for options (Borrow / Return / Delete)"
+              >
                 <td className="px-5 py-4 font-mono text-xs font-bold text-[#ea580c]">{item.serialNumber}</td>
                 <td className="px-5 py-4 font-medium text-sm text-[#0f172a]">
                   {item.name}
-                  {item.notes && <p className="text-[11px] text-[#94a3b8] font-normal">{item.notes}</p>}
+                  {item.location && <span className="text-[11px] text-[#94a3b8] block">Bin: {item.location}</span>}
                 </td>
                 <td className="px-5 py-4 text-xs text-[#475569]">
                   <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-[11px]">{item.category}</span>
@@ -263,10 +363,32 @@ export function EquipmentPage() {
                 <td className="px-5 py-4">
                   <Badge tone={STATUS_TONE[item.status] || 'green'}>{STATUS_LABEL[item.status] || item.status}</Badge>
                 </td>
-                <td className="px-5 py-4 text-xs font-medium text-[#0f172a]">{item.assignedTo || '-'}</td>
-                <td className="px-5 py-4 text-xs text-[#475569]">{item.location || '-'}</td>
+                <td className="px-5 py-4 text-xs font-medium text-[#0f172a]">
+                  {item.borrowerName ? (
+                    <div>
+                      <p className="font-bold text-[#0f172a]">{item.borrowerName}</p>
+                      <p className="font-mono text-[11px] text-[#ea580c]">ID: {item.borrowerId}</p>
+                    </div>
+                  ) : (
+                    <span className="text-[#cbd5e1] font-mono">-</span>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-xs font-mono text-[#475569]">
+                  {item.returnDate ? (
+                    <span className="bg-amber/10 text-amber-800 border border-amber/20 px-2 py-0.5 rounded text-[11px]">
+                      {item.returnDate}
+                    </span>
+                  ) : (
+                    <span className="text-[#cbd5e1]">-</span>
+                  )}
+                </td>
                 <td className="px-5 py-4">
                   <div className="flex gap-2">
+                    {item.status === 'in_use' ? (
+                      <Button variant="ghost" size="xs" onClick={() => handleReturnEquipment(item)} className="text-blue hover:bg-blue/5">Return</Button>
+                    ) : (
+                      <Button variant="ghost" size="xs" onClick={() => openBorrowModal(item)} className="text-orange-600 hover:bg-orange-50">Borrow</Button>
+                    )}
                     <Button variant="ghost" size="xs" onClick={() => openEditModal(item)}>Edit</Button>
                     <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5">Delete</Button>
                   </div>
@@ -281,6 +403,160 @@ export function EquipmentPage() {
           <p className="py-12 text-center font-mono text-xs text-[#94a3b8]">No equipment matches the selected filters for this lab.</p>
         )}
       </Panel>
+
+      {/* Floating Right-Click Context Menu */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 bg-white border border-line rounded-lg shadow-2xl min-w-[180px] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 border-b border-line bg-slate-50">
+            <p className="font-mono text-[10px] text-[#94a3b8] uppercase font-bold">Equipment Actions</p>
+            <p className="font-bold text-xs text-[#ea580c] truncate">{contextMenu.item.serialNumber}</p>
+          </div>
+
+          {contextMenu.item.status === 'in_use' ? (
+            <button
+              onClick={() => {
+                const item = contextMenu.item
+                setContextMenu(null)
+                handleReturnEquipment(item)
+              }}
+              className="w-full text-left px-4 py-2 text-xs font-semibold text-blue hover:bg-blue-50 transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              🔄 Return Equipment (Trả)
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                const item = contextMenu.item
+                setContextMenu(null)
+                openBorrowModal(item)
+              }}
+              className="w-full text-left px-4 py-2 text-xs font-semibold text-[#ea580c] hover:bg-orange-50 transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              📦 Borrow Equipment (Mượn)
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              const item = contextMenu.item
+              setContextMenu(null)
+              openEditModal(item)
+            }}
+            className="w-full text-left px-4 py-2 text-xs font-medium text-[#475569] hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            ✏️ Edit Details (Sửa)
+          </button>
+
+          <button
+            onClick={() => {
+              const item = contextMenu.item
+              setContextMenu(null)
+              handleDelete(item.id, item.serialNumber)
+            }}
+            className="w-full text-left px-4 py-2 text-xs font-semibold text-red hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            🗑️ Delete Equipment (Xóa)
+          </button>
+        </div>
+      )}
+
+      {/* Borrow Equipment Modal */}
+      {borrowingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !submitting && setBorrowingItem(null)} />
+          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center border-b border-line pb-3">
+              <div>
+                <p className="font-mono text-[10px] text-[#ea580c] uppercase font-bold">Equipment Checkout</p>
+                <h3 className="text-lg font-bold text-[#0f172a]">Borrow "{borrowingItem.name}"</h3>
+              </div>
+              <button
+                onClick={() => !submitting && setBorrowingItem(null)}
+                className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer"
+              >x</button>
+            </div>
+
+            <form onSubmit={handleConfirmBorrow} className="flex flex-col gap-4">
+              <div className="bg-raised border border-line rounded p-3 text-xs flex justify-between font-mono">
+                <span className="text-[#475569]">Serial: <strong className="text-[#ea580c]">{borrowingItem.serialNumber}</strong></span>
+                <span className="text-[#475569]">Category: <strong>{borrowingItem.category}</strong></span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Student Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Nguyen Van A"
+                    value={borrowerName}
+                    onChange={e => setBorrowerName(e.target.value)}
+                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Student / University ID *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 102240280"
+                    value={borrowerId}
+                    onChange={e => setBorrowerId(e.target.value)}
+                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] font-mono outline-none focus:border-[#ea580c]/50 w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Borrow Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={borrowDate}
+                    onChange={e => setBorrowDate(e.target.value)}
+                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full [color-scheme:light]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Expected Return Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={returnDate}
+                    onChange={e => setReturnDate(e.target.value)}
+                    className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full [color-scheme:light]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Borrowing Notes / Purpose</label>
+                <textarea
+                  placeholder="e.g. Borrowed for Course EE301 Lab Project..."
+                  value={borrowNotes}
+                  onChange={e => setBorrowNotes(e.target.value)}
+                  rows={2}
+                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end mt-3 pt-3 border-t border-line">
+                <Button variant="ghost" type="button" onClick={() => setBorrowingItem(null)} disabled={submitting}>Cancel</Button>
+                <Button variant="primary" type="submit" disabled={submitting || !borrowerName.trim() || !borrowerId.trim()}>
+                  {submitting ? 'Saving...' : 'Confirm Borrow & Push Notification'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Equipment Modal */}
       {(showAddModal || editingItem) && (
@@ -297,7 +573,7 @@ export function EquipmentPage() {
               >x</button>
             </div>
 
-            <form onSubmit={handleSave} className="flex flex-col gap-4">
+            <form onSubmit={handleSaveAddEdit} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">Serial Number *</label>

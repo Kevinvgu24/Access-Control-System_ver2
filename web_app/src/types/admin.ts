@@ -141,7 +141,6 @@ export interface LabMembership {
   updatedAt:         Timestamp | null
 }
 
-
 export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'broken'
 
 export interface Equipment {
@@ -155,6 +154,11 @@ export interface Equipment {
   location?:    string
   specs?:       string
   notes?:       string
+  borrowerName?: string
+  borrowerId?:   string
+  borrowDate?:   string
+  returnDate?:   string
+  borrowNotes?:  string
   createdAt?:   string
   updatedAt?:   string
 }

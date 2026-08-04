@@ -779,11 +779,29 @@ class FaceDatabase:
                 location TEXT,
                 specs TEXT,
                 notes TEXT,
+                borrower_name TEXT,
+                borrower_id TEXT,
+                borrow_date TEXT,
+                return_date TEXT,
+                borrow_notes TEXT,
                 createdAt TEXT,
                 updatedAt TEXT,
                 UNIQUE(labId, serial_number)
             )
         ''')
+        # Alter table for existing databases to add missing borrowing columns
+        borrow_cols = [
+            ("borrower_name", "TEXT"),
+            ("borrower_id", "TEXT"),
+            ("borrow_date", "TEXT"),
+            ("return_date", "TEXT"),
+            ("borrow_notes", "TEXT")
+        ]
+        for col_name, col_type in borrow_cols:
+            try:
+                c.execute(f"ALTER TABLE equipment ADD COLUMN {col_name} {col_type}")
+            except sqlite3.OperationalError:
+                pass
         conn.commit()
 
     def get_equipment(self, lab_id):
@@ -791,7 +809,8 @@ class FaceDatabase:
         self._ensure_equipment_table(conn)
         c = conn.cursor()
         c.execute('''
-            SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes, createdAt, updatedAt
+            SELECT id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
+                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, createdAt, updatedAt
             FROM equipment WHERE labId = ? ORDER BY serial_number ASC
         ''', (lab_id,))
         rows = c.fetchall()
@@ -809,8 +828,13 @@ class FaceDatabase:
                 "location": r[7] or "",
                 "specs": r[8] or "",
                 "notes": r[9] or "",
-                "createdAt": r[10] or "",
-                "updatedAt": r[11] or ""
+                "borrowerName": r[10] or "",
+                "borrowerId": r[11] or "",
+                "borrowDate": r[12] or "",
+                "returnDate": r[13] or "",
+                "borrowNotes": r[14] or "",
+                "createdAt": r[15] or "",
+                "updatedAt": r[16] or ""
             })
         return items
 
@@ -822,8 +846,9 @@ class FaceDatabase:
         now = datetime.datetime.now().isoformat()
         eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
         c.execute('''
-            INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
+                                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             eq_id,
             eq_data.get("labId", "lab_1"),
@@ -835,6 +860,11 @@ class FaceDatabase:
             eq_data.get("location", ""),
             eq_data.get("specs", ""),
             eq_data.get("notes", ""),
+            eq_data.get("borrowerName", ""),
+            eq_data.get("borrowerId", ""),
+            eq_data.get("borrowDate", ""),
+            eq_data.get("returnDate", ""),
+            eq_data.get("borrowNotes", ""),
             now,
             now
         ))
@@ -850,7 +880,8 @@ class FaceDatabase:
         now = datetime.datetime.now().isoformat()
         c.execute('''
             UPDATE equipment
-            SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?, updatedAt = ?
+            SET serial_number = ?, name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?,
+                borrower_name = ?, borrower_id = ?, borrow_date = ?, return_date = ?, borrow_notes = ?, updatedAt = ?
             WHERE id = ?
         ''', (
             eq_data.get("serialNumber", ""),
@@ -861,9 +892,62 @@ class FaceDatabase:
             eq_data.get("location", ""),
             eq_data.get("specs", ""),
             eq_data.get("notes", ""),
+            eq_data.get("borrowerName", ""),
+            eq_data.get("borrowerId", ""),
+            eq_data.get("borrowDate", ""),
+            eq_data.get("returnDate", ""),
+            eq_data.get("borrowNotes", ""),
             now,
             eq_id
         ))
+        conn.commit()
+        conn.close()
+
+    def borrow_equipment(self, eq_id, borrow_data):
+        import datetime
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        now = datetime.datetime.now().isoformat()
+        c.execute('''
+            UPDATE equipment
+            SET status = 'in_use',
+                borrower_name = ?,
+                borrower_id = ?,
+                borrow_date = ?,
+                return_date = ?,
+                borrow_notes = ?,
+                updatedAt = ?
+            WHERE id = ?
+        ''', (
+            borrow_data.get("borrowerName", ""),
+            borrow_data.get("borrowerId", ""),
+            borrow_data.get("borrowDate", ""),
+            borrow_data.get("returnDate", ""),
+            borrow_data.get("borrowNotes", ""),
+            now,
+            eq_id
+        ))
+        conn.commit()
+        conn.close()
+
+    def return_equipment(self, eq_id):
+        import datetime
+        conn = sqlite3.connect(self.db_path)
+        self._ensure_equipment_table(conn)
+        c = conn.cursor()
+        now = datetime.datetime.now().isoformat()
+        c.execute('''
+            UPDATE equipment
+            SET status = 'available',
+                borrower_name = '',
+                borrower_id = '',
+                borrow_date = '',
+                return_date = '',
+                borrow_notes = '',
+                updatedAt = ?
+            WHERE id = ?
+        ''', (now, eq_id))
         conn.commit()
         conn.close()
 

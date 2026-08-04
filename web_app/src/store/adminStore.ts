@@ -64,6 +64,8 @@ interface AdminStore {
   addEquipment: (labId: string, data: Partial<Equipment>) => Promise<void>
   updateEquipment: (labId: string, id: string, data: Partial<Equipment>) => Promise<void>
   deleteEquipment: (labId: string, id: string) => Promise<void>
+  borrowEquipment: (labId: string, id: string, data: { borrowerName: string; borrowerId: string; borrowDate: string; returnDate: string; borrowNotes?: string }, eqName: string, serialNumber: string) => Promise<void>
+  returnEquipment: (labId: string, id: string, eqName: string, serialNumber: string) => Promise<void>
   nodeState: NodeState | null
   nodeConfig: NodeConfig | null
   incidents: Incident[]
@@ -138,6 +140,48 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
       throw new Error(errData.error || 'Failed to delete equipment')
     }
     await get().fetchEquipment(labId)
+  },
+  borrowEquipment: async (labId: string, id: string, data: { borrowerName: string; borrowerId: string; borrowDate: string; returnDate: string; borrowNotes?: string }, eqName: string, serialNumber: string) => {
+    const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment/${encodeURIComponent(id)}/borrow`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.error || 'Failed to borrow equipment')
+    }
+    await get().fetchEquipment(labId)
+
+    // Add notification incident to dashboard store state
+    const newIncident: Incident = {
+      id: `borrow_${Date.now()}`,
+      summary: `[Equipment Checked Out] "${eqName}" (${serialNumber}) borrowed by ${data.borrowerName} (ID: ${data.borrowerId}) from ${data.borrowDate} to ${data.returnDate}`,
+      severity: 'medium',
+      status: 'open',
+      createdAt: new Date().toISOString()
+    }
+    set(state => ({ incidents: [newIncident, ...(state.incidents || [])] }))
+  },
+  returnEquipment: async (labId: string, id: string, eqName: string, serialNumber: string) => {
+    const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment/${encodeURIComponent(id)}/return`, {
+      method: 'POST'
+    })
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.error || 'Failed to return equipment')
+    }
+    await get().fetchEquipment(labId)
+
+    // Add return notification to dashboard
+    const newIncident: Incident = {
+      id: `return_${Date.now()}`,
+      summary: `[Equipment Returned] "${eqName}" (${serialNumber}) was returned to lab storage`,
+      severity: 'low',
+      status: 'resolved',
+      createdAt: new Date().toISOString()
+    }
+    set(state => ({ incidents: [newIncident, ...(state.incidents || [])] }))
   },
   nodeState: null,
   nodeConfig: null,

@@ -358,6 +358,9 @@ if __name__ == "__main__":
 
 
 # ==========================================
+
+
+# ==========================================
 # EQUIPMENT / MODULE MANAGEMENT ENDPOINTS
 # ==========================================
 @app.route('/api/labs/<lab_id>/equipment', methods=['GET'])
@@ -386,6 +389,25 @@ def update_lab_equipment(lab_id, eq_id):
         data = request.json or {}
         db.update_equipment(eq_id, data)
         return jsonify({"message": "Equipment updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/labs/<lab_id>/equipment/<eq_id>/borrow', methods=['POST'])
+def borrow_lab_equipment(lab_id, eq_id):
+    try:
+        data = request.json or {}
+        if not data.get('borrowerName') or not data.get('borrowerId'):
+            return jsonify({"error": "Student Name and Student ID are required"}), 400
+        db.borrow_equipment(eq_id, data)
+        return jsonify({"message": "Equipment borrowed successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/labs/<lab_id>/equipment/<eq_id>/return', methods=['POST'])
+def return_lab_equipment(lab_id, eq_id):
+    try:
+        db.return_equipment(eq_id)
+        return jsonify({"message": "Equipment returned successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
