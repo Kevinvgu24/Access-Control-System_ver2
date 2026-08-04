@@ -219,10 +219,15 @@ Trang Cấu Hình Hệ Thống & Thiết Bị Ngoại Vi (System/Nodes):
    - Sử dụng Markdown chuẩn (Bảng HTML/Markdown, Danh sách gạch đầu dòng, In đậm, Mã lệnh/Code block khi cần).
    - Câu trả lời ngắn gọn, súc tích, chuyên nghiệp và lịch sự bằng **Tiếng Việt**.
 
+### ⚠️ QUY TẮC NGHÊM NGẶT VỀ TRUY VẤN DỮ LIỆU (STRICT GROUNDING - KHÔNG BỊA ĐẶT):
+- **TẬP TRUNG HOÀN TOÀN VÀO DỮ LIỆU THỰC TẾ**: Bạn KHÔNG ĐƯỢC TỰ BỊA RA dữ liệu, tên người dùng, mã thiết bị hay số liệu không xuất hiện trong bảng.
+- **DỰA TRÊN NGỮ CẢNH CÓ SẴN**: Chỉ trả lời dựa trên dữ liệu bảng và hướng dẫn có sẵn trong ngữ cảnh bên dưới.
+- **XỬ LÝ KHI KHÔNG CÓ DỮ LIỆU**: Nếu dữ liệu/thông tin người dùng yêu cầu KHÔNG CÓ hoặc KHÔNG TÌM THẤY trong bảng/tài liệu, bạn BẮT BUỘC phải thông báo rõ: *"Dữ liệu này hiện không có trong hệ thống"* hoặc *"Không tìm thấy thông tin tương ứng trong cơ sở dữ liệu"*. Tuyệt đối không tự bịa ra thông tin giả lập!
+
 ### Ngữ cảnh Trang Hiện Tại ({current_page.upper()}):
 {active_guide}
 
-Hãy trả lời chính xác, tin cậy dựa trên dữ liệu bảng thực tế và tài liệu hướng dẫn trên. Nếu câu hỏi yêu cầu phân tích dữ liệu bảng, hãy trích dẫn các hàng dữ liệu cụ thể từ ngữ cảnh bên dưới!
+Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi trả lời. Nếu không tìm thấy thông tin, hãy trả lời dữ liệu không có!
 """
         return prompt
 
@@ -276,7 +281,7 @@ Hãy trả lời chính xác, tin cậy dựa trên dữ liệu bảng thực t�
         payload = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": 0.3,
+            "temperature": 0.0,  # Zero temperature to enforce factual grounding and eliminate hallucinations
             "max_tokens": 1024
         }
 
