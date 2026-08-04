@@ -304,6 +304,25 @@ export function EquipmentPage() {
   const overdueCount = (equipment || []).filter(i => i.status === 'in_use' && !!i.returnDate && i.returnDate < getTodayStr()).length
   const issueCount = (equipment || []).filter(i => i.status === 'maintenance' || i.status === 'broken').reduce((acc, i) => acc + (i.quantity || 1), 0)
 
+  const getNextAvailableSeqNumber = (groupItems: Equipment[]): number => {
+    const usedNumbers = new Set<number>()
+    for (const item of groupItems) {
+      const matches = item.serialNumber.match(/\d+/g)
+      if (matches && matches.length > 0) {
+        const num = parseInt(matches[matches.length - 1], 10)
+        if (!isNaN(num) && num > 0) {
+          usedNumbers.add(num)
+        }
+      }
+    }
+
+    let next = 1
+    while (usedNumbers.has(next)) {
+      next++
+    }
+    return next
+  }
+
   const openAddModal = () => {
     setEntryMode('individual')
     setSerialNumber('')
@@ -316,15 +335,32 @@ export function EquipmentPage() {
     setNotes('')
     setContractNumber('')
     setInvoiceNumber('')
-    setPurchaseDate('')
+    setPurchaseDate(getTodayStr())
     setBatchNumber('')
     setImage('')
     setShowAddModal(true)
   }
 
   const openAddModalForGroup = (groupName: string, groupCategory: string, groupImage: string) => {
+    const groupItems = (equipment || []).filter(
+      item => (item.name || '').trim().toLowerCase() === groupName.trim().toLowerCase()
+    )
+
+    const nextSeq = getNextAvailableSeqNumber(groupItems)
+
+    let prefix = groupName.trim().replace(/\s+/g, '-')
+    if (groupItems.length > 0 && groupItems[0].serialNumber) {
+      const rawSerial = groupItems[0].serialNumber.trim()
+      const match = rawSerial.match(/^(.*?)(?:[#\-_]?\d+)?$/)
+      if (match && match[1] && match[1].trim()) {
+        prefix = match[1].trim().replace(/[\-_#\s]+$/, '')
+      }
+    }
+
+    const autoSerial = `${prefix}-${String(nextSeq).padStart(3, '0')}`
+
     setEntryMode('individual')
-    setSerialNumber('')
+    setSerialNumber(autoSerial)
     setName(groupName)
     setCategory(groupCategory || 'Module')
     setStatus('available')
@@ -334,7 +370,7 @@ export function EquipmentPage() {
     setNotes('')
     setContractNumber('')
     setInvoiceNumber('')
-    setPurchaseDate('')
+    setPurchaseDate(getTodayStr())
     setBatchNumber('')
     setImage(groupImage || '')
     setShowAddModal(true)
@@ -706,7 +742,14 @@ export function EquipmentPage() {
                                 }`}
                               >
                                 <td className="px-5 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                                  {item.serialNumber}
+                                  <div className="flex flex-col">
+                                    <span>{item.serialNumber}</span>
+                                    {item.purchaseDate && (
+                                      <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
+                                        Added: {item.purchaseDate}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-5 py-3 text-xs text-slate-700 font-medium">
                                   {item.location ? `Bin: ${item.location}` : <span className="text-slate-300">-</span>}
@@ -809,7 +852,14 @@ export function EquipmentPage() {
                       title={isOverdue ? 'OVERDUE: Equipment is past due date! Right-click to Return or manage.' : 'Hover over Equipment Name for photo preview. Right-click for options.'}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-bold text-[#ea580c] whitespace-nowrap">
-                        {item.serialNumber}
+                        <div className="flex flex-col">
+                          <span>{item.serialNumber}</span>
+                          {item.purchaseDate && (
+                            <span className="text-[10px] font-normal text-slate-400 font-sans tracking-tight">
+                              Added: {item.purchaseDate}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td 
                         className="px-4 py-3 font-medium text-sm text-[#0f172a]"
