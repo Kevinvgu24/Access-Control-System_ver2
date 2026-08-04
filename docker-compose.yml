@@ -15,7 +15,8 @@ services:
       - MQTT_BROKER_HOST=broker.emqx.io
       - MQTT_BROKER_PORT=1883
       - QWEN_API_BASE=http://qwen-ai:11434/v1
-      - QWEN_MODEL_NAME=qwen2.5-coder:3b
+      - QWEN_MODEL_NAME=qwen2.5-coder:1.5b
+
     depends_on:
       - qdrant
       - qwen-ai

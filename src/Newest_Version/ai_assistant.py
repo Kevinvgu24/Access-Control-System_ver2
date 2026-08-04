@@ -15,7 +15,7 @@ class QwenAIAssistant:
             self.db_path = "smart_door.db"
             
         self.api_base = os.getenv("QWEN_API_BASE", "http://localhost:11434/v1").rstrip("/")
-        self.model_name = os.getenv("QWEN_MODEL_NAME", "qwen2.5-coder:3b")
+        self.model_name = os.getenv("QWEN_MODEL_NAME", "qwen2.5-coder:1.5b")
         self.api_key = os.getenv("QWEN_API_KEY", "ollama")
 
     def check_status(self) -> Dict[str, Any]:
@@ -67,8 +67,8 @@ class QwenAIAssistant:
                 c.execute(query)
                 rows = c.fetchall()
                 if rows:
-                    user_lines = ["### Bảng Người Dùng (Users Table):"]
-                    user_lines.append("| ID | Họ và Tên | Mã Sinh Viên/GV | Email | Vai trò | Trạng thái | Khuôn mặt | PIN |")
+                    user_lines = ["### Users Table:"]
+                    user_lines.append("| ID | Name | Student/Staff ID | Email | Role | Status | Face ID | PIN |")
                     user_lines.append("|---|---|---|---|---|---|---|---|")
                     for r in rows:
                         user_lines.append(
@@ -87,8 +87,8 @@ class QwenAIAssistant:
                     c.execute(query + " LIMIT 30")
                 rows = c.fetchall()
                 if rows:
-                    eq_lines = ["### Bảng Thiết Bị (Equipment Table):"]
-                    eq_lines.append("| ID | Tên Thiết Bị | Mã Code | Loại | Trạng Thái | Người Mượn | Hạn Trả | Ghi Chú |")
+                    eq_lines = ["### Equipment Table:"]
+                    eq_lines.append("| ID | Equipment Name | Code | Category | Status | Borrower | Due Date | Notes |")
                     eq_lines.append("|---|---|---|---|---|---|---|---|")
                     for r in rows:
                         eq_lines.append(
@@ -103,13 +103,13 @@ class QwenAIAssistant:
                 c.execute(query)
                 rows = c.fetchall()
                 if rows:
-                    log_lines = ["### Bảng Nhật Ký Ra Vào (Access Events Logs):"]
-                    log_lines.append("| ID | Người Thực Hiện | Phương Thức | Trạng Thái | Hợp Lệ | Thời Gian |")
+                    log_lines = ["### Access Events Logs Table:"]
+                    log_lines.append("| ID | User | Method | Status | Authorized | Timestamp |")
                     log_lines.append("|---|---|---|---|---|---|")
                     for r in rows:
-                        auth_str = "Hợp lệ" if r['isAuthorized'] else "Không hợp lệ"
+                        auth_str = "Authorized" if r['isAuthorized'] else "Unauthorized"
                         log_lines.append(
-                            f"| {r['id']} | {r['userName'] or 'Khách'} | {r['accessMethod'] or 'N/A'} | "
+                            f"| {r['id']} | {r['userName'] or 'Guest'} | {r['accessMethod'] or 'N/A'} | "
                             f"{r['status'] or ''} | {auth_str} | {r['timestamp'] or ''} |"
                         )
                     context_parts.append("\n".join(log_lines))
@@ -120,8 +120,8 @@ class QwenAIAssistant:
                 c.execute(query)
                 rows = c.fetchall()
                 if rows:
-                    sch_lines = ["### Bảng Lịch Trình (Schedules Table):"]
-                    sch_lines.append("| ID | Tiêu Đề | Phòng | Giảng Viên | Thứ | Bắt Đầu | Kết Thúc | Trạng Thái |")
+                    sch_lines = ["### Schedules Table:"]
+                    sch_lines.append("| ID | Course Title | Room | Instructor | Day | Start Time | End Time | Status |")
                     sch_lines.append("|---|---|---|---|---|---|---|---|")
                     for r in rows:
                         sch_lines.append(
@@ -136,8 +136,8 @@ class QwenAIAssistant:
                 c.execute(query)
                 rows = c.fetchall()
                 if rows:
-                    inc_lines = ["### Bảng Sự Cố & Cảnh Báo (Incidents Table):"]
-                    inc_lines.append("| ID | Loại Sự Cố | Mức Độ | Mô Tả | Trạng Thái | Thời Gian |")
+                    inc_lines = ["### Incidents & Security Alerts Table:"]
+                    inc_lines.append("| ID | Incident Type | Severity | Description | Status | Timestamp |")
                     inc_lines.append("|---|---|---|---|---|---|")
                     for r in rows:
                         inc_lines.append(
@@ -149,85 +149,85 @@ class QwenAIAssistant:
             conn.close()
         except Exception as e:
             logger.error(f"Error reading table context: {e}")
-            context_parts.append(f"*(Không thể đọc dữ liệu bảng từ SQLite DB: {e})*")
+            context_parts.append(f"*(Unable to fetch table data from SQLite DB: {e})*")
 
-        return "\n\n".join(context_parts) if context_parts else "*(Không có dữ liệu bảng khả dụng)*"
+        return "\n\n".join(context_parts) if context_parts else "*(No table data available)*"
 
     def get_system_instructions(self, current_page: str = "overview") -> str:
         """
-        Detailed system prompt instructing Qwen 2.5 Coder to act as an expert AI Assistant for Access Control System.
+        Detailed system prompt instructing Qwen 2.5 Coder to act as an expert AI Assistant for Access Control System in English.
         """
         page_guides = {
             "overview": """
-Trang Tổng Quan (Overview):
-- Hiển thị thống kê tổng quan: Số lượng lượt vào/ra hôm nay, sự cố cảnh báo, số thiết bị đang mượn, trạng thái kết nối Camera & Node.
-- Tính năng: Xem biểu đồ lưu lượng ra vào, theo dõi sự kiện trực tuyến (Live Feed), cảnh báo tức thời.
+Overview Page:
+- Displays overall system statistics: Today's entry/exit count, security incidents, borrowed equipment count, Camera & Node connection status.
+- Features: View traffic analytics charts, monitor real-time Live Activity Feed, instant security alerts.
 """,
             "users": """
-Trang Quản Lý Người Dùng (Users):
-- Danh sách sinh viên, giảng viên, quản trị viên có quyền truy cập Lab.
-- Hướng dẫn:
-  1. Thêm người dùng mới: Nhấn nút "+ Thêm người dùng", điền Tên, Mã SV/GV, Email, Vai trò (Student/Lecturer/Admin).
-  2. Đăng ký Khuôn Mặt / Mã PIN: Chuyển sang trang "Đăng Ký" (Enrollment) hoặc bấm nút Đăng ký trên dòng của người dùng.
-  3. Đổi trạng thái: Chọn Khóa (Disable) hoặc Hoạt động (Active) để cấp/thu hồi quyền mở cửa.
+User Management Page (Users):
+- List of students, lecturers, and administrators authorized for lab access.
+- User Guide:
+  1. Add New User: Click "+ Add User", enter Name, Student/Staff ID, Email, and Role (Student/Lecturer/Admin).
+  2. Register Biometrics / PIN: Go to "Enrollment" page or click Register on the user row.
+  3. Change Status: Toggle between Disable and Active to grant/revoke door access.
 """,
             "enrollment": """
-Trang Đăng Ký Dữ Liệu Sinh Trắc Học (Enrollment):
-- Hướng dẫn Đăng ký Khuôn mặt (Face ID):
-  1. Chọn tên người dùng cần đăng ký từ danh sách.
-  2. Đảm bảo người dùng đứng trước camera IR/RGB của Node, mặt nhìn thẳng.
-  3. Bấm "Bắt đầu chụp khuôn mặt", hệ thống trích xuất Feature Vector 512-dim (ArcFace / MobileFaceNet) và lưu vào SQLite DB.
-- Hướng dẫn Đăng ký Mã PIN:
-  1. Thao tác nhập PIN 4-6 chữ số trực tiếp hoặc qua bàn phím điều khiển.
+Biometric & Credentials Registration Page (Enrollment):
+- Face Recognition (Face ID) Registration Guide:
+  1. Select target user from the dropdown list.
+  2. Ensure user stands in front of the Node IR/RGB camera facing straight.
+  3. Click "Start Face Capture" -> System extracts 512-dim embedding (ArcFace/MobileFaceNet) and saves to SQLite DB.
+- PIN Code Registration Guide:
+  1. Input 4-6 digit PIN directly or via keypad control.
 """,
             "equipment": """
-Trang Quản Lý Thiết Bị Phòng Lab (Equipment):
-- Quản lý danh mục thiết bị, linh kiện, máy đo trong phòng Lab.
-- Hướng dẫn mượn/trả thiết bị:
-  1. Mượn thiết bị: Tìm thiết bị có trạng thái "Sẵn sàng" (Available) -> Bấm "Mượn thiết bị" -> Chọn người mượn và Ngày hẹn trả -> Xác nhận.
-  2. Trả thiết bị: Bấm "Trả thiết bị" trên dòng thiết bị đang mượn (Borrowed/Overdue).
-  3. Quá hạn: Thiết bị quá hạn trả sẽ có nhãn đỏ "Overdue", trợ lý có thể quét danh sách này để nhắc nhở.
+Lab Equipment Management Page (Equipment):
+- Manage lab instruments, tools, and hardware equipment inventory.
+- Borrow / Return Workflow:
+  1. Borrow: Find equipment marked "Available" -> Click "Borrow Equipment" -> Select borrower & Due Date -> Confirm.
+  2. Return: Click "Return Equipment" on borrowed/overdue item rows.
+  3. Overdue: Overdue items display red "Overdue" badge for easy auditing.
 """,
             "schedules": """
-Trang Quản Lý Lịch Trình (Schedules):
-- Quản lý lịch thực hành, thời khóa biểu cho phép tự động mở cửa phòng Lab theo khung giờ.
-- Hướng dẫn:
-  1. Thêm lịch thủ công: Nhập Tiêu đề môn học, Giảng viên, Thứ trong tuần, Giờ bắt đầu - Giờ kết thúc.
-  2. Import từ tệp Excel: Nhấn "Nhập lịch Excel", chọn file .xlsx thời khóa biểu của trường để tự động đọc và map dữ liệu vào hệ thống.
+Schedule Management Page (Schedules):
+- Manage lab timetables and practice sessions to automatically unlock doors during scheduled hours.
+- User Guide:
+  1. Manual Schedule Creation: Input Course Title, Instructor, Day of week, Start/End times.
+  2. Import Excel: Click "Import Excel", select school timetable .xlsx file to automatically parse and map schedule.
 """,
             "logs": """
-Trang Nhật Ký & Cảnh Báo (Logs):
-- Xem lại toàn bộ sự kiện quẹt thẻ RFID, nhận diện khuôn mặt, nhập PIN và cảnh báo vi phạm.
-- Lọc theo: Ngày tháng, Phương thức (Face / RFID / PIN / App), Trạng thái (Thành công / Từ chối).
-- Xuất báo cáo CSV/Excel.
+Access Logs & Incidents Page (Logs):
+- Audit all RFID card swipes, Face ID scans, PIN entries, and security violation alerts.
+- Filter by: Date range, Access Method (Face / RFID / PIN / App), Authorization Status (Success / Denied).
+- Export CSV/Excel reports.
 """,
             "system": """
-Trang Cấu Hình Hệ Thống & Thiết Bị Ngoại Vi (System/Nodes):
-- Quản lý các Node mở cửa (Raspberry Pi / Hailo-8 AI Accelerator / ESP32 Subnodes).
-- Cấu hình ngưỡng tin cậy nhận diện khuôn mặt (Face Recognition Threshold), thời gian giữ chốt cửa (Door Relay Time), địa chỉ MQTT Broker, IP Camera Stream.
+System Configuration & Hardware Nodes Page (System/Nodes):
+- Manage door control nodes (Raspberry Pi / Hailo-8 AI Accelerator / ESP32 Subnodes).
+- Configure Face Recognition Threshold, Door Relay Lock Time, MQTT Broker Host/Port, IP Camera Stream URL.
 """
         }
 
         active_guide = page_guides.get(current_page, page_guides["overview"])
 
-        prompt = f"""Bạn là **Qwen 2.5 Coder AI Assistant** - Trợ lý AI thông minh chuyên hỗ trợ người dùng vận hành **Hệ Thống Quản Lý Kiểm Soát Ra Vào Phòng Lab (Access Control System v2)**.
+        prompt = f"""You are **Qwen 2.5 Coder AI Assistant** - an intelligent AI Assistant supporting users operating the **Lab Access Control Management System v2**.
 
-### Vai trò & Nhiệm vụ chính của bạn:
-1. **Đọc & Phân tích bảng dữ liệu**: Phân tích chính xác dữ liệu bảng (Bảng người dùng, Bảng thiết bị, Lịch trình, Nhật ký ra vào, Cảnh báo sự cố) được cung cấp trong ngữ cảnh. Trả lời chi tiết các câu hỏi như số lượng, danh sách cụ thể, trạng thái, thiết bị quá hạn, lịch ra vào gần nhất.
-2. **Hướng dẫn trực tiếp**: Hướng dẫn người dùng các bước thao tác chi tiết (Step-by-step) cách sử dụng từng chức năng trong phần mềm quản lý.
-3. **Định dạng câu trả lời đẹp mắt**:
-   - Sử dụng Markdown chuẩn (Bảng HTML/Markdown, Danh sách gạch đầu dòng, In đậm, Mã lệnh/Code block khi cần).
-   - Câu trả lời ngắn gọn, súc tích, chuyên nghiệp và lịch sự bằng **Tiếng Việt**.
+### Your Core Duties & Guidelines:
+1. **Analyze Table Data**: Accurately read and analyze table data (Users, Equipment, Schedules, Access Logs, Security Alerts) provided in the context below. Answer specific questions regarding counts, statuses, overdue equipment, or recent access events.
+2. **Interactive Guidance**: Provide step-by-step instructions on how to use system features clearly and concisely.
+3. **Response Formatting**:
+   - Use standard Markdown (HTML/Markdown tables, bullet lists, bold text, code blocks when necessary).
+   - Always respond clearly, concisely, and professionally in **English**.
 
-### ⚠️ QUY TẮC NGHÊM NGẶT VỀ TRUY VẤN DỮ LIỆU (STRICT GROUNDING - KHÔNG BỊA ĐẶT):
-- **TẬP TRUNG HOÀN TOÀN VÀO DỮ LIỆU THỰC TẾ**: Bạn KHÔNG ĐƯỢC TỰ BỊA RA dữ liệu, tên người dùng, mã thiết bị hay số liệu không xuất hiện trong bảng.
-- **DỰA TRÊN NGỮ CẢNH CÓ SẴN**: Chỉ trả lời dựa trên dữ liệu bảng và hướng dẫn có sẵn trong ngữ cảnh bên dưới.
-- **XỬ LÝ KHI KHÔNG CÓ DỮ LIỆU**: Nếu dữ liệu/thông tin người dùng yêu cầu KHÔNG CÓ hoặc KHÔNG TÌM THẤY trong bảng/tài liệu, bạn BẮT BUỘC phải thông báo rõ: *"Dữ liệu này hiện không có trong hệ thống"* hoặc *"Không tìm thấy thông tin tương ứng trong cơ sở dữ liệu"*. Tuyệt đối không tự bịa ra thông tin giả lập!
+### ⚠️ STRICT GROUNDING & NO HALLUCINATION RULES:
+- **FACTUAL DATABASE REASONING ONLY**: You MUST NOT fabricate, invent, or speculate any data, user names, equipment codes, or statistics that do not appear in the context.
+- **CONTEXT BOUNDARIES**: Rely strictly on the provided table data and user guide context below.
+- **DATA MISSING HANDLING**: If the requested information or data DOES NOT EXIST or CANNOT BE FOUND in the table context, you MUST explicitly state: *"This data is currently not available in the system"* or *"No corresponding information found in the database"*. Do NOT generate placeholder or dummy data!
 
-### Ngữ cảnh Trang Hiện Tại ({current_page.upper()}):
+### Current Page Context ({current_page.upper()}):
 {active_guide}
 
-Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi trả lời. Nếu không tìm thấy thông tin, hãy trả lời dữ liệu không có!
+Check the actual table data below carefully before responding. If data is missing, explicitly state that it is not available in the system!
 """
         return prompt
 
@@ -240,7 +240,7 @@ Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi tr
         custom_table_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint.
+        Send prompt and extracted table context to Qwen 2.5 Coder local API endpoint in English.
         """
         # Check connection status
         status_info = self.check_status()
@@ -248,12 +248,12 @@ Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi tr
             return {
                 "success": False,
                 "response": (
-                    "⚠️ **Không thể kết nối đến Trợ lý AI Qwen 2.5 Coder!**\n\n"
-                    "Dịch vụ LLM Qwen chưa được khởi chạy tại địa chỉ `" + self.api_base + "`.\n\n"
-                    "**Hướng dẫn kích hoạt Qwen 2.5 Coder local:**\n"
-                    "1. Cài đặt & chạy Ollama trên máy tính/server.\n"
-                    "2. Mở terminal và chạy lệnh: `ollama run qwen2.5-coder:3b` (hoặc `1.5b`).\n"
-                    "3. Đảm bảo cổng `11434` đang lắng nghe kết nối."
+                    "⚠️ **Unable to connect to Qwen 2.5 Coder AI Service!**\n\n"
+                    "The local LLM service is not running at `" + self.api_base + "`.\n\n"
+                    "**How to start Qwen 2.5 Coder locally:**\n"
+                    "1. Start Ollama service on host/container.\n"
+                    "2. Run command in terminal: `ollama run qwen2.5-coder:1.5b`.\n"
+                    "3. Ensure port `11434` is accessible."
                 ),
                 "offline": True
             }
@@ -275,7 +275,7 @@ Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi tr
                     messages.append({"role": role, "content": content})
 
         # Final message combining table data & user question
-        full_user_content = f"--- DỮ LIỆU BẢNG THỰC TẾ TRÊN HỆ THỐNG ---\n{table_context}\n-------------------------------------------\n\nCâu hỏi/Yêu cầu của người dùng: {user_prompt}"
+        full_user_content = f"--- REAL-TIME SYSTEM DATABASE TABLE CONTEXT ---\n{table_context}\n-----------------------------------------------\n\nUser Question/Request: {user_prompt}"
         messages.append({"role": "user", "content": full_user_content})
 
         payload = {
@@ -305,11 +305,11 @@ Hãy kiểm tra kỹ dữ liệu bảng thực tế bên dưới trước khi tr
                 else:
                     return {
                         "success": False,
-                        "response": f"Lỗi HTTP {resp.status} từ Qwen 2.5 Coder API."
+                        "response": f"HTTP error {resp.status} from Qwen 2.5 Coder API."
                     }
         except Exception as e:
             logger.error(f"Error querying Qwen 2.5 Coder API: {e}")
             return {
                 "success": False,
-                "response": f"Có lỗi xảy ra khi xử lý yêu cầu với Qwen 2.5 Coder: {str(e)}"
+                "response": f"An error occurred while processing request with Qwen 2.5 Coder: {str(e)}"
             }

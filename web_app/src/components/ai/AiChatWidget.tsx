@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
-  Sparkles,
   Bot,
   User as UserIcon,
   X,
@@ -37,13 +36,13 @@ export const AiChatWidget: React.FC = () => {
     {
       id: 'welcome',
       sender: 'assistant',
-      text: 'Xin chào! Tôi là **Trợ lý AI VGU (Qwen 2.5 Coder)**.\n\nTôi có thể hỗ trợ bạn đọc & tóm tắt dữ liệu bảng, phân tích nhật ký ra vào, và hướng dẫn thao tác trực tiếp trên hệ thống quản lý.\n\nBấm nút **"Đọc bảng trang này"** hoặc chọn câu hỏi gợi ý bên dưới để bắt đầu!',
+      text: 'Hello! I am your **VGU AI Assistant (Qwen 2.5 Coder 1.5B)**.\n\nI can assist you with analyzing table data, auditing access logs, and providing step-by-step guidance for operating the management system.\n\nClick **"Analyze Current Table"** or select a quick prompt below to get started!',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ])
   const [inputPrompt, setInputPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [aiStatus, setAiStatus] = useState<AIStatus>({ status: 'checking', model: 'qwen2.5-coder:3b' })
+  const [aiStatus, setAiStatus] = useState<AIStatus>({ status: 'checking', model: 'qwen2.5-coder:1.5b' })
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Map route to page key
@@ -68,15 +67,15 @@ export const AiChatWidget: React.FC = () => {
         const data = await res.json()
         setAiStatus({
           status: data.status === 'online' ? 'online' : 'offline',
-          model: data.model || 'qwen2.5-coder:3b',
+          model: data.model || 'qwen2.5-coder:1.5b',
           api_base: data.api_base,
           error: data.error
         })
       } else {
-        setAiStatus({ status: 'offline', model: 'qwen2.5-coder:3b', error: 'HTTP error' })
+        setAiStatus({ status: 'offline', model: 'qwen2.5-coder:1.5b', error: 'HTTP error' })
       }
     } catch {
-      setAiStatus({ status: 'offline', model: 'qwen2.5-coder:3b', error: 'Network error' })
+      setAiStatus({ status: 'offline', model: 'qwen2.5-coder:1.5b', error: 'Network error' })
     }
   }
 
@@ -134,7 +133,7 @@ export const AiChatWidget: React.FC = () => {
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'assistant',
-        text: data.response || data.error || 'Không nhận được phản hồi từ mô hình.',
+        text: data.response || data.error || 'No response received from AI model.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
 
@@ -145,7 +144,7 @@ export const AiChatWidget: React.FC = () => {
         {
           id: (Date.now() + 1).toString(),
           sender: 'assistant',
-          text: `⚠️ **Lỗi kết nối**: Không thể kết nối tới server API. (${err.message})`,
+          text: `⚠️ **Connection Error**: Unable to connect to API server. (${err.message})`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ])
@@ -154,35 +153,35 @@ export const AiChatWidget: React.FC = () => {
     }
   }
 
-  // Quick Action Chips per page
+  // Quick Action Chips per page in English
   const getQuickPrompts = () => {
     switch (pageKey) {
       case 'users':
         return [
-          { label: '📊 Tóm tắt bảng người dùng', action: () => handleSendMessage(undefined, true) },
-          { label: '❓ Hướng dẫn thêm người dùng', action: () => handleSendMessage('Hướng dẫn từng bước cách thêm người dùng mới vào hệ thống?') },
-          { label: '🔑 Hướng dẫn đổi mã PIN', action: () => handleSendMessage('Làm thế nào để cấp quyền hoặc đổi mã PIN cho người dùng?') }
+          { label: '📊 Summarize Users Table', action: () => handleSendMessage(undefined, true) },
+          { label: '❓ How to Add New User', action: () => handleSendMessage('What are the step-by-step instructions to add a new user to the system?') },
+          { label: '🔑 PIN & Access Permission Guide', action: () => handleSendMessage('How do I assign PIN codes or modify user access permissions?') }
         ]
       case 'equipment':
         return [
-          { label: '📦 Đọc danh sách thiết bị', action: () => handleSendMessage(undefined, true) },
-          { label: '⚠️ Thiết bị nào đang quá hạn?', action: () => handleSendMessage('Kiểm tra danh sách các thiết bị đang quá hạn mượn và cho biết ai đang mượn?') },
-          { label: '📝 Hướng dẫn mượn/trả', action: () => handleSendMessage('Quy trình mượn và trả thiết bị phòng lab được thực hiện như thế nào?') }
+          { label: '📦 Read Equipment List', action: () => handleSendMessage(undefined, true) },
+          { label: '⚠️ Overdue Equipment Check', action: () => handleSendMessage('Check the equipment table and list all items currently overdue along with borrowers.') },
+          { label: '📝 Borrow / Return Guide', action: () => handleSendMessage('What is the procedure for borrowing and returning lab equipment?') }
         ]
       case 'schedules':
         return [
-          { label: '📅 Đọc bảng lịch trình', action: () => handleSendMessage(undefined, true) },
-          { label: '📁 Hướng dẫn nhập Excel', action: () => handleSendMessage('Các bước nhập lịch trình phòng Lab từ tệp Excel (.xlsx)?') }
+          { label: '📅 Read Schedule Table', action: () => handleSendMessage(undefined, true) },
+          { label: '📁 Excel Import Guide', action: () => handleSendMessage('What are the steps to import lab schedules from an Excel (.xlsx) file?') }
         ]
       case 'logs':
         return [
-          { label: '🔍 Đọc nhật ký ra vào', action: () => handleSendMessage(undefined, true) },
-          { label: '🚨 Tóm tắt các cảnh báo vi phạm', action: () => handleSendMessage('Tóm tắt các sự cố và lượt truy cập bị từ chối gần đây trong bảng nhật ký.') }
+          { label: '🔍 Read Access Logs', action: () => handleSendMessage(undefined, true) },
+          { label: '🚨 Summarize Security Alerts', action: () => handleSendMessage('Summarize recent security incidents and unauthorized access attempts from the log table.') }
         ]
       default:
         return [
-          { label: '📊 Phân tích dữ liệu bảng trang này', action: () => handleSendMessage(undefined, true) },
-          { label: '💡 Tóm tắt tính năng trang này', action: () => handleSendMessage(`Giải thích các tính năng chính và hướng dẫn thao tác trên trang ${pageKey.toUpperCase()}`) }
+          { label: '📊 Analyze Current Table', action: () => handleSendMessage(undefined, true) },
+          { label: '💡 Page Feature Guide', action: () => handleSendMessage(`Explain the key features and operational workflow for the ${pageKey.toUpperCase()} page.`) }
         ]
     }
   }
@@ -326,7 +325,7 @@ export const AiChatWidget: React.FC = () => {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-xl shadow-orange-500/30 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white flex items-center justify-center group"
-          title="Mở Trợ lý AI VGU Qwen"
+          title="Open VGU AI Assistant"
         >
           <div className="relative flex items-center justify-center">
             <Bot className="w-7 h-7 text-white drop-shadow-xs transition-transform group-hover:rotate-12" />
@@ -353,7 +352,7 @@ export const AiChatWidget: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-sm tracking-tight text-white">VGU AI Assistant</h3>
                   <span className="text-[10px] font-mono bg-white/20 text-white px-1.5 py-0.5 rounded border border-white/30 uppercase font-semibold">
-                    Qwen 2.5
+                    1.5B
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-orange-100 font-medium">
@@ -366,13 +365,13 @@ export const AiChatWidget: React.FC = () => {
                     {aiStatus.status === 'online'
                       ? 'Local Service Online'
                       : aiStatus.status === 'checking'
-                      ? 'Đang kết nối AI...'
+                      ? 'Connecting to AI...'
                       : 'AI Offline'}
                   </span>
                   <button
                     onClick={checkStatus}
                     className="ml-1 text-orange-100 hover:text-white p-0.5 rounded transition-colors"
-                    title="Kiểm tra lại kết nối API"
+                    title="Recheck API connection"
                   >
                     <RefreshCw className={`w-3 h-3 ${aiStatus.status === 'checking' ? 'animate-spin' : ''}`} />
                   </button>
@@ -384,7 +383,7 @@ export const AiChatWidget: React.FC = () => {
               <button
                 onClick={() => setMessages([messages[0]])}
                 className="p-1.5 text-orange-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs font-mono"
-                title="Xóa cuộc trò chuyện"
+                title="Clear chat history"
               >
                 Clear
               </button>
@@ -401,7 +400,7 @@ export const AiChatWidget: React.FC = () => {
           <div className="bg-orange-50/70 border-b border-orange-100 px-3 py-1.5 flex items-center justify-between shrink-0 text-xs">
             <div className="flex items-center gap-1.5 text-orange-950 font-mono">
               <Zap className="w-3.5 h-3.5 text-orange-600 fill-orange-600" />
-              <span className="text-[11px]">Trang:</span>
+              <span className="text-[11px]">Page:</span>
               <span className="font-bold text-orange-700 uppercase bg-white px-2 py-0.5 rounded border border-orange-200 text-[11px]">
                 {pageKey}
               </span>
@@ -412,7 +411,7 @@ export const AiChatWidget: React.FC = () => {
               className="flex items-center gap-1 text-[11px] font-semibold text-white bg-orange-600 hover:bg-orange-700 px-2.5 py-1 rounded-lg transition-colors border border-orange-700/30 shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Table className="w-3.5 h-3.5" />
-              <span>Đọc bảng trang này</span>
+              <span>Analyze Current Table</span>
             </button>
           </div>
 
@@ -467,7 +466,7 @@ export const AiChatWidget: React.FC = () => {
                   <span className="w-2 h-2 rounded-full bg-orange-600 animate-bounce" />
                   <span className="w-2 h-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.2s]" />
                   <span className="w-2 h-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.4s]" />
-                  <span className="text-xs text-orange-950 font-medium ml-1">VGU AI đang suy nghĩ...</span>
+                  <span className="text-xs text-orange-950 font-medium ml-1">VGU AI is thinking...</span>
                 </div>
               </div>
             )}
@@ -477,7 +476,7 @@ export const AiChatWidget: React.FC = () => {
           {/* Quick Prompts Bar */}
           <div className="px-3 py-2 bg-white border-t border-slate-200/80 shrink-0">
             <p className="text-[10px] font-semibold text-orange-900 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <HelpCircle className="w-3 h-3 text-orange-600" /> Gợi ý câu hỏi nhanh:
+              <HelpCircle className="w-3 h-3 text-orange-600" /> Quick Prompts:
             </p>
             <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
               {getQuickPrompts().map((qp, idx) => (
@@ -506,7 +505,7 @@ export const AiChatWidget: React.FC = () => {
                 type="text"
                 value={inputPrompt}
                 onChange={e => setInputPrompt(e.target.value)}
-                placeholder="Hỏi AI về dữ liệu bảng, hướng dẫn thao tác..."
+                placeholder="Ask AI about tables, user guides..."
                 disabled={isLoading}
                 className="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all disabled:opacity-60"
               />
@@ -514,7 +513,7 @@ export const AiChatWidget: React.FC = () => {
                 type="submit"
                 disabled={isLoading || !inputPrompt.trim()}
                 className="bg-orange-600 hover:bg-orange-700 text-white p-2 rounded-xl transition-colors disabled:opacity-40 disabled:hover:bg-orange-600 cursor-pointer shrink-0 shadow-xs"
-                title="Gửi câu hỏi"
+                title="Send Question"
               >
                 <Send className="w-4 h-4" />
               </button>
