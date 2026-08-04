@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ErrorBoundary }  from '@/components/ui/ErrorBoundary'
 import { Sidebar }         from '@/components/shell/Sidebar'
 import { TopBar }          from '@/components/shell/TopBar'
 import { LoginPage }       from '@/pages/LoginPage'
@@ -104,6 +105,7 @@ function AuthenticatedApp() {
         ) : null}
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-16 min-w-0 transition-all duration-300">
+          <ErrorBoundary>
           <Routes>
             <Route path="/labs"    element={<LabSelectorPage />} />
             {selectedLabId ? (
@@ -120,6 +122,7 @@ function AuthenticatedApp() {
               <Route path="*" element={<LabSelectorPage />} />
             )}
           </Routes>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

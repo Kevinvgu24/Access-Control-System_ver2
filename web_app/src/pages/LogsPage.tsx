@@ -25,11 +25,13 @@ export function LogsPage() {
   const [dateTo, setDateTo]             = useState('')
 
   const filtered = useMemo(() => (events || []).filter(ev => {
+    if (!ev) return false
     const ts = fmtTs(ev.occurredAt)
     const name = (ev.displayName ?? '').toLowerCase()
-    const uid  = ev.universityId ?? ''
+    const uid  = (ev.universityId ?? '').toLowerCase()
+    const searchLower = (search || '').toLowerCase()
     return (
-      (!search || name.includes(search.toLowerCase()) || uid.includes(search)) &&
+      (!searchLower || name.includes(searchLower) || uid.includes(searchLower)) &&
       (resultFilter === 'all' || ev.result === resultFilter) &&
       (!dateFrom || ts >= dateFrom) &&
       (!dateTo   || ts <= dateTo + ' 23:59')

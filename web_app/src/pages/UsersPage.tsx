@@ -42,14 +42,20 @@ export function UsersPage() {
   const [newPin, setNewPin] = useState('')
   const [updatingPin, setUpdatingPin] = useState(false)
 
-  const filtered = users.filter(u =>
-    (!search ||
-      u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (u.universityId && u.universityId.toLowerCase().includes(search.toLowerCase())) ||
-      (u.university_id && u.university_id.toLowerCase().includes(search.toLowerCase()))) &&
-    (roleFilter === 'all' || u.roles.includes(roleFilter as UserRole)) &&
-    (statusFilter === 'all' || u.status === statusFilter)
-  )
+  const filtered = (users || []).filter(u => {
+    if (!u) return false
+    const name = (u.fullName || u.displayName || 'Unknown User').toLowerCase()
+    const uid  = (u.universityId || u.university_id || '').toLowerCase()
+    const roles = Array.isArray(u.roles) ? u.roles : (u.role ? [u.role] : ['student'])
+    const status = u.status || 'active'
+    const searchLower = (search || '').toLowerCase()
+
+    return (
+      (!searchLower || name.includes(searchLower) || uid.includes(searchLower)) &&
+      (roleFilter === 'all' || roles.includes(roleFilter as UserRole)) &&
+      (statusFilter === 'all' || status === statusFilter)
+    )
+  })
 
   const handleToggleStatus = async (user: User) => {
     if (!selectedLabId) return
@@ -206,7 +212,7 @@ export function UsersPage() {
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-slate-200 border border-line flex items-center justify-center text-xs font-semibold text-[#475569] shrink-0">
-                      {u.fullName.split(' ').map((w: string) => w[0]).slice(-2).join('')}
+                      {(u.fullName || 'User').split(' ').filter(Boolean).map((w: string) => w[0]).slice(-2).join('').toUpperCase() || 'U'}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#0f172a]">{u.fullName}</p>
@@ -215,7 +221,7 @@ export function UsersPage() {
                   </div>
                 </td>
                 <td className="px-5 py-4 font-mono text-xs text-[#475569]">
-                  {u.roles.map(r => ROLE_LABEL[r] ?? r).join(', ')}
+                  {(Array.isArray(u.roles) ? u.roles : [u.role || 'student']).map((r: any) => ROLE_LABEL[r as UserRole] ?? String(r)).join(', ')}
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex gap-1.5">
@@ -226,7 +232,7 @@ export function UsersPage() {
                   </div>
                 </td>
                 <td className="px-5 py-4 font-mono text-xs text-[#475569]">{fmtTs(u.lastAccessAt)}</td>
-                <td className="px-5 py-4"><Badge tone={STATUS_TONE[u.status]}>{u.status}</Badge></td>
+                <td className="px-5 py-4"><Badge tone={STATUS_TONE[u.status] || 'green'}>{u.status}</Badge></td>
                 <td className="px-5 py-4 relative">
                   <button onClick={() => setMenuOpen(menuOpen === u.id ? null : u.id)}
                     className="w-8 h-8 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#0f172a] hover:bg-slate-100 transition-colors cursor-pointer text-lg">...</button>
