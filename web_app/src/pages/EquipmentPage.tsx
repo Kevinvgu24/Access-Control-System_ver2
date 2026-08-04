@@ -513,36 +513,20 @@ export function EquipmentPage() {
         )}
       </Panel>
 
-      {/* Floating Mouse-Hover Equipment Preview Tooltip */}
+      {/* Floating Mouse-Hover Equipment Preview Tooltip - Image Only */}
       {hoverPreview && !contextMenu && (
         <div
           style={{ top: hoverPreview.y, left: hoverPreview.x }}
-          className="fixed z-40 bg-surface border border-line rounded-xl shadow-2xl p-4 w-72 pointer-events-none animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-40 bg-surface border border-line rounded-xl shadow-2xl p-2 w-64 h-64 pointer-events-none animate-in fade-in zoom-in-95 duration-100 flex items-center justify-center"
         >
-          <div className="w-full h-40 rounded-lg overflow-hidden bg-slate-100 border border-line mb-3 flex items-center justify-center">
-            {hoverPreview.item.image ? (
-              <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="flex flex-col items-center gap-1 text-slate-400">
-                <span className="text-3xl">📷</span>
-                <span className="font-mono text-[10px] uppercase tracking-wider">No Image Uploaded</span>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] text-[#ea580c] font-bold uppercase tracking-wider">{hoverPreview.item.category}</span>
-            <h4 className="text-sm font-bold text-[#0f172a] leading-snug">{hoverPreview.item.name}</h4>
-            <p className="font-mono text-xs text-[#475569]">S/N: <strong className="text-[#0f172a]">{hoverPreview.item.serialNumber}</strong></p>
-            {hoverPreview.item.location && (
-              <p className="text-xs text-[#64748b]">Bin/Storage: <strong>{hoverPreview.item.location}</strong></p>
-            )}
-            {hoverPreview.item.borrowerName && (
-              <div className="mt-2 pt-2 border-t border-line text-xs">
-                <p className="text-blue font-bold">Borrowed by: {hoverPreview.item.borrowerName}</p>
-                <p className="font-mono text-[11px] text-[#475569]">ID: {hoverPreview.item.borrowerId} | Due: {hoverPreview.item.returnDate}</p>
-              </div>
-            )}
-          </div>
+          {hoverPreview.item.image ? (
+            <img src={hoverPreview.item.image} alt={hoverPreview.item.name} className="w-full h-full object-cover rounded-lg" />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 text-slate-400 w-full h-full bg-slate-50 rounded-lg">
+              <span className="text-4xl">📷</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider">No Image</span>
+            </div>
+          )}
         </div>
       )}
 
