@@ -110,7 +110,7 @@ export function EquipmentPage() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('Module')
   const [status, setStatus] = useState<EquipmentStatus>('available')
-  const [quantity, setQuantity] = useState<number>(1)
+  const [quantity, setQuantity] = useState<number | ''>(1)
   const [location, setLocation] = useState('')
   const [specs, setSpecs] = useState('')
   const [notes, setNotes] = useState('')
@@ -124,7 +124,7 @@ export function EquipmentPage() {
   // Form State - Borrowing
   const [borrowerName, setBorrowerName] = useState('')
   const [borrowerId, setBorrowerId] = useState('')
-  const [borrowQty, setBorrowQty] = useState<number>(1)
+  const [borrowQty, setBorrowQty] = useState<number | ''>(1)
   const [borrowDate, setBorrowDate] = useState(getTodayStr())
   const [returnDate, setReturnDate] = useState(getNextWeekStr())
   const [borrowNotes, setBorrowNotes] = useState('')
@@ -372,7 +372,8 @@ export function EquipmentPage() {
       return
     }
 
-    const itemQty = entryMode === 'batch' ? Math.max(1, quantity) : 1
+    const numericQty = typeof quantity === 'number' && quantity > 0 ? quantity : 1
+    const itemQty = entryMode === 'batch' ? numericQty : 1
 
     setSubmitting(true)
     try {
@@ -437,7 +438,8 @@ export function EquipmentPage() {
     }
 
     const avail = borrowingItem.availableQty ?? 1
-    const qtyToBorrow = Math.min(avail, Math.max(1, borrowQty))
+    const numericBorrowQty = typeof borrowQty === 'number' && borrowQty > 0 ? borrowQty : 1
+    const qtyToBorrow = Math.min(avail, numericBorrowQty)
 
     setSubmitting(true)
     try {
@@ -1004,7 +1006,23 @@ export function EquipmentPage() {
                     max={borrowingItem.availableQty ?? 1}
                     required
                     value={borrowQty}
-                    onChange={e => setBorrowQty(Math.min(borrowingItem.availableQty ?? 1, Math.max(1, parseInt(e.target.value) || 1)))}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setBorrowQty('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setBorrowQty(isNaN(parsed) ? '' : parsed)
+                      }
+                    }}
+                    onBlur={() => {
+                      const maxAvail = borrowingItem.availableQty ?? 1
+                      if (borrowQty === '' || (typeof borrowQty === 'number' && borrowQty < 1)) {
+                        setBorrowQty(1)
+                      } else if (typeof borrowQty === 'number' && borrowQty > maxAvail) {
+                        setBorrowQty(maxAvail)
+                      }
+                    }}
                     className="bg-white border border-orange-300 rounded px-3 py-1.5 text-sm font-bold text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
                   />
                 </div>
@@ -1207,7 +1225,20 @@ export function EquipmentPage() {
                     max="1000"
                     required
                     value={quantity}
-                    onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setQuantity('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setQuantity(isNaN(parsed) ? '' : parsed)
+                      }
+                    }}
+                    onBlur={() => {
+                      if (quantity === '' || (typeof quantity === 'number' && quantity < 1)) {
+                        setQuantity(1)
+                      }
+                    }}
                     className="bg-white border border-orange-300 rounded px-3 py-1.5 text-sm font-bold text-[#0f172a] font-mono outline-none focus:border-[#ea580c] w-full"
                   />
                 </div>
