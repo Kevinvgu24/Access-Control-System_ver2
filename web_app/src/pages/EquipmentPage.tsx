@@ -685,12 +685,12 @@ export function EquipmentPage() {
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-slate-100/60 border-b border-line">
-                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Serial Number</th>
-                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Location / Storage</th>
-                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Status</th>
-                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 w-full">Borrower / User</th>
-                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600">Return Date</th>
-                            <th className="px-5 py-2.5 text-right font-mono text-[10px] font-bold uppercase text-slate-600">Actions</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap">Serial Number</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap">Location / Storage</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap">Status</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap w-full">Borrower / User</th>
+                            <th className="px-5 py-2.5 text-left font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap">Return Date</th>
+                            <th className="px-5 py-2.5 text-right font-mono text-[10px] font-bold uppercase text-slate-600 whitespace-nowrap">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
