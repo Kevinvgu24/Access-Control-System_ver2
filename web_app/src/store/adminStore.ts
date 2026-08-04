@@ -88,7 +88,7 @@ const defaultStatus: SystemStatus = {
 // Monotonically-increasing counter - guards stale async results after lab switch
 let _subscribeVersion = 0
 
-export const useAdminStore = create<AdminStore>((set) => ({
+export const useAdminStore = create<AdminStore>((set, get) => ({
   systemStatus: defaultStatus,
   events: [],
   users: [],
