@@ -1,10 +1,10 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 interface PanelProps { children: ReactNode; className?: string; pad?: boolean }
 
 export function Panel({ children, className = '', pad = true }: PanelProps) {
   return (
-    <div className={`bg-surface border border-line rounded-lg ${pad ? 'p-4 sm:p-5' : ''} ${className}`}>
+    <div className={`bg-surface border border-line rounded-lg ${pad ? 'p-6' : ''} ${className}`}>
       {children}
     </div>
   )
@@ -21,4 +21,3 @@ export function PanelHeader({ eyebrow, title, action }: { eyebrow?: string; titl
     </div>
   )
 }
-

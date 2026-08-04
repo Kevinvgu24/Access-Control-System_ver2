@@ -1,4 +1,4 @@
-﻿import { useAdminStore } from '@/store/adminStore'
+import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
 import { Menu }           from 'lucide-react'
 
@@ -90,4 +90,3 @@ function StatusBadge({ label, value, status }: { label: string; value: string; s
     </div>
   )
 }
-

@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react'
+import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Sidebar }         from '@/components/shell/Sidebar'
@@ -103,7 +103,7 @@ function AuthenticatedApp() {
           </div>
         ) : null}
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 pb-12 min-w-0 transition-all duration-300">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-16 min-w-0 transition-all duration-300">
           <Routes>
             <Route path="/labs"    element={<LabSelectorPage />} />
             {selectedLabId ? (
@@ -141,4 +141,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-
