@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
-import { getAllLabs } from '@/lib/db'
+import { useAuthStore }  from '@/store/authStore'
+import { subscribeVisibleLabs } from '@/lib/db'
 import { Panel } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -93,9 +94,19 @@ export function EquipmentPage() {
   const [removeNotes, setRemoveNotes] = useState('')
   const [availableLabs, setAvailableLabs] = useState<Lab[]>([])
 
+  const { admin, labAccessIds } = useAuthStore()
+
   useEffect(() => {
-    getAllLabs().then(labs => setAvailableLabs(labs || [])).catch(() => {})
-  }, [])
+    if (!admin) return
+    return subscribeVisibleLabs({
+      isSuperAdmin: admin.type === 'super_admin',
+      labIds: labAccessIds,
+      onData: nextLabs => {
+        setAvailableLabs(nextLabs.filter(l => l.status !== 'inactive'))
+      },
+      onError: () => {}
+    })
+  }, [admin, labAccessIds])
 
   // Context Menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -560,7 +571,11 @@ export function EquipmentPage() {
         const targetLab = availableLabs.find(l => l.id === targetLabId)
         const targetLabName = targetLab ? targetLab.name : targetLabId
 
-        // 1. Add equipment copy to target lab
+        const origNotes = deletingItem.notes || ''
+        const transferNotice = `[Relocated from ${selectedLabName || selectedLabId}]${removeNotes.trim() ? `: ${removeNotes.trim()}` : ''}`
+        const fullNotes = origNotes ? `${origNotes}\n${transferNotice}` : transferNotice
+
+        // 1. Add equipment copy to target lab carrying over 100% of original equipment data
         await addEquipment(targetLabId, {
           serialNumber: deletingItem.serialNumber,
           name: deletingItem.name,
@@ -571,7 +586,7 @@ export function EquipmentPage() {
           inUseQty: 0,
           location: deletingItem.location || '',
           specs: deletingItem.specs || '',
-          notes: removeNotes ? `Transferred from ${selectedLabName || selectedLabId}: ${removeNotes}` : `Transferred from ${selectedLabName || selectedLabId}`,
+          notes: fullNotes,
           contractNumber: deletingItem.contractNumber || '',
           invoiceNumber: deletingItem.invoiceNumber || '',
           purchaseDate: deletingItem.purchaseDate || getTodayStr(),
