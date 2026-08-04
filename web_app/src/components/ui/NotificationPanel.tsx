@@ -40,11 +40,11 @@ function timeAgo(isoOrTs: string | null): string {
   if (isNaN(d.getTime())) return ''
   const diff = Date.now() - d.getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Vá»«a xong'
-  if (mins < 60) return `${mins} phÃºt trÆ°á»›c`
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs} giá» trÆ°á»›c`
-  return `${Math.floor(hrs / 24)} ngÃ y trÆ°á»›c`
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
 }
 
 function isRecent(isoOrTs: string | null, withinMs: number): boolean {
@@ -170,15 +170,15 @@ const typeConfig: Record<NotifType, {
   schedule_soon:  { icon: <IconSchedule />, bg: 'bg-orange-50',  iconColor: 'text-orange-500',  border: 'border-orange-200'  },
 }
 
-// â”€â”€â”€ Filter labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Filter labels (English) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const filterLabels: { key: NotifType | 'all'; label: string }[] = [
-  { key: 'all',            label: 'Táº¥t cáº£'    },
-  { key: 'login',          label: 'ÄÄƒng nháº­p' },
-  { key: 'denied',         label: 'Tá»« chá»‘i'   },
-  { key: 'enrollment',     label: 'ÄÄƒng kÃ½'   },
-  { key: 'schedule_today', label: 'HÃ´m nay'   },
-  { key: 'schedule_soon',  label: 'Sáº¯p tá»›i'   },
+  { key: 'all',            label: 'All'           },
+  { key: 'login',          label: 'Logins'        },
+  { key: 'denied',         label: 'Denied'        },
+  { key: 'enrollment',     label: 'Registrations' },
+  { key: 'schedule_today', label: 'Today'         },
+  { key: 'schedule_soon',  label: 'Upcoming'      },
 ]
 
 // â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -226,7 +226,7 @@ export function NotificationPanel() {
     return () => { cancelled = true; clearInterval(timer) }
   }, [selectedLabId])
 
-  // Build notifications safely
+  // Build notifications safely (100% English text)
   const notifications = useMemo<Notification[]>(() => {
     const list: Notification[] = []
 
@@ -242,8 +242,8 @@ export function NotificationPanel() {
         list.push({
           id: 'login-' + e.id,
           type: 'login',
-          title: 'ÄÄƒng nháº­p thÃ nh cÃ´ng',
-          body: (e.displayName ?? 'Unknown User') + ' Ä‘Ã£ vÃ o phÃ²ng lab',
+          title: 'Successful Access',
+          body: (e.displayName ?? 'Unknown User') + ' entered the lab room',
           time: resolveTs(e.occurredAt),
           unread: isRecent(resolveTs(e.occurredAt), 10 * 60_000),
         })
@@ -259,16 +259,16 @@ export function NotificationPanel() {
       .slice(0, 3)
       .forEach(e => {
         const reasonMap: Record<string, string> = {
-          denied:          'bá»‹ tá»« chá»‘i truy cáº­p',
-          liveness_failed: 'khÃ´ng vÆ°á»£t qua kiá»ƒm tra liveness',
-          pin_failed:      'nháº­p sai mÃ£ PIN',
-          unknown_user:    'chÆ°a Ä‘Æ°á»£c Ä‘Äƒng kÃ½',
+          denied:          'access denied',
+          liveness_failed: 'failed liveness check',
+          pin_failed:      'incorrect PIN entered',
+          unknown_user:    'unregistered user',
         }
         list.push({
           id: 'denied-' + e.id,
           type: 'denied',
-          title: 'Truy cáº­p bá»‹ tá»« chá»‘i',
-          body: (e.displayName ?? 'NgÆ°á»i dÃ¹ng khÃ´ng rÃµ') + ' ' + (reasonMap[e.result] ?? (e.reason || e.result)),
+          title: 'Access Denied',
+          body: (e.displayName ?? 'Unknown User') + ' ' + (reasonMap[e.result] ?? (e.reason || e.result)),
           time: resolveTs(e.occurredAt),
           unread: isRecent(resolveTs(e.occurredAt), 15 * 60_000),
         })
@@ -282,8 +282,8 @@ export function NotificationPanel() {
         list.push({
           id: 'enroll-' + u.id,
           type: 'enrollment',
-          title: 'YÃªu cáº§u Ä‘Äƒng kÃ½ má»›i',
-          body: (u.fullName || 'NgÆ°á»i dÃ¹ng má»›i') + ' (' + (u.universityId || 'MÃ£ SV') + ') vá»«a Ä‘Æ°á»£c Ä‘Äƒng kÃ½ vÃ o há»‡ thá»‘ng',
+          title: 'New User Registration',
+          body: (u.fullName || 'New User') + ' (' + (u.universityId || 'ID') + ') registered in system',
           time: resolveTs(u.createdAt),
           unread: isRecent(resolveTs(u.createdAt), 2 * 3600_000),
         })
@@ -296,10 +296,10 @@ export function NotificationPanel() {
       list.push({
         id: 'sched-today-' + (todaySchedules[0].date || 'today'),
         type: 'schedule_today',
-        title: 'Lá»‹ch há»c hÃ´m nay',
-        body: 'CÃ³ ' + todaySchedules.length + ' sinh viÃªn' +
-          (groups.length > 0 ? ' (NhÃ³m ' + groups.slice(0, 3).join(', ') + ')' : '') +
-          ' cÃ³ lá»‹ch thá»±c hÃ nh hÃ´m nay',
+        title: 'Lab Schedule Today',
+        body: todaySchedules.length + ' students' +
+          (groups.length > 0 ? ' (Group ' + groups.slice(0, 3).join(', ') + ')' : '') +
+          ' scheduled for lab today',
         time: null,
         unread: true,
       })
@@ -312,10 +312,10 @@ export function NotificationPanel() {
       list.push({
         id: 'sched-soon-' + (tomorrowSchedules[0].date || 'tomorrow'),
         type: 'schedule_soon',
-        title: 'Nháº¯c lá»‹ch thá»±c hÃ nh ngÃ y mai',
-        body: tomorrowSchedules.length + ' sinh viÃªn' +
-          (groups.length > 0 ? ' nhÃ³m ' + groups.slice(0, 3).join(', ') : '') +
-          ' cÃ³ lá»‹ch há»c vÃ o ngÃ y mai',
+        title: 'Tomorrow Lab Reminder',
+        body: tomorrowSchedules.length + ' students' +
+          (groups.length > 0 ? ' (Group ' + groups.slice(0, 3).join(', ') + ')' : '') +
+          ' scheduled for lab tomorrow',
         time: null,
         unread: false,
       })
@@ -348,7 +348,7 @@ export function NotificationPanel() {
         <div className="flex items-center gap-2">
           <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">System</p>
           <span className="w-px h-3 bg-line" />
-          <p className="font-bold text-sm text-[#0f172a]">ThÃ´ng BÃ¡o System</p>
+          <p className="font-bold text-sm text-[#0f172a]">System Notifications</p>
           {unreadCount > 0 && (
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white font-bold text-[10px] leading-none">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -358,9 +358,9 @@ export function NotificationPanel() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="font-mono text-[10px] text-[#94a3b8] hover:text-orange-500 transition-colors"
+            className="font-mono text-[10px] text-[#94a3b8] hover:text-orange-500 transition-colors cursor-pointer"
           >
-            Äá»c táº¥t cáº£
+            Mark all read
           </button>
         )}
       </div>
@@ -372,7 +372,7 @@ export function NotificationPanel() {
             key={f.key}
             onClick={() => setFilter(f.key as NotifType | 'all')}
             className={
-              'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] transition-all ' +
+              'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] transition-all cursor-pointer ' +
               (filter === f.key
                 ? 'bg-orange-500 text-white font-bold'
                 : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
@@ -388,7 +388,7 @@ export function NotificationPanel() {
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <p className="text-2xl" style={{ opacity: 0.3 }}>&#128276;</p>
-            <p className="font-mono text-[11px] text-[#94a3b8]">KhÃ´ng cÃ³ thÃ´ng bÃ¡o nÃ o.</p>
+            <p className="font-mono text-[11px] text-[#94a3b8]">No notifications found.</p>
           </div>
         )}
         {filtered.map(notif => {
@@ -400,7 +400,7 @@ export function NotificationPanel() {
               key={notif.id}
               onClick={() => markRead(notif.id)}
               className={
-                'w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all hover:bg-slate-50 ' +
+                'w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all hover:bg-slate-50 cursor-pointer ' +
                 (showUnread ? cfg.bg + ' ' + cfg.border : 'border-transparent')
               }
             >
@@ -433,7 +433,7 @@ export function NotificationPanel() {
       {/* Footer */}
       <div className="px-4 py-2 border-t border-line">
         <p className="font-mono text-[10px] text-[#cbd5e1] text-center">
-          {notifications.length} thÃ´ng bÃ¡o &bull; Cáº­p nháº­t tá»± Ä‘á»™ng
+          {notifications.length} notifications &bull; Auto updated
         </p>
       </div>
     </div>
