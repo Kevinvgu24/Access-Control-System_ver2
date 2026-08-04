@@ -29,10 +29,6 @@ interface ScheduleFile {
 export function SchedulesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 25
-  const paginatedSchedules = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return filtered.slice(start, start + ITEMS_PER_PAGE)
-  }, [filtered, currentPage])
   const { selectedLabId } = useLabStore()
   const [scheduleFiles, setScheduleFiles] = useState<ScheduleFile[]>([])
   const [selectedFileKey, setSelectedFileKey] = useState<string>('') // "filename|labId"
@@ -234,25 +230,36 @@ export function SchedulesPage() {
     }
   }
 
-  const filtered = schedules.filter(s => {
-    const sName = s.student_name || ""
-    const sId = s.student_id || ""
-    const sDate = s.date || ""
-    const sExp = s.experiment || ""
-    const sGroup = s.group_nr || ""
-    return !search ||
-      sName.toLowerCase().includes(search.toLowerCase()) ||
-      sId.toLowerCase().includes(search.toLowerCase()) ||
-      sDate.includes(search) ||
-      sExp.toLowerCase().includes(search.toLowerCase()) ||
-      sGroup.toLowerCase().includes(search.toLowerCase())
-  })
+  const filtered = useMemo(() => {
+    return (schedules || []).filter(s => {
+      if (!s) return false
+      const sName = s.student_name || ''
+      const sId = s.student_id || ''
+      const sDate = s.date || ''
+      const sExp = s.experiment || ''
+      const sGroup = s.group_nr || ''
+      const searchLower = (search || '').toLowerCase()
 
+      return (
+        !searchLower ||
+        sName.toLowerCase().includes(searchLower) ||
+        sId.toLowerCase().includes(searchLower) ||
+        sDate.includes(searchLower) ||
+        sExp.toLowerCase().includes(searchLower) ||
+        sGroup.toLowerCase().includes(searchLower)
+      )
+    })
+  }, [search, schedules])
 
-  // Compute stats
-  const uniqueStudents = new Set(schedules.map(s => s.student_id).filter(Boolean)).size
-  const totalSessions = schedules.length
-  const uniqueExperiments = new Set(schedules.map(s => s.experiment).filter(Boolean)).size
+  const paginatedSchedules = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return (filtered || []).slice(start, start + ITEMS_PER_PAGE)
+  }, [filtered, currentPage])
+
+  // Compute stats safely
+  const uniqueStudents = new Set((schedules || []).map(s => s?.student_id).filter(Boolean)).size
+  const totalSessions = (schedules || []).length
+  const uniqueExperiments = new Set((schedules || []).map(s => s?.experiment).filter(Boolean)).size
 
   return (
     <div className="flex flex-col gap-7">
@@ -718,4 +725,3 @@ export function SchedulesPage() {
     </div>
   )
 }
-
