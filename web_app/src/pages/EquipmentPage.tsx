@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore }   from '@/store/labStore'
+import { getAllLabs } from '@/lib/db'
 import { Panel } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Pagination } from '@/components/ui/Pagination'
-import type { Equipment, EquipmentStatus } from '@/types/admin'
+import type { Equipment, EquipmentStatus, Lab } from '@/types/admin'
 
 const STATUS_TONE: Record<EquipmentStatus, 'green' | 'blue' | 'amber' | 'red'> = {
   available: 'green',
@@ -74,7 +75,7 @@ function compressImage(file: File): Promise<string> {
 }
 
 export function EquipmentPage() {
-  const { selectedLabId } = useLabStore()
+  const { selectedLabId, selectedLabName } = useLabStore()
   const { equipment, fetchEquipment, addEquipment, updateEquipment, deleteEquipment, borrowEquipment, returnEquipment } = useAdminStore()
 
   const [search, setSearch] = useState('')
@@ -86,6 +87,15 @@ export function EquipmentPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
   const [borrowingItem, setBorrowingItem] = useState<Equipment | null>(null)
+  const [deletingItem, setDeletingItem] = useState<Equipment | null>(null)
+  const [removeReason, setRemoveReason] = useState<'broken' | 'relocate' | 'dispose'>('broken')
+  const [targetLabId, setTargetLabId] = useState('')
+  const [removeNotes, setRemoveNotes] = useState('')
+  const [availableLabs, setAvailableLabs] = useState<Lab[]>([])
+
+  useEffect(() => {
+    getAllLabs().then(labs => setAvailableLabs(labs || [])).catch(() => {})
+  }, [])
 
   // Context Menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -527,15 +537,63 @@ export function EquipmentPage() {
     }
   }
 
-  const handleDelete = async (id: string, serial: string) => {
-    if (!selectedLabId) return
-    if (confirm(`Are you sure you want to delete equipment [${serial}]?`)) {
-      try {
-        await deleteEquipment(selectedLabId, id)
-        showToast(`Equipment [${serial}] deleted successfully!`, 'success')
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : 'Failed to delete equipment', 'error')
+  const openDeleteModal = (item: Equipment) => {
+    setDeletingItem(item)
+    setRemoveReason('broken')
+    setTargetLabId('')
+    setRemoveNotes('')
+  }
+
+  const handleConfirmRemove = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLabId || !deletingItem) return
+
+    setSubmitting(true)
+    try {
+      if (removeReason === 'relocate') {
+        if (!targetLabId) {
+          showToast('Please select a target destination lab for relocation.', 'error')
+          setSubmitting(false)
+          return
+        }
+
+        const targetLab = availableLabs.find(l => l.id === targetLabId)
+        const targetLabName = targetLab ? targetLab.name : targetLabId
+
+        // 1. Add equipment copy to target lab
+        await addEquipment(targetLabId, {
+          serialNumber: deletingItem.serialNumber,
+          name: deletingItem.name,
+          category: deletingItem.category,
+          status: 'available',
+          quantity: deletingItem.quantity || 1,
+          availableQty: deletingItem.availableQty ?? (deletingItem.quantity || 1),
+          inUseQty: 0,
+          location: deletingItem.location || '',
+          specs: deletingItem.specs || '',
+          notes: removeNotes ? `Transferred from ${selectedLabName || selectedLabId}: ${removeNotes}` : `Transferred from ${selectedLabName || selectedLabId}`,
+          contractNumber: deletingItem.contractNumber || '',
+          invoiceNumber: deletingItem.invoiceNumber || '',
+          purchaseDate: deletingItem.purchaseDate || getTodayStr(),
+          batchNumber: deletingItem.batchNumber || '',
+          image: deletingItem.image || ''
+        })
+
+        // 2. Remove equipment from current lab
+        await deleteEquipment(selectedLabId, deletingItem.id)
+
+        showToast(`Equipment [${deletingItem.serialNumber}] relocated successfully to ${targetLabName}!`, 'success')
+      } else {
+        // Broken / Disposal
+        await deleteEquipment(selectedLabId, deletingItem.id)
+        const reasonLabel = removeReason === 'broken' ? 'Decommissioned (Damaged / Defective)' : 'Permanently Disposed'
+        showToast(`Equipment [${deletingItem.serialNumber}] removed: ${reasonLabel}`, 'success')
       }
+      setDeletingItem(null)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to process equipment removal', 'error')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -812,7 +870,7 @@ export function EquipmentPage() {
                                     </div>
                                     <div className="flex items-center justify-end gap-1">
                                       <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
-                                      <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                                      <Button variant="ghost" size="xs" onClick={() => openDeleteModal(item)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
                                     </div>
                                   </div>
                                 </td>
@@ -951,7 +1009,7 @@ export function EquipmentPage() {
                           </div>
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="xs" onClick={() => openEditModal(item)} className="h-6 px-2 text-[11px]">Edit</Button>
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id, item.serialNumber)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
+                            <Button variant="ghost" size="xs" onClick={() => openDeleteModal(item)} className="text-red hover:bg-red/5 h-6 px-2 text-[11px]">Delete</Button>
                           </div>
                         </div>
                       </td>
@@ -1039,7 +1097,7 @@ export function EquipmentPage() {
             onClick={() => {
               const item = contextMenu.item
               setContextMenu(null)
-              handleDelete(item.id, item.serialNumber)
+              openDeleteModal(item)
             }}
             className="w-full text-left px-4 py-2 text-xs font-semibold text-red hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
@@ -1173,6 +1231,171 @@ export function EquipmentPage() {
                 <Button variant="ghost" type="button" onClick={() => setBorrowingItem(null)} disabled={submitting}>Cancel</Button>
                 <Button variant="primary" type="submit" disabled={submitting || !borrowerName.trim() || !borrowerId.trim()}>
                   {submitting ? 'Saving...' : 'Confirm Borrow & Push Notification'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Remove / Relocate Equipment Confirmation Modal */}
+      {deletingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !submitting && setDeletingItem(null)} />
+          <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center border-b border-line pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-[#0f172a] flex items-center gap-2">
+                  <span>🗑️</span> Remove or Relocate Equipment
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-mono">
+                  Asset Tag: <span className="text-[#ea580c] font-bold">{deletingItem.serialNumber}</span> ({deletingItem.name})
+                </p>
+              </div>
+              <button
+                onClick={() => !submitting && setDeletingItem(null)}
+                className="text-[#94a3b8] hover:text-[#0f172a] transition-colors text-xl cursor-pointer"
+              >x</button>
+            </div>
+
+            <form onSubmit={handleConfirmRemove} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#ea580c] font-bold">
+                  Select Reason / Action for Removal *
+                </label>
+
+                <div className="flex flex-col gap-2.5">
+                  {/* Option 1: Broken / Defective */}
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                      removeReason === 'broken'
+                        ? 'bg-rose-50/70 border-rose-400 shadow-xs'
+                        : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="removeReason"
+                      value="broken"
+                      checked={removeReason === 'broken'}
+                      onChange={() => setRemoveReason('broken')}
+                      className="mt-0.5 accent-[#ea580c]"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        🛠️ Broken / Damaged Beyond Repair
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        Mark equipment as defective/damaged and remove it from active lab inventory.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Relocate to another lab */}
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                      removeReason === 'relocate'
+                        ? 'bg-amber-50/70 border-amber-400 shadow-xs'
+                        : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="removeReason"
+                      value="relocate"
+                      checked={removeReason === 'relocate'}
+                      onChange={() => setRemoveReason('relocate')}
+                      className="mt-0.5 accent-[#ea580c]"
+                    />
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        🔄 Relocate / Transfer to Another Lab
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        Transfer this equipment unit directly to a different lab facility.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Destination Lab Selector (shown if relocate is selected) */}
+                  {removeReason === 'relocate' && (
+                    <div className="ml-7 flex flex-col gap-1 bg-white p-3 rounded-lg border border-amber-300 shadow-2xs">
+                      <label className="font-mono text-[10px] uppercase tracking-wider text-amber-900 font-bold">
+                        Target Destination Lab *
+                      </label>
+                      <select
+                        required
+                        value={targetLabId}
+                        onChange={e => setTargetLabId(e.target.value)}
+                        className="bg-raised border border-amber-300 rounded px-3 py-1.5 text-xs text-[#0f172a] font-medium outline-none focus:border-[#ea580c] w-full cursor-pointer"
+                      >
+                        <option value="">-- Select Destination Lab --</option>
+                        {availableLabs.filter(l => l.id !== selectedLabId).map(lab => (
+                          <option key={lab.id} value={lab.id}>
+                            {lab.name} ({lab.code || lab.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Option 3: Permanent Disposal */}
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                      removeReason === 'dispose'
+                        ? 'bg-slate-100 border-slate-400 shadow-xs'
+                        : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="removeReason"
+                      value="dispose"
+                      checked={removeReason === 'dispose'}
+                      onChange={() => setRemoveReason('dispose')}
+                      className="mt-0.5 accent-[#ea580c]"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        🗑️ Permanent Disposal / Decommission
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        Permanently delete this equipment record from lab management system.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Notes / Reason Details */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[11px] uppercase tracking-widest text-[#475569] font-bold">
+                  Removal / Transfer Notes (Optional)
+                </label>
+                <textarea
+                  placeholder="Provide reason, defect description, or transfer authorization details..."
+                  value={removeNotes}
+                  onChange={e => setRemoveNotes(e.target.value)}
+                  rows={2}
+                  className="bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] outline-none focus:border-[#ea580c]/50 w-full resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end mt-3 pt-3 border-t border-line">
+                <Button variant="ghost" type="button" onClick={() => setDeletingItem(null)} disabled={submitting}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={submitting || (removeReason === 'relocate' && !targetLabId)}
+                  className={removeReason === 'relocate' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'}
+                >
+                  {submitting
+                    ? 'Processing...'
+                    : removeReason === 'relocate'
+                    ? 'Transfer Equipment'
+                    : 'Confirm Removal'}
                 </Button>
               </div>
             </form>
