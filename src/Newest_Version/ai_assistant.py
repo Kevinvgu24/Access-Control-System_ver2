@@ -148,66 +148,97 @@ class QwenAIAssistant:
 
     def sync_db_cache(self, force: bool = False):
         """
-        Synchronize full in-memory snapshot of ALL SQLite DB tables and columns.
+        Synchronize full in-memory snapshot of ALL SQLite DB tables and columns safely.
         """
         now = time.time()
         if not force and (now - self._last_cache_update) < self._cache_ttl_seconds:
             return
 
+        conn = None
         try:
             conn = self._get_db_connection()
             c = conn.cursor()
 
             # 1. Labs Snapshot
-            c.execute("SELECT id, name, code, location, manager, status FROM labs")
-            lab_rows = c.fetchall()
-            labs_list = [f"Lab '{r['name']}' ({r['code']}): Mgr={r['manager'] or 'N/A'}, Status={r['status']}" for r in lab_rows]
-            active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
+            labs_list, active_labs_cnt = [], 0
+            try:
+                c.execute("SELECT id, name, code, location, manager, status FROM labs")
+                lab_rows = c.fetchall()
+                labs_list = [f"Lab '{r['name']}' ({r['code']}): Mgr={r['manager'] or 'N/A'}, Status={r['status']}" for r in lab_rows]
+                active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
+            except Exception as e:
+                logger.debug(f"Labs sync notice: {e}")
 
             # 2. Nodes Snapshot
-            c.execute("SELECT id, name, code, location, status, onlineState FROM nodes")
-            node_rows = c.fetchall()
-            nodes_list = [f"Node '{r['name']}': Status={r['status']}({r['onlineState']})" for r in node_rows]
+            nodes_list = []
+            try:
+                c.execute("SELECT id, name, code, location, status, onlineState FROM nodes")
+                node_rows = c.fetchall()
+                nodes_list = [f"Node '{r['name']}': Status={r['status']}({r['onlineState']})" for r in node_rows]
+            except Exception as e:
+                logger.debug(f"Nodes sync notice: {e}")
 
-            # 3. Users Snapshot
-            c.execute("SELECT id, name, university_id, role, status FROM users LIMIT 20")
-            u_rows = c.fetchall()
-            users_list = [f"User '{r['name']}' (ID:{r['university_id'] or r['id']}, Role:{r['role']}, Status:{r['status']})" for r in u_rows]
+            # 3. Users Snapshot (Critical Fix)
+            users_list = []
+            try:
+                c.execute("SELECT id, name, university_id, role, status FROM users")
+                u_rows = c.fetchall()
+                users_list = [
+                    f"User '{r['name']}' (ID:{r['university_id'] or r['id']}, Role:{r['role']}, Status:{r['status']})"
+                    for r in u_rows
+                ]
+            except Exception as e:
+                logger.error(f"Users query error: {e}")
 
             # 4. Equipment Snapshot
+            equipment_list, overdue_list, total_eq_count, avail_eq_count = [], [], 0, 0
             try:
-                c.execute("SELECT name, code, category, status, borrowedByName, dueDate FROM equipment")
+                c.execute("SELECT name, serial_number as code, category, status, assigned_to as borrowedByName, location FROM equipment")
                 eq_rows = c.fetchall()
-            except Exception:
-                c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, returnDate as dueDate FROM lab_equipment")
-                eq_rows = c.fetchall()
-
-            equipment_list = []
-            overdue_list = []
-            for r in eq_rows:
-                status_str = f"Item '{r['name']}' ({r['status']})"
-                if r['borrowedByName']:
-                    status_str += f" borrowed by {r['borrowedByName']} (Due: {r['dueDate'] or 'N/A'})"
-                equipment_list.append(status_str)
-                if str(r['status']).lower() in ['overdue', 'quá hạn']:
-                    overdue_list.append(f"'{r['name']}' (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
+                total_eq_count = len(eq_rows)
+                for r in eq_rows:
+                    status_str = f"Item '{r['name']}' ({r['status']})"
+                    if r['borrowedByName']:
+                        status_str += f" assigned to {r['borrowedByName']}"
+                    equipment_list.append(status_str)
+                    if str(r['status']).lower() in ['available', 'khả dụng', 'sẵn sàng']:
+                        avail_eq_count += 1
+                    if str(r['status']).lower() in ['overdue', 'quá hạn']:
+                        overdue_list.append(f"'{r['name']}' (Assigned to {r['borrowedByName']})")
+            except Exception as e:
+                logger.debug(f"Equipment sync notice: {e}")
 
             # 5. Access Events Snapshot (Recent 5 Logs)
-            c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 5")
-            log_rows = c.fetchall()
-            logs_list = [f"Check-in '{r['userName']}': Method={r['accessMethod']}, Granted={r['isAuthorized']} at {r['timestamp']}" for r in log_rows]
+            logs_list = []
+            try:
+                c.execute("SELECT displayName as userName, method as accessMethod, result as status, occurredAt as timestamp FROM access_events ORDER BY id DESC LIMIT 5")
+                log_rows = c.fetchall()
+                logs_list = [f"Check-in '{r['userName']}': Method={r['accessMethod']}, Result={r['status']} at {r['timestamp']}" for r in log_rows]
+            except Exception as e:
+                logger.debug(f"Access events sync notice: {e}")
 
             # 6. Schedules Snapshot
-            c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 8")
-            sch_rows = c.fetchall()
-            schedules_list = [f"Schedule '{r['title']}': Room={r['room']}, Teacher={r['instructor']}, Day={r['dayOfWeek']} {r['startTime']}-{r['endTime']}" for r in sch_rows]
+            schedules_list = []
+            try:
+                c.execute("SELECT student_name, day_of_week, experiment, date FROM lab_schedules LIMIT 8")
+                sch_rows = c.fetchall()
+                schedules_list = [f"Schedule '{r['student_name']}': Exp={r['experiment']}, Day={r['day_of_week']} ({r['date']})" for r in sch_rows]
+            except Exception:
+                try:
+                    c.execute("SELECT title, room, instructor, dayOfWeek FROM schedules LIMIT 8")
+                    sch_rows = c.fetchall()
+                    schedules_list = [f"Schedule '{r['title']}': Room={r['room']}, Teacher={r['instructor']}" for r in sch_rows]
+                except Exception as e:
+                    logger.debug(f"Schedules sync notice: {e}")
 
             # 7. Security Incidents Snapshot
-            c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 3")
-            inc_rows = c.fetchall()
-            incidents_list = [f"Incident '{r['type']}': Status={r['status']} ({r['summary']})" for r in inc_rows]
-
-            conn.close()
+            incidents_list = []
+            try:
+                c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 5")
+                inc_rows = c.fetchall()
+                incidents_list = [f"Incident '{r['type']}' [{r['severity']}]: Status={r['status']} ({r['summary']})" for r in inc_rows]
+            except Exception as e:
+                logger.debug(f"Incidents sync notice: {e}")
 
             self._memory_cache = {
                 "labs_summary": labs_list,
@@ -217,17 +248,20 @@ class QwenAIAssistant:
                 "users_summary": users_list,
                 "total_users": len(users_list),
                 "equipment_summary": equipment_list[:15],
-                "available_equipment_count": len([e for e in eq_rows if str(e['status']).lower() in ['available', 'khả dụng', 'sẵn sàng']]),
-                "total_equipment_count": len(eq_rows),
+                "available_equipment_count": avail_eq_count,
+                "total_equipment_count": total_eq_count,
                 "overdue_items": overdue_list,
                 "recent_logs": logs_list[:5],
                 "schedules_summary": schedules_list,
-                "incidents_summary": incidents_list[:3],
+                "incidents_summary": incidents_list[:5],
                 "synced_at": time.strftime("%H:%M:%S")
             }
             self._last_cache_update = now
         except Exception as e:
             logger.error(f"Error syncing DB in-memory cache: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     def _search_knowledge_docs(self, user_prompt: str) -> str:
         """
@@ -288,6 +322,49 @@ class QwenAIAssistant:
 
         return (None, None)
 
+    def query_students_by_date(self, user_prompt: str) -> Optional[str]:
+        """
+        Query students scheduled for a specific date from SQLite lab_schedules.
+        Recognizes "hôm nay", "ngày mai", "hôm qua", or specific dates like "YYYY-MM-DD", "DD/MM/YYYY".
+        """
+        prompt_lower = user_prompt.lower()
+        target_date_str = None
+        
+        today = time.strftime("%Y-%m-%d")
+        if "hôm nay" in prompt_lower or "today" in prompt_lower:
+            target_date_str = today
+        elif "hôm qua" in prompt_lower or "yesterday" in prompt_lower:
+            import datetime
+            target_date_str = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        elif "ngày mai" in prompt_lower or "tomorrow" in prompt_lower:
+            import datetime
+            target_date_str = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            import re
+            m = re.search(r'(\d{4}-\d{2}-\d{2})|(\d{1,2}/\d{1,2}/\d{4})', prompt_lower)
+            if m:
+                target_date_str = m.group(0)
+
+        if target_date_str or any(kw in prompt_lower for kw in ["lịch học", "sinh viên", "đi làm lab", "trực lab", "danh sách sinh viên", "ai đi học", "ai có lịch"]):
+            conn = None
+            try:
+                conn = self._get_db_connection()
+                c = conn.cursor()
+                if target_date_str:
+                    c.execute("SELECT student_id, student_name, group_nr, day_of_week, experiment, date FROM lab_schedules WHERE date LIKE ?", (f"%{target_date_str}%",))
+                else:
+                    c.execute("SELECT student_id, student_name, group_nr, day_of_week, experiment, date FROM lab_schedules LIMIT 15")
+                rows = c.fetchall()
+                if rows:
+                    lines = [f"- {r['student_name']} (MSSV: {r['student_id'] or 'N/A'}, Nhóm: {r['group_nr'] or 'N/A'}, Bài TN: {r['experiment'] or 'N/A'}, Ngày: {r['date'] or r['day_of_week']})" for r in rows]
+                    return f"Scheduled Students ({target_date_str or 'All Records'}, Total {len(rows)}):\n" + "\n".join(lines)
+            except Exception as e:
+                logger.debug(f"Error querying schedule by date: {e}")
+            finally:
+                if conn:
+                    conn.close()
+        return None
+
     def extract_realtime_snapshot(self, user_prompt: str = "", current_page: str = "overview") -> Dict[str, Any]:
         """
         Collect Real-time Database & Router Snapshot at THIS_MOMENT (Page-Aware Context Filtering).
@@ -311,7 +388,7 @@ class QwenAIAssistant:
         if "equipment" in page_clean:
             snapshot["focused_page_data"] = f"EQUIPMENT View: {json.dumps(self._memory_cache.get('equipment_summary', [])[:8], ensure_ascii=False)}"
         elif "users" in page_clean:
-            snapshot["focused_page_data"] = f"USERS View: {json.dumps(self._memory_cache.get('users_summary', [])[:8], ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"USERS View: {json.dumps(self._memory_cache.get('users_summary', []), ensure_ascii=False)}"
         elif "logs" in page_clean:
             snapshot["focused_page_data"] = f"LOGS View: {json.dumps(self._memory_cache.get('recent_logs', []), ensure_ascii=False)}"
         elif "schedules" in page_clean:
@@ -320,6 +397,11 @@ class QwenAIAssistant:
             snapshot["focused_page_data"] = f"SYSTEM View: {json.dumps(self._memory_cache.get('nodes_summary', []), ensure_ascii=False)}"
         else:
             snapshot["focused_page_data"] = f"Active page: '{current_page}'"
+
+        # Check for specific date/schedule student queries
+        date_students = self.query_students_by_date(user_prompt)
+        if date_students:
+            snapshot["focused_page_data"] += f" | {date_students}"
 
         # RAG Knowledge search fallback for technical queries
         doc_context = self._search_knowledge_docs(user_prompt)

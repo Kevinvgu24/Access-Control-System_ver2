@@ -1,6 +1,6 @@
 import { Pagination } from '@/components/ui/Pagination'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet, Sparkles } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -39,6 +39,7 @@ export function SchedulesPage() {
   const [search, setSearch] = useState('')
   const [templateType, setTemplateType] = useState<string>('type1')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const aiFileInputRef = useRef<HTMLInputElement>(null)
 
   // Interactive mapping states
   const [showMappingModal, setShowMappingModal] = useState(false)
@@ -120,6 +121,55 @@ export function SchedulesPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [search, selectedFileKey])
+
+  const handleAiAutoParseFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!selectedLabId) {
+      alert('Please select an active lab room first!')
+      return
+    }
+
+    setImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const prevRes = await fetch('/api/schedules/preview', {
+        method: 'POST',
+        body: formData
+      })
+      const prevData = await prevRes.json()
+      if (!prevRes.ok) {
+        throw new Error(prevData.error || 'Failed to upload schedule file')
+      }
+
+      const aiRes = await fetch(`/api/labs/${selectedLabId}/schedules/ai_parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_token: prevData.file_token,
+          filename: file.name
+        })
+      })
+
+      const aiData = await aiRes.json()
+      if (aiRes.ok && aiData.success) {
+        alert(`✨ AI successfully parsed & rendered ${aiData.count} schedule records for ${file.name}!`)
+        await loadScheduleFiles()
+        const newKey = `${file.name}|${selectedLabId}`
+        setSelectedFileKey(newKey)
+      } else {
+        alert(`AI Parse error: ${aiData.error || 'Failed to parse schedule'}`)
+      }
+    } catch (err: any) {
+      alert(`AI Auto-Parse error: ${err.message}`)
+    } finally {
+      setImporting(false)
+      if (e.target) e.target.value = ''
+    }
+  }
 
   const handleImportDirect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -312,6 +362,17 @@ export function SchedulesPage() {
               <option value="original">Template 2 (Original dynamic design)</option>
             </select>
             <span className="font-mono text-[11px] uppercase tracking-widest text-[#94a3b8]">Or upload new file for active lab:</span>
+            
+            {/* AI Auto-Parse Hidden Input */}
+            <input 
+              type="file" 
+              ref={aiFileInputRef} 
+              accept=".xlsx,.html,.htm,.csv,.txt" 
+              onChange={handleAiAutoParseFile} 
+              className="hidden" 
+            />
+
+            {/* Standard Upload Hidden Input */}
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -319,9 +380,22 @@ export function SchedulesPage() {
               onChange={handleImportDirect} 
               className="hidden" 
             />
-            <Button variant="primary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? 'Importing...' : 'Upload Upload New Schedule (Excel/HTML)'}
-            </Button>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+              <Button 
+                variant="primary" 
+                onClick={() => aiFileInputRef.current?.click()} 
+                disabled={importing}
+                className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-bold flex-1 flex items-center justify-center gap-1.5 border border-white/20 shadow-md"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200 fill-amber-200" />
+                <span>{importing ? 'AI Processing...' : '✨ AI Auto-Parse Schedule (Recommended)'}</span>
+              </Button>
+
+              <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={importing} className="text-xs">
+                Manual Template Upload
+              </Button>
+            </div>
           </div>
         </div>
       ) : (

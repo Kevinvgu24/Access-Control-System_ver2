@@ -1896,6 +1896,134 @@ def import_mapped_schedule(lab_id):
         logger.error(f"Failed to import mapped schedules: {e}")
         return jsonify({"error": f"Failed to parse and save schedules: {str(e)}"}), 500
 
+# 20d. AI-Powered Auto-Parse Schedule Endpoint
+@app.route("/api/labs/<lab_id>/schedules/ai_parse", methods=["POST"])
+def ai_parse_schedule(lab_id):
+    try:
+        data = request.get_json() or {}
+        raw_text = data.get("raw_text", "")
+        file_token = data.get("file_token")
+        filename = data.get("filename", "ai_parsed_schedule.xlsx")
+        
+        # 1. Try standard parser first if file_token provided
+        if file_token and not raw_text:
+            import tempfile
+            temp_path = os.path.join(tempfile.gettempdir(), file_token)
+            if os.path.exists(temp_path):
+                try:
+                    parser = UniversalScheduleParser(temp_path)
+                    parser.is_xlsx = filename.lower().endswith(".xlsx")
+                    records = parser.parse()
+                    if records:
+                        conn = sqlite3.connect(db_path)
+                        c = conn.cursor()
+                        c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
+                        now_str = datetime.now().isoformat()
+                        insert_data = [
+                            (lab_id, r.get("student_id", ""), r.get("student_name", ""), r.get("group_nr", ""), r.get("student_nr", ""), r.get("date", ""), r.get("day_of_week", ""), r.get("ma", ""), r.get("session_num", ""), r.get("experiment", ""), now_str, filename)
+                            for r in records
+                        ]
+                        c.executemany("""
+                            INSERT INTO lab_schedules 
+                                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, insert_data)
+                        conn.commit()
+                        conn.close()
+                        ai_assistant.invalidate_cache()
+                        return jsonify({"success": True, "count": len(records), "filename": filename, "method": "parser"})
+                except Exception as ex:
+                    logger.debug(f"Standard parser fallback to AI: {ex}")
+
+        # 2. Extract text and feed to Qwen AI Assistant
+        if not raw_text and file_token:
+            temp_path = os.path.join(tempfile.gettempdir(), file_token)
+            if os.path.exists(temp_path):
+                try:
+                    with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
+                        raw_text = f.read(5000)
+                except Exception:
+                    pass
+
+        if not raw_text:
+            return jsonify({"error": "No schedule content available for AI parsing"}), 400
+
+        prompt = f"""You are a Lab Schedule Parser AI. Convert the raw schedule content into a valid JSON array of schedule objects.
+JSON Schema required:
+[
+  {{
+    "student_id": "20210015",
+    "student_name": "Student Name",
+    "group_nr": "1",
+    "student_nr": "1",
+    "date": "2026-08-05",
+    "day_of_week": "Thứ 4",
+    "ma": "ECE2024",
+    "session_num": "Sáng",
+    "experiment": "Experiment Name"
+  }}
+]
+Rules:
+- Extract all students, dates, group numbers, student IDs, and experiments.
+- Output ONLY the raw JSON array. Do not include introductory text.
+
+Raw Schedule Data:
+{raw_text[:4000]}
+"""
+
+        res = ai_assistant.generate_response(user_prompt=prompt, current_page="schedules")
+        ai_reply = res.get("response", "")
+        
+        import re
+        m = re.search(r'\[.*\]', ai_reply, re.DOTALL)
+        if not m:
+            return jsonify({"error": "AI could not structure schedule into JSON format"}), 422
+
+        extracted_json = json.loads(m.group(0))
+        if not isinstance(extracted_json, list) or len(extracted_json) == 0:
+            return jsonify({"error": "AI returned empty schedule array"}), 422
+
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("DELETE FROM lab_schedules WHERE filename = ? AND labId = ?", (filename, lab_id))
+        now_str = datetime.now().isoformat()
+        insert_data = []
+        for item in extracted_json:
+            insert_data.append((
+                lab_id,
+                str(item.get("student_id", "")),
+                str(item.get("student_name", "")),
+                str(item.get("group_nr", "")),
+                str(item.get("student_nr", "")),
+                str(item.get("date", "")),
+                str(item.get("day_of_week", "")),
+                str(item.get("ma", "")),
+                str(item.get("session_num", "")),
+                str(item.get("experiment", "")),
+                now_str,
+                filename
+            ))
+
+        c.executemany("""
+            INSERT INTO lab_schedules 
+                (labId, student_id, student_name, group_nr, student_nr, date, day_of_week, ma, session_num, experiment, createdAt, filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, insert_data)
+        
+        conn.commit()
+        conn.close()
+        ai_assistant.invalidate_cache()
+
+        return jsonify({
+            "success": True,
+            "count": len(extracted_json),
+            "filename": filename,
+            "method": "ai_qwen_coder"
+        })
+    except Exception as e:
+        logger.error(f"Error in AI Schedule Parsing: {e}")
+        return jsonify({"error": f"AI Schedule Parse failed: {str(e)}"}), 500
+
 # 21. Create a new lab
 @app.route("/api/labs", methods=["POST"])
 def create_lab():

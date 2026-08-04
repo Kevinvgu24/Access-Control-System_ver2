@@ -117,15 +117,6 @@ export const AiChatWidget: React.FC = () => {
 
     try {
       if (!isTableReq && typeof window !== 'undefined' && 'ReadableStream' in window) {
-        const aiMsgId = (Date.now() + 1).toString()
-        const initialAiMsg: Message = {
-          id: aiMsgId,
-          sender: 'assistant',
-          text: '',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-        setMessages(prev => [...prev, initialAiMsg])
-
         const res = await fetch('/api/ai/chat-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -145,6 +136,7 @@ export const AiChatWidget: React.FC = () => {
         const decoder = new TextDecoder('utf-8')
         let fullText = ''
         let pendingRoute: string | null = null
+        let aiMsgId: string | null = null
 
         while (true) {
           const { value, done } = await reader.read()
@@ -161,9 +153,24 @@ export const AiChatWidget: React.FC = () => {
                 const parsed = JSON.parse(jsonStr)
                 if (parsed.token) {
                   fullText += parsed.token
-                  setMessages(prev =>
-                    prev.map(m => m.id === aiMsgId ? { ...m, text: fullText } : m)
-                  )
+                  if (!aiMsgId) {
+                    // First token arrived: Turn off thinking indicator and insert single AI message bubble
+                    aiMsgId = (Date.now() + 1).toString()
+                    setIsLoading(false)
+                    setMessages(prev => [
+                      ...prev,
+                      {
+                        id: aiMsgId!,
+                        sender: 'assistant',
+                        text: fullText,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      }
+                    ])
+                  } else {
+                    setMessages(prev =>
+                      prev.map(m => m.id === aiMsgId ? { ...m, text: fullText } : m)
+                    )
+                  }
                 }
                 if (parsed.action === 'NAVIGATE' && parsed.target_route) {
                   pendingRoute = parsed.target_route
@@ -521,7 +528,9 @@ export const AiChatWidget: React.FC = () => {
 
           {/* Chat Messages Container */}
           <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 bg-slate-50/40">
-            {messages.map(msg => (
+            {messages
+              .filter(msg => msg.sender === 'user' || msg.text.trim().length > 0)
+              .map(msg => (
               <div
                 key={msg.id}
                 className={`flex gap-2.5 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
