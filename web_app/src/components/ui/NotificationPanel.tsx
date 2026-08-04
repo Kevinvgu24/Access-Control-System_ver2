@@ -384,7 +384,7 @@ export function NotificationPanel() {
       </div>
 
       {/* Notification list */}
-      <div className="flex flex-col gap-1 px-2 py-2 overflow-y-auto flex-1 custom-scrollbar" style={{ maxHeight: '280px' }}>
+      <div className="flex flex-col gap-1 px-2 py-2 overflow-y-auto flex-1 custom-scrollbar max-h-[calc(100vh-14rem)] min-h-[260px]">
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <p className="text-2xl" style={{ opacity: 0.3 }}>&#128276;</p>
@@ -439,3 +439,4 @@ export function NotificationPanel() {
     </div>
   )
 }
+

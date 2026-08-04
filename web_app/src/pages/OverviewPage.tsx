@@ -92,7 +92,7 @@ export function OverviewPage() {
         </div>
 
         {/* Notification Panel */}
-        <div className="md:col-span-5 lg:col-span-4 flex flex-col">
+        <div className="md:col-span-5 lg:col-span-4 flex flex-col md:sticky md:top-4 self-start max-h-[calc(100vh-5rem)]">
           <Panel pad={false} className="overflow-hidden flex-1">
             <NotificationPanel />
           </Panel>
@@ -101,3 +101,4 @@ export function OverviewPage() {
     </div>
   )
 }
+
