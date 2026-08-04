@@ -325,6 +325,7 @@ export function EquipmentPage() {
 
   const openAddModal = () => {
     setIsGroupAdd(false)
+    setIsGroupBatch(false)
     setEntryMode('individual')
     setSerialNumber('')
     setName('')
@@ -347,6 +348,7 @@ export function EquipmentPage() {
       item => (item.name || '').trim().toLowerCase() === groupName.trim().toLowerCase()
     )
 
+    const isParentBatch = groupItems.some(i => (i.quantity || 1) > 1 || !!i.batchNumber)
     const nextSeq = getNextAvailableSeqNumber(groupItems)
 
     let prefix = groupName.trim().replace(/\s+/g, '-')
@@ -362,7 +364,8 @@ export function EquipmentPage() {
     const existingBatchNumber = groupItems.find(i => !!i.batchNumber)?.batchNumber || ''
 
     setIsGroupAdd(true)
-    setEntryMode('individual')
+    setIsGroupBatch(isParentBatch)
+    setEntryMode(isParentBatch ? 'batch' : 'individual')
     setSerialNumber(autoSerial)
     setName(groupName)
     setCategory(groupCategory || 'Module')
@@ -380,9 +383,11 @@ export function EquipmentPage() {
   }
 
   const openEditModal = (item: Equipment) => {
+    const isBatch = (item.quantity || 1) > 1 || !!item.batchNumber
     setIsGroupAdd(false)
+    setIsGroupBatch(isBatch)
     setEditingItem(item)
-    setEntryMode((item.quantity || 1) > 1 ? 'batch' : 'individual')
+    setEntryMode(isBatch ? 'batch' : 'individual')
     setSerialNumber(item.serialNumber)
     setName(item.name)
     setCategory(item.category)
@@ -1195,34 +1200,36 @@ export function EquipmentPage() {
             </div>
 
             <form onSubmit={handleSaveAddEdit} className="flex flex-col gap-4">
-              {/* Management Mode Selector Switch */}
-              <div className="flex flex-col gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                <label className="font-mono text-[10px] uppercase tracking-wider text-[#ea580c] font-bold">Management Mode</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setEntryMode('individual'); setQuantity(1); }}
-                    className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
-                      entryMode === 'individual'
-                        ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
-                        : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
-                    }`}
-                  >
-                    📌 Individual Asset Tag
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEntryMode('batch')}
-                    className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
-                      entryMode === 'batch'
-                        ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
-                        : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
-                    }`}
-                  >
-                    📦 Bulk Batch Item
-                  </button>
+              {/* Management Mode Selector Switch (Shown ONLY when registering a NEW equipment model from main button) */}
+              {!isGroupAdd && !editingItem && (
+                <div className="flex flex-col gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <label className="font-mono text-[10px] uppercase tracking-wider text-[#ea580c] font-bold">Management Mode</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEntryMode('individual'); setQuantity(1); }}
+                      className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
+                        entryMode === 'individual'
+                          ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
+                          : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
+                      }`}
+                    >
+                      📌 Individual Asset Tag
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('batch')}
+                      className={`px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-all cursor-pointer border ${
+                        entryMode === 'batch'
+                          ? 'bg-white text-[#ea580c] border-[#ea580c]/40 shadow-sm'
+                          : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
+                      }`}
+                    >
+                      📦 Bulk Batch Item
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Equipment Photo Upload */}
               <div className="flex flex-col gap-1.5">
@@ -1348,7 +1355,7 @@ export function EquipmentPage() {
                 </select>
               </div>
 
-              {(isGroupAdd || editingItem) ? (
+              {isGroupBatch ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <div className="h-5 flex items-end">
