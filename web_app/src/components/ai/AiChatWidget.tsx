@@ -367,42 +367,42 @@ export const AiChatWidget: React.FC = () => {
         </button>
       )}
 
-      {/* Floating AI Drawer Window (VGU White-Orange Theme) */}
+      {/* Floating AI Drawer Window (VGU White-Orange Theme - Compact 25% Smaller) */}
       {isOpen && (
-        <div className="fixed bottom-5 right-5 z-50 w-[92vw] sm:w-[440px] h-[580px] max-h-[85vh] bg-white border border-orange-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-5 right-5 z-50 w-[88vw] sm:w-[340px] h-[450px] max-h-[75vh] bg-white border border-orange-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           
           {/* Header - VGU Orange Theme */}
-          <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white px-4 py-3.5 flex items-center justify-between shadow-xs shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-white shrink-0 shadow-xs">
-                <Bot className="w-5 h-5 text-white" />
+          <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white px-3.5 py-2.5 flex items-center justify-between shadow-xs shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-white shrink-0 shadow-xs">
+                <Bot className="w-4.5 h-4.5 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm tracking-tight text-white">VGU AI Assistant</h3>
-                  <span className="text-[10px] font-mono bg-white/20 text-white px-1.5 py-0.5 rounded border border-white/30 uppercase font-semibold">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-bold text-xs tracking-tight text-white">VGU AI Assistant</h3>
+                  <span className="text-[9px] font-mono bg-white/20 text-white px-1.5 py-0.2 rounded border border-white/30 uppercase font-semibold">
                     1.5B
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-orange-100 font-medium">
+                <div className="flex items-center gap-1 text-[10px] text-orange-100 font-medium">
                   <span
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-1.5 h-1.5 rounded-full ${
                       aiStatus.status === 'online' ? 'bg-emerald-400 shadow-emerald-400/50 shadow-sm' : 'bg-amber-300'
                     }`}
                   />
                   <span>
                     {aiStatus.status === 'online'
-                      ? 'Local Service Online'
+                      ? 'Local Online'
                       : aiStatus.status === 'checking'
-                      ? 'Connecting to AI...'
+                      ? 'Connecting...'
                       : 'AI Offline'}
                   </span>
                   <button
                     onClick={checkStatus}
-                    className="ml-1 text-orange-100 hover:text-white p-0.5 rounded transition-colors"
+                    className="ml-0.5 text-orange-100 hover:text-white p-0.5 rounded transition-colors"
                     title="Recheck API connection"
                   >
-                    <RefreshCw className={`w-3 h-3 ${aiStatus.status === 'checking' ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-2.5 h-2.5 ${aiStatus.status === 'checking' ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
               </div>
@@ -411,19 +411,22 @@ export const AiChatWidget: React.FC = () => {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setMessages([messages[0]])}
-                className="p-1.5 text-orange-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs font-mono"
+                className="px-1.5 py-0.5 text-orange-100 hover:text-white hover:bg-white/10 rounded-md transition-colors text-[10px] font-mono"
                 title="Clear chat history"
               >
                 Clear
               </button>
+              {/* Prominent High-Contrast Red Close Button */}
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-orange-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="bg-red-500/90 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md border border-white/40 transition-transform hover:scale-110 active:scale-95 cursor-pointer ml-1"
+                title="Close AI Assistant"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
           </div>
+
 
           {/* Current Page Context Ribbon (VGU White-Orange) */}
           <div className="bg-orange-50/70 border-b border-orange-100 px-3 py-1.5 flex items-center justify-between shrink-0 text-xs">
