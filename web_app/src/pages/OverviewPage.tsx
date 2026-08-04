@@ -1,4 +1,4 @@
-import { useAdminStore } from '@/store/adminStore'
+﻿import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { fmtConf, fmtMethod, fmtTs, resultLabel, resultTone } from '@/lib/format'
 import { useNavigate } from 'react-router-dom'
 import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidget'
+import { NotificationPanel } from '@/components/ui/NotificationPanel'
 
 export function OverviewPage() {
   const { systemStatus, events, incidents, todayEntries, failedAttempts, averageConfidence, loading } = useAdminStore()
@@ -54,13 +55,13 @@ export function OverviewPage() {
 
       {/* Content */}
       <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 380px' }}>
-        {/* Feed */}
+        {/* Live Activity Feed */}
         <Panel>
           <PanelHeader eyebrow="Real-time" title="Live Activity Feed"
             action={
               <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#94a3b8]">
                 <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
-                {loading ? 'Loading…' : 'AUTO'}
+                {loading ? 'Loading...' : 'AUTO'}
               </span>
             }
           />
@@ -76,7 +77,7 @@ export function OverviewPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#0f172a] truncate">{ev.displayName ?? 'Unknown User'}</p>
-                    <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5 truncate">{fmtMethod(ev.method)} · {ev.reason}</p>
+                    <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5 truncate">{fmtMethod(ev.method)} &rarr; {ev.reason}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -88,28 +89,10 @@ export function OverviewPage() {
           </div>
         </Panel>
 
-        {/* Right */}
-        <div className="flex flex-col gap-4">
-          <Panel>
-            <PanelHeader eyebrow="Trend" title="Confidence Band" />
-            <div className="flex flex-col gap-3">
-              {events.slice(0, 6).map(ev => {
-                const pct = Math.max(ev.confidence ?? 50, 15)
-                const barColor = ev.result === 'granted' ? 'bg-green' : ev.result === 'denied' || ev.result === 'pin_failed' ? 'bg-red' : 'bg-amber'
-                return (
-                  <div key={ev.id} className="flex items-center gap-3">
-                    <span className="font-mono text-[11px] text-[#94a3b8] w-10 shrink-0">{fmtTs(ev.occurredAt).slice(11, 16)}</span>
-                    <div className="flex-1 h-1 rounded-full bg-slate-200 overflow-hidden">
-                      <div className={`h-full rounded-full opacity-75 ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="font-mono text-[11px] text-[#475569] w-10 text-right shrink-0">{fmtConf(ev.confidence)}</span>
-                  </div>
-                )
-              })}
-              {events.length === 0 && (
-                <p className="font-mono text-[11px] text-[#94a3b8]">No data yet.</p>
-              )}
-            </div>
+        {/* Right - Notification Panel */}
+        <div className="flex flex-col">
+          <Panel pad={false} className="overflow-hidden">
+            <NotificationPanel />
           </Panel>
         </div>
       </div>
