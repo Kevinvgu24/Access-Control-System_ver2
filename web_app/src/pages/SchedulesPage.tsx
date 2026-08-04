@@ -1,6 +1,6 @@
 import { Pagination } from '@/components/ui/Pagination'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { FileSpreadsheet, Sparkles } from 'lucide-react'
+import { FileSpreadsheet, Sparkles, Users, Calendar, LayoutGrid, List } from 'lucide-react'
 import { useLabStore } from '@/store/labStore'
 import { Panel } from '@/components/ui/Panel'
 import { Button } from '@/components/ui/Button'
@@ -38,6 +38,7 @@ export function SchedulesPage() {
   const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
   const [templateType, setTemplateType] = useState<string>('type1')
+  const [viewMode, setViewMode] = useState<'grouped' | 'table'>('grouped')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const aiFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -219,31 +220,33 @@ export function SchedulesPage() {
   const handleConfirmMappingImport = async () => {
     if (!previewData || !selectedLabId) return
 
+    const mappingPayload = {
+      file_token: previewData.file_token,
+      filename: previewData.filename,
+      month_row: monthRow,
+      day_of_week_row: dayOfWeekRow,
+      date_row: dateRow,
+      ma_row: maRow,
+      session_row: sessionRow,
+      group_col: groupCol,
+      name_col: nameCol,
+      id_col: idCol,
+      start_col: startCol,
+      start_row: startRow
+    }
+
     setImporting(true)
     try {
       const response = await fetch(`/api/labs/${selectedLabId}/schedules/import_mapped`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_token: previewData.file_token,
-          filename: previewData.filename,
-          month_row: monthRow,
-          day_of_week_row: dayOfWeekRow,
-          date_row: dateRow,
-          ma_row: maRow,
-          session_row: sessionRow,
-          group_col: groupCol,
-          name_col: nameCol,
-          id_col: idCol,
-          start_col: startCol,
-          start_row: startRow
-        })
+        body: JSON.stringify(mappingPayload)
       })
       const result = await response.json()
-      if (response.ok) {
+      if (response.ok && result.success) {
         alert(`Successfully imported: ${result.count} schedule records parsed from "${result.filename}"!`)
         setShowMappingModal(false)
-        const nextFiles = await loadScheduleFiles()
+        await loadScheduleFiles()
         const newKey = `${result.filename}|${selectedLabId}`
         setSelectedFileKey(newKey)
       } else {
@@ -305,6 +308,61 @@ export function SchedulesPage() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE
     return (filtered || []).slice(start, start + ITEMS_PER_PAGE)
   }, [filtered, currentPage])
+
+  // Parse numerical group number for ascending sorting (Group 1 -> 1, Group 2 -> 2)
+  const parseGroupNum = (grpStr: string) => {
+    const match = (grpStr || '').match(/\d+/)
+    return match ? parseInt(match[0], 10) : 999999
+  }
+
+  // Compute Grouped Schedule Data (Grouped by Group Nr, Sorted Ascending)
+  const groupedSchedules = useMemo(() => {
+    const groupMap: Record<
+      string,
+      {
+        group_nr: string
+        students: { id: string; name: string }[]
+        sessions: { date: string; day_of_week: string; session_num: string; ma: string; experiment: string }[]
+      }
+    > = {}
+
+    for (const s of filtered) {
+      if (!s) continue
+      const gKey = (s.group_nr || 'Unassigned').toString().trim()
+      if (!groupMap[gKey]) {
+        groupMap[gKey] = {
+          group_nr: gKey,
+          students: [],
+          sessions: []
+        }
+      }
+
+      const sId = (s.student_id || '').trim()
+      const sName = (s.student_name || '').trim()
+      if (sName && !groupMap[gKey].students.some(st => st.name === sName || (sId && st.id === sId))) {
+        groupMap[gKey].students.push({
+          id: sId || 'N/A',
+          name: sName
+        })
+      }
+
+      const expName = (s.experiment && s.experiment !== 'Có lịch (Ô gộp)') ? s.experiment : 'Scheduled Session'
+      const sessKey = `${s.date}_${s.session_num}_${expName}`
+
+      if (!groupMap[gKey].sessions.some(se => `${se.date}_${se.session_num}_${se.experiment}` === sessKey)) {
+        groupMap[gKey].sessions.push({
+          date: s.date || 'N/A',
+          day_of_week: s.day_of_week || '',
+          session_num: s.session_num || '1',
+          ma: s.ma || '',
+          experiment: expName
+        })
+      }
+    }
+
+    // Sort Groups in ascending numerical order: Group 1, Group 2, Group 3...
+    return Object.values(groupMap).sort((a, b) => parseGroupNum(a.group_nr) - parseGroupNum(b.group_nr))
+  }, [filtered])
 
   // Compute stats safely
   const uniqueStudents = new Set((schedules || []).map(s => s?.student_id).filter(Boolean)).size
@@ -413,40 +471,45 @@ export function SchedulesPage() {
             </div>
             
             <div className="flex gap-3 items-center">
-              <div className="flex flex-col gap-1">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-[#94a3b8] text-right">Template</span>
-                <select
-                  value={templateType}
-                  onChange={e => setTemplateType(e.target.value)}
-                  className="bg-surface border border-line rounded px-2.5 py-1 text-xs text-[#0f172a] outline-none focus:border-[#ea580c]/50 cursor-pointer font-medium"
+              {/* View Mode Toggle Switch */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button
+                  onClick={() => setViewMode('grouped')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+                    viewMode === 'grouped'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <option value="type1">Template 1 (New)</option>
-                  <option value="original">Template 2 (Old)</option>
-                </select>
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Grouped Cards</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+                    viewMode === 'table'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Detailed Table</span>
+                </button>
               </div>
+
               <Button variant="ghost" onClick={() => fetchSchedules(selectedFileKey)} disabled={loading}>
-                {loading ? 'Refreshing...' : 'Refresh Refresh'}
+                {loading ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                accept=".xlsx,.html,.htm" 
-                onChange={handleImportDirect} 
-                className="hidden" 
-              />
-              <Button variant="primary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-                {importing ? 'Importing...' : 'Upload Upload New List'}
-              </Button>
-              <Button variant="ghost" onClick={handleClearCurrentFile} className="text-red hover:bg-red/5">
-                Delete Delete List
+              <Button variant="ghost" onClick={handleClearCurrentFile} disabled={loading} className="text-red hover:bg-red/10">
+                Delete List
               </Button>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Stats Overview Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
-              { label: 'Total Schedule Entries', value: totalSessions, color: 'text-[#0f172a]' },
+              { label: 'Total Lab Sessions', value: totalSessions, color: 'text-orange-600' },
               { label: 'Unique Students', value: uniqueStudents, color: 'text-green' },
               { label: 'Experiments scheduled', value: uniqueExperiments, color: 'text-blue' },
             ].map(({ label, value, color }) => (
@@ -457,63 +520,158 @@ export function SchedulesPage() {
             ))}
           </div>
 
-          {/* Search and Table */}
-          <Panel pad={false} className="overflow-x-auto">
-            <div className="flex gap-3 items-center p-5 border-b border-line">
+          {/* Search and Main Content Display */}
+          <Panel pad={false} className="p-5">
+            <div className="flex gap-3 items-center mb-5 border-b border-line pb-4">
               <input 
                 type="text" 
-                placeholder="Search by student, MSSV, date (YYYY-MM-DD), or experiment..." 
+                placeholder="Search by student, MSSV, group number (e.g. Group 1), or experiment..." 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="flex-1 bg-raised border border-line rounded px-3 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
+                className="flex-1 bg-raised border border-line rounded px-3.5 py-2 text-sm text-[#0f172a] placeholder:text-[#cbd5e1] outline-none focus:border-[#ea580c]/50 transition-colors"
               />
             </div>
 
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-raised">
-                  {['Student', 'Group / No.', 'Date & Day', 'Session / M/A', 'Experiment', 'Uploaded At'].map(h => (
-                    <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedSchedules.map(s => (
-                  <tr key={s.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
-                    <td className="px-5 py-4">
-                      <div>
-                        <p className="text-sm font-semibold text-[#0f172a]">{s.student_name}</p>
-                        <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{s.student_id}</p>
+            {viewMode === 'grouped' ? (
+              <div className="grid grid-cols-1 gap-5">
+                {groupedSchedules.map(group => (
+                  <div
+                    key={group.group_nr}
+                    className="bg-white border border-orange-200/90 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
+                  >
+                    {/* Group Header Banner */}
+                    <div className="flex items-center justify-between border-b border-orange-100 pb-3 flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-bold font-mono text-base flex items-center justify-center shadow-xs border border-white/20">
+                          G{group.group_nr.replace(/Group\s*/i, '')}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            Group {group.group_nr.replace(/Group\s*/i, '')}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-mono">
+                            Assigned Lab Unit (Sorted Ascending)
+                          </p>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs text-[#475569]">
-                      Group {s.group_nr} {s.student_nr ? `#${s.student_nr}` : ''}
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs text-[#0f172a]">
-                      <div>{s.date}</div>
-                      <div className="text-[10px] text-[#94a3b8] mt-0.5">{s.day_of_week}</div>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs text-[#475569]">
-                      <div>Session {s.session_num}</div>
-                      <div className="text-[10px] text-[#94a3b8] mt-0.5">{s.ma}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-sm text-[#0f172a] font-medium">{s.experiment || 'No Experiment Assigned'}</span>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-[11px] text-[#94a3b8]">
-                      {fmtTs(s.createdAt)}
-                    </td>
-                  </tr>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-orange-800 bg-orange-100/80 px-3 py-1 rounded-full border border-orange-200 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-orange-600" />
+                          <span>{group.students.length} Members</span>
+                        </span>
+                        <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{group.sessions.length} Scheduled Sessions</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Group Content Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                      {/* Left Box: 4 Group Members */}
+                      <div className="md:col-span-5 bg-slate-50/90 border border-slate-200/80 rounded-xl p-4">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-orange-600" /> Group Members ({group.students.length}):
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {group.students.map((st, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white border border-slate-200/90 rounded-lg p-2.5 flex items-center justify-between shadow-2xs hover:border-orange-300 transition-colors"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-800 font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                                  {idx + 1}
+                                </div>
+                                <span className="text-xs font-bold text-slate-800 truncate max-w-[160px]" title={st.name}>
+                                  {st.name}
+                                </span>
+                              </div>
+                              <span className="font-mono text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                {st.id}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right Box: All Sessions & Experiments */}
+                      <div className="md:col-span-7 bg-orange-50/40 border border-orange-200/70 rounded-xl p-4">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-orange-950 font-bold mb-3 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-orange-600" /> All Lab Sessions & Experiments ({group.sessions.length}):
+                        </p>
+                        <div className="flex flex-col gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+                          {group.sessions.map((sess, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white border border-orange-200/90 rounded-lg p-3 flex items-center justify-between flex-wrap gap-2 shadow-2xs"
+                            >
+                              <div className="flex items-center gap-2 font-mono text-xs text-slate-800">
+                                <span className="font-bold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-md border border-orange-200">
+                                  📅 {sess.date} ({sess.day_of_week})
+                                </span>
+                                <span className="text-[11px] text-slate-700 bg-slate-100 px-2 py-1 rounded-md font-medium">
+                                  Session {sess.session_num} ({sess.ma})
+                                </span>
+                              </div>
+                              <span className="text-xs font-extrabold text-orange-950 bg-amber-100 px-3 py-1 rounded-md border border-amber-300">
+                                🧪 {sess.experiment}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
 
-            <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
-
-            {filtered.length === 0 && (
-              <div className="py-16 text-center">
-                <p className="font-mono text-xs text-[#94a3b8] mb-2">No schedules matched the filter.</p>
-                <p className="text-xs text-[#64748b]">Upload your schedule spreadsheet (.xlsx) or HTML schedule grid to visualize.</p>
+                {groupedSchedules.length === 0 && (
+                  <div className="py-16 text-center bg-surface border border-line rounded-lg">
+                    <p className="font-mono text-xs text-[#94a3b8] mb-2">No grouped schedule records match the filter.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-raised">
+                      {['Student', 'Group / No.', 'Date & Day', 'Session / M/A', 'Experiment', 'Uploaded At'].map(h => (
+                        <th key={h} className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-[#94a3b8] border-b border-line">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedSchedules.map(s => (
+                      <tr key={s.id} className="border-b border-line hover:bg-raised transition-colors last:border-0">
+                        <td className="px-5 py-4">
+                          <div>
+                            <p className="text-sm font-semibold text-[#0f172a]">{s.student_name}</p>
+                            <p className="font-mono text-[11px] text-[#94a3b8] mt-0.5">{s.student_id}</p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-xs text-[#475569]">
+                          Group {s.group_nr} {s.student_nr ? `#${s.student_nr}` : ''}
+                        </td>
+                        <td className="px-5 py-4 font-mono text-xs text-[#0f172a]">
+                          <div>{s.date}</div>
+                          <div className="text-[10px] text-[#94a3b8] mt-0.5">{s.day_of_week}</div>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-xs text-[#475569]">
+                          <div>Session {s.session_num}</div>
+                          <div className="text-[10px] text-[#94a3b8] mt-0.5">{s.ma}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-sm text-[#0f172a] font-medium">{s.experiment || 'No Experiment Assigned'}</span>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-[11px] text-[#94a3b8]">
+                          {fmtTs(s.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
               </div>
             )}
           </Panel>
