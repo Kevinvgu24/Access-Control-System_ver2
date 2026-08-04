@@ -40,7 +40,7 @@ export function subscribeVisibleLabs(
   }
 
   fetchLabs()
-  const interval = setInterval(fetchLabs, 3000)
+  const interval = setInterval(fetchLabs, 10000)
 
   return () => clearInterval(interval)
 }

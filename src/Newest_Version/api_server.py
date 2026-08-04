@@ -102,12 +102,20 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
+# Rate Limiter helper for proxy IP detection
+def get_client_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        return request.headers.getlist("X-Forwarded-For")[0].split(",")[0].strip()
+    if request.headers.get("X-Real-IP"):
+        return request.headers.get("X-Real-IP").strip()
+    return get_remote_address()
+
 # Rate Limiter
 limiter = None
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
-    limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per day", "300 per hour"])
+    limiter = Limiter(key_func=get_client_ip, app=app, default_limits=["20000 per day", "5000 per hour", "300 per minute"])
 except Exception as e:
     logger.warning(f"Could not initialize Flask-Limiter: {e}")
 
