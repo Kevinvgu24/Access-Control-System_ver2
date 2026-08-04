@@ -9,6 +9,9 @@ from logger import get_logger
 
 logger = get_logger("ai_assistant")
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+
 class QwenAIAssistant:
     def __init__(self, db_path: str = "database/smart_door.db", schema_path: str = "src/Newest_Version/app_schema.json"):
         self.db_path = db_path
