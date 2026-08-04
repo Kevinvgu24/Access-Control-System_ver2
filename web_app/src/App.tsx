@@ -17,6 +17,8 @@ import { useAuthStore }    from '@/store/authStore'
 import { useLabStore }     from '@/store/labStore'
 import { useAdminStore }   from '@/store/adminStore'
 
+import { AiChatWidget }    from '@/components/ai/AiChatWidget'
+
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-dark flex items-center justify-center">
@@ -126,10 +128,14 @@ function AuthenticatedApp() {
           </Routes>
           </ErrorBoundary>
         </main>
+        
+        {/* Qwen 2.5 Coder AI Assistant Floating Widget */}
+        <AiChatWidget />
       </div>
     </div>
   )
 }
+
 
 export default function App() {
   const { user, initialized, init } = useAuthStore()

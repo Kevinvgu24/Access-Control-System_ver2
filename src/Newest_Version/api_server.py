@@ -87,8 +87,10 @@ from database import FaceDatabase
 from logger import get_logger
 from run_schedule_parser import UniversalScheduleParser
 from mqtt_service import MQTTTelemetryService
+from ai_assistant import QwenAIAssistant
 
 logger = get_logger("api_server")
+ai_assistant = QwenAIAssistant()
 
 # Security Configuration & Keys from environment
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "vgulab_jwt_super_secret_key_2026_prod_x89a0")
@@ -2352,6 +2354,61 @@ def delete_lab_equipment(lab_id, eq_id):
         return jsonify({"message": "Equipment deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ── Qwen 2.5 Coder AI Assistant Endpoints ─────────────────────────────────────
+
+@app.route('/api/ai/status', methods=['GET'])
+def get_ai_status():
+    try:
+        status_data = ai_assistant.check_status()
+        return jsonify(status_data), 200
+    except Exception as e:
+        return jsonify({"status": "offline", "error": str(e)}), 500
+
+@app.route('/api/ai/chat', methods=['POST'])
+def ai_chat():
+    try:
+        data = request.json or {}
+        prompt = data.get('prompt', '')
+        page = data.get('page', 'overview')
+        history = data.get('history', [])
+        lab_id = data.get('labId')
+        custom_table_data = data.get('tableData')
+
+        if not prompt:
+            return jsonify({"error": "Prompt parameter is required"}), 400
+
+        result = ai_assistant.generate_response(
+            user_prompt=prompt,
+            current_page=page,
+            history=history,
+            lab_id=lab_id,
+            custom_table_data=custom_table_data
+        )
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Error handling AI chat request: {e}")
+        return jsonify({"success": False, "response": f"System error: {str(e)}"}), 500
+
+@app.route('/api/ai/analyze-table', methods=['POST'])
+def analyze_table():
+    try:
+        data = request.json or {}
+        page = data.get('page', 'users')
+        lab_id = data.get('labId')
+        
+        table_markdown = ai_assistant.extract_table_context(lab_id=lab_id, page=page)
+        prompt = f"Phân tích dữ liệu bảng dưới đây của trang {page.upper()} và tóm tắt những thông tin quan trọng nhất, các bất thường (nếu có) hoặc thống kê nổi bật:"
+        
+        result = ai_assistant.generate_response(
+            user_prompt=prompt,
+            current_page=page,
+            lab_id=lab_id,
+            custom_table_data=table_markdown
+        )
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     logger.info("=== STARTING OFFLINE ACCESS CONTROL API SERVER ===")

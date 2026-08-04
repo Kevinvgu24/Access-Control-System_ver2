@@ -14,9 +14,12 @@ cp /tmp/smart_door.db.bak database/smart_door.db 2>/dev/null || true
 docker compose down
 # 7. Khởi chạy lại Docker bằng cấu hình và mã nguồn mới nhất
 docker compose up --build -d
-# 8. Xóa triệt để các Image cũ, Layer thừa và Cache build Docker để tránh gây đầy dung lượng ổ cứng
+# 8. Tải mô hình Qwen 2.5 Coder vào container AI (nếu chưa có)
+docker exec qwen-ai-server ollama pull qwen2.5-coder:3b
+# 9. Xóa triệt để các Image cũ, Layer thừa và Cache build Docker để tránh gây đầy dung lượng ổ cứng
 docker image prune -af
 docker builder prune -af
+
 
 
 
