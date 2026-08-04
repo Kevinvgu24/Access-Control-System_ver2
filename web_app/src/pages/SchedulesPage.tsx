@@ -28,7 +28,7 @@ interface ScheduleFile {
 
 export function SchedulesPage() {
   const [currentPage, setCurrentPage] = useState(1)
-  const ITEMS_PER_PAGE = 25
+  const ITEMS_PER_PAGE = 5
   const { selectedLabId } = useLabStore()
   const [scheduleFiles, setScheduleFiles] = useState<ScheduleFile[]>([])
   const [selectedFileKey, setSelectedFileKey] = useState<string>('') // "filename|labId"
