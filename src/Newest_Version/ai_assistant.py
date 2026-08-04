@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import hashlib
 import sqlite3
 import urllib.request
 import urllib.error
@@ -28,6 +29,15 @@ class QwenAIAssistant:
 
         # Load App Architecture Schema (Sơ đồ tri thức)
         self.app_schema = self._load_app_schema()
+        
+        # Caches for ultra-fast zero-latency response
+        self._status_cache: Optional[Dict[str, Any]] = None
+        self._last_status_check: float = 0.0
+        self._status_cache_ttl: float = 30.0  # Check Ollama status max once per 30s
+        
+        # Pre-cache documentation text in RAM to eliminate disk I/O on chat prompts
+        self._doc_cache: Dict[str, str] = self._preload_knowledge_docs()
+        self.router_map_text: str = self.build_router_map_text()
 
         # Deep-Layer In-Memory Cache for Zero-Latency RAG
         self._memory_cache: Dict[str, Any] = {}
@@ -36,6 +46,20 @@ class QwenAIAssistant:
 
         # Initialize cache snapshot
         self.sync_db_cache(force=True)
+
+    def _preload_knowledge_docs(self) -> Dict[str, str]:
+        """Pre-load workspace Markdown documentation into RAM once at startup."""
+        docs = {}
+        doc_files = ["MQTT_sensor/Sensor_Connection_Guide.md", "README_DEPLOY.md", "SECURITY_REPORT.md", "pipeline_architecture.md", "technical.md"]
+        for doc_rel_path in doc_files:
+            doc_full_path = os.path.join(project_root, doc_rel_path)
+            if os.path.exists(doc_full_path):
+                try:
+                    with open(doc_full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        docs[doc_rel_path] = f.read()
+                except Exception as e:
+                    logger.debug(f"Error preloading doc {doc_rel_path}: {e}")
+        return docs
 
     def _load_app_schema(self) -> Dict[str, Any]:
         """
@@ -75,32 +99,40 @@ class QwenAIAssistant:
 
     def check_status(self) -> Dict[str, Any]:
         """
-        Check connection status to Qwen 2.5 Coder local API endpoint.
+        Check connection status to Qwen 2.5 Coder local API endpoint (cached for 30s).
         """
+        now = time.time()
+        if self._status_cache and (now - self._last_status_check) < self._status_cache_ttl:
+            return self._status_cache
+
         models_url = f"{self.api_base}/models"
         try:
             req = urllib.request.Request(models_url)
             if self.api_key:
                 req.add_header("Authorization", f"Bearer {self.api_key}")
             
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=3) as resp:
                 if resp.status == 200:
                     data = json.loads(resp.read().decode('utf-8'))
-                    return {
+                    self._status_cache = {
                         "status": "online",
                         "model": self.model_name,
                         "api_base": self.api_base,
                         "available_models": [m.get("id") for m in data.get("data", [])] if "data" in data else []
                     }
+                    self._last_status_check = now
+                    return self._status_cache
         except Exception as e:
             logger.debug(f"Qwen API status check failed: {e}")
             
-        return {
+        self._status_cache = {
             "status": "offline",
             "model": self.model_name,
             "api_base": self.api_base,
             "error": "Cannot connect to Qwen 2.5 Coder LLM service. Ensure Ollama is running."
         }
+        self._last_status_check = now
+        return self._status_cache
 
     def _get_db_connection(self):
         conn = sqlite3.connect(self.db_path)
@@ -125,72 +157,54 @@ class QwenAIAssistant:
             conn = self._get_db_connection()
             c = conn.cursor()
 
-            # 1. Labs Snapshot (with Manager, Code, Location, Status)
+            # 1. Labs Snapshot
             c.execute("SELECT id, name, code, location, manager, status FROM labs")
             lab_rows = c.fetchall()
-            labs_list = [
-                f"Phòng: '{r['name']}' | Mã: {r['code']} | Quản lý: {r['manager'] or 'N/A'} | Vị trí: {r['location'] or 'N/A'} | Trạng thái: {r['status']}"
-                for r in lab_rows
-            ]
+            labs_list = [f"Lab '{r['name']}' ({r['code']}): Mgr={r['manager'] or 'N/A'}, Status={r['status']}" for r in lab_rows]
             active_labs_cnt = sum(1 for r in lab_rows if r['status'] == 'active')
 
-            # 2. Nodes Snapshot (Door Hardware Devices)
-            c.execute("SELECT id, name, code, deviceId, location, status, onlineState FROM nodes")
+            # 2. Nodes Snapshot
+            c.execute("SELECT id, name, code, location, status, onlineState FROM nodes")
             node_rows = c.fetchall()
-            nodes_list = [
-                f"Trạm: '{r['name']}' | Mã: {r['code']} | Vị trí: {r['location']} | Trạng thái: {r['status']} ({r['onlineState']})"
-                for r in node_rows
-            ]
+            nodes_list = [f"Node '{r['name']}': Status={r['status']}({r['onlineState']})" for r in node_rows]
 
             # 3. Users Snapshot
-            c.execute("SELECT id, name, university_id, email, role, status, faceStatus, pinStatus FROM users LIMIT 30")
+            c.execute("SELECT id, name, university_id, role, status FROM users LIMIT 20")
             u_rows = c.fetchall()
-            users_list = [
-                f"Người dùng: '{r['name']}' | MSSV/Mã: {r['university_id'] or r['id']} | Email: {r['email'] or 'N/A'} | Vai trò: {r['role']} | Trạng thái: {r['status']} | FaceID: {r['faceStatus']}"
-                for r in u_rows
-            ]
+            users_list = [f"User '{r['name']}' (ID:{r['university_id'] or r['id']}, Role:{r['role']}, Status:{r['status']})" for r in u_rows]
 
-            # 4. Equipment & Borrowing Snapshot per Lab
+            # 4. Equipment Snapshot
             try:
-                c.execute("SELECT name, code, category, status, borrowedByName, borrowerId, borrowDate, dueDate, location FROM equipment")
+                c.execute("SELECT name, code, category, status, borrowedByName, dueDate FROM equipment")
                 eq_rows = c.fetchall()
             except Exception:
-                c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, borrowerId, borrowDate, returnDate as dueDate, location FROM lab_equipment")
+                c.execute("SELECT name, serialNumber as code, category, status, borrowerName as borrowedByName, returnDate as dueDate FROM lab_equipment")
                 eq_rows = c.fetchall()
 
             equipment_list = []
             overdue_list = []
             for r in eq_rows:
-                status_str = f"Thiết bị: '{r['name']}' [Mã: {r['code'] or 'N/A'}, Phòng/Vị trí: {r['location'] or 'Main Lab'}, Loại: {r['category'] or 'Module'}, Trạng thái: {r['status']}]"
+                status_str = f"Item '{r['name']}' ({r['status']})"
                 if r['borrowedByName']:
-                    status_str += f" (Người mượn: {r['borrowedByName']} [Mã: {r['borrowerId'] or 'N/A'}], Hạn trả: {r['dueDate'] or 'N/A'})"
+                    status_str += f" borrowed by {r['borrowedByName']} (Due: {r['dueDate'] or 'N/A'})"
                 equipment_list.append(status_str)
-                if r['status'] in ['overdue', 'Overdue']:
-                    overdue_list.append(f"'{r['name']}' tại {r['location'] or 'Main Lab'} (Người mượn: {r['borrowedByName']}, Hạn trả: {r['dueDate']})")
+                if str(r['status']).lower() in ['overdue', 'quá hạn']:
+                    overdue_list.append(f"'{r['name']}' (Borrowed by {r['borrowedByName']}, Due: {r['dueDate']})")
 
-            # 5. Access Events Snapshot (Recent 10 Logs)
-            c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 10")
+            # 5. Access Events Snapshot (Recent 5 Logs)
+            c.execute("SELECT userName, accessMethod, status, isAuthorized, timestamp FROM access_events ORDER BY id DESC LIMIT 5")
             log_rows = c.fetchall()
-            logs_list = [
-                f"Log Check-in: '{r['userName']}' | Phương thức: {r['accessMethod']} | Trạng thái: {r['status']} | Cho phép: {r['isAuthorized']} | Thời gian: {r['timestamp']}"
-                for r in log_rows
-            ]
+            logs_list = [f"Check-in '{r['userName']}': Method={r['accessMethod']}, Granted={r['isAuthorized']} at {r['timestamp']}" for r in log_rows]
 
-            # 6. Schedules & Timetables Snapshot
-            c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 10")
+            # 6. Schedules Snapshot
+            c.execute("SELECT title, room, instructor, dayOfWeek, startTime, endTime FROM schedules LIMIT 8")
             sch_rows = c.fetchall()
-            schedules_list = [
-                f"Lịch học: '{r['title']}' | Phòng: {r['room']} | Giảng viên: {r['instructor']} | Thứ: {r['dayOfWeek']} {r['startTime']}-{r['endTime']}"
-                for r in sch_rows
-            ]
+            schedules_list = [f"Schedule '{r['title']}': Room={r['room']}, Teacher={r['instructor']}, Day={r['dayOfWeek']} {r['startTime']}-{r['endTime']}" for r in sch_rows]
 
             # 7. Security Incidents Snapshot
-            c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 5")
+            c.execute("SELECT type, severity, status, summary, createdAt FROM incidents ORDER BY id DESC LIMIT 3")
             inc_rows = c.fetchall()
-            incidents_list = [
-                f"Sự cố: '{r['type']}' [{r['severity']}] | Trạng thái: {r['status']} | Nội dung: {r['summary']} | Thời gian: {r['createdAt']}"
-                for r in inc_rows
-            ]
+            incidents_list = [f"Incident '{r['type']}': Status={r['status']} ({r['summary']})" for r in inc_rows]
 
             conn.close()
 
@@ -201,13 +215,13 @@ class QwenAIAssistant:
                 "nodes_summary": nodes_list,
                 "users_summary": users_list,
                 "total_users": len(users_list),
-                "equipment_summary": equipment_list,
+                "equipment_summary": equipment_list[:15],
                 "available_equipment_count": len([e for e in eq_rows if str(e['status']).lower() in ['available', 'khả dụng', 'sẵn sàng']]),
                 "total_equipment_count": len(eq_rows),
                 "overdue_items": overdue_list,
                 "recent_logs": logs_list[:5],
                 "schedules_summary": schedules_list,
-                "incidents_summary": incidents_list[:5],
+                "incidents_summary": incidents_list[:3],
                 "synced_at": time.strftime("%H:%M:%S")
             }
             self._last_cache_update = now
@@ -216,25 +230,23 @@ class QwenAIAssistant:
 
     def _search_knowledge_docs(self, user_prompt: str) -> str:
         """
-        Lightweight RAG search across workspace Markdown documentation files for technical specs & guides.
+        Lightweight fast in-memory RAG search across pre-loaded Markdown files.
+        Only runs if technical doc keywords are present in prompt.
         """
         prompt_lower = user_prompt.lower()
-        relevant_snippets = []
-        doc_files = ["MQTT_sensor/Sensor_Connection_Guide.md", "README_DEPLOY.md", "SECURITY_REPORT.md", "pipeline_architecture.md", "technical.md"]
+        tech_keywords = ["mqtt", "sensor", "cảm biến", "deploy", "docker", "bảo mật", "security", "sơ đồ", "cấu hình", "hailo", "rpi5", "architecture", "hardware"]
         
-        for doc_rel_path in doc_files:
-            doc_full_path = os.path.join(project_root, doc_rel_path)
-            if os.path.exists(doc_full_path):
-                try:
-                    with open(doc_full_path, "r", encoding="utf-8", errors="ignore") as f:
-                        lines = f.readlines()
-                    matched_lines = [l.strip() for l in lines if any(k in l.lower() for k in prompt_lower.split() if len(k) > 3)]
-                    if matched_lines:
-                        relevant_snippets.append(f"--- Doc '{doc_rel_path}' ---\n" + "\n".join(matched_lines[:4]))
-                except Exception as e:
-                    logger.debug(f"Error reading doc {doc_rel_path}: {e}")
+        if not any(kw in prompt_lower for kw in tech_keywords):
+            return ""
+
+        relevant_snippets = []
+        for doc_rel_path, content in self._doc_cache.items():
+            lines = content.splitlines()
+            matched_lines = [l.strip() for l in lines if any(k in l.lower() for k in prompt_lower.split() if len(k) > 3)]
+            if matched_lines:
+                relevant_snippets.append(f"--- Doc '{doc_rel_path}' ---\n" + "\n".join(matched_lines[:3]))
                     
-        return "\n".join(relevant_snippets[:3]) if relevant_snippets else ""
+        return "\n".join(relevant_snippets[:2]) if relevant_snippets else ""
 
     def build_router_map_text(self) -> str:
         """
@@ -246,9 +258,7 @@ class QwenAIAssistant:
             title = r.get("title") or r.get("title_vi") or r.get("feature") or r.get("page_key") or "Page"
             path = r.get("path") or r.get("route") or "/"
             desc = r.get("description", "")
-            roles = r.get("allowed_roles", [])
-            role_str = f" [Roles: {', '.join(roles)}]" if roles else ""
-            lines.append(f"- [{title}]({path}){role_str}: {desc}")
+            lines.append(f"- [{title}]({path}): {desc}")
         return "\n".join(lines)
 
     def detect_navigation_intent(self, user_prompt: str) -> tuple[Optional[str], Optional[str]]:
@@ -282,37 +292,35 @@ class QwenAIAssistant:
         Collect Real-time Database & Router Snapshot at THIS_MOMENT (Page-Aware Context Filtering).
         """
         self.sync_db_cache()
-        prompt_lower = user_prompt.lower()
 
         snapshot: Dict[str, Any] = {
-            "router_map": self.build_router_map_text(),
+            "router_map": self.router_map_text,
             "available_equipment_count": self._memory_cache.get("available_equipment_count", 0),
             "total_equipment_count": self._memory_cache.get("total_equipment_count", 0),
             "today_scheduled_students": self._memory_cache.get("schedules_summary", []),
             "top_5_faceid_events": self._memory_cache.get("recent_logs", [])[:5],
-            "top_5_sensor_incidents": self._memory_cache.get("incidents_summary", [])[:5],
-            "labs_and_managers": self._memory_cache.get("labs_summary", []),
+            "top_5_sensor_incidents": self._memory_cache.get("incidents_summary", [])[:3],
             "nodes_state": self._memory_cache.get("nodes_summary", []),
             "current_page": current_page,
-            "snapshot_timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            "snapshot_timestamp": time.strftime("%H:%M:%S")
         }
 
         # Page-Aware Context Filtering (Item 3)
         page_clean = current_page.lower().strip("/")
         if "equipment" in page_clean:
-            snapshot["focused_page_data"] = f"User is on EQUIPMENT page. Full equipment inventory summary: {json.dumps(self._memory_cache.get('equipment_summary', []), ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"EQUIPMENT View: {json.dumps(self._memory_cache.get('equipment_summary', [])[:8], ensure_ascii=False)}"
         elif "users" in page_clean:
-            snapshot["focused_page_data"] = f"User is on USERS page. User directory summary: {json.dumps(self._memory_cache.get('users_summary', []), ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"USERS View: {json.dumps(self._memory_cache.get('users_summary', [])[:8], ensure_ascii=False)}"
         elif "logs" in page_clean:
-            snapshot["focused_page_data"] = f"User is on ACCESS LOGS page. Recent access logs: {json.dumps(self._memory_cache.get('recent_logs', []), ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"LOGS View: {json.dumps(self._memory_cache.get('recent_logs', []), ensure_ascii=False)}"
         elif "schedules" in page_clean:
-            snapshot["focused_page_data"] = f"User is on SCHEDULES page. Today timetables: {json.dumps(self._memory_cache.get('schedules_summary', []), ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"SCHEDULES View: {json.dumps(self._memory_cache.get('schedules_summary', []), ensure_ascii=False)}"
         elif "system" in page_clean:
-            snapshot["focused_page_data"] = f"User is on SYSTEM / HARDWARE page. Node hardware telemetries: {json.dumps(self._memory_cache.get('nodes_summary', []), ensure_ascii=False)}"
+            snapshot["focused_page_data"] = f"SYSTEM View: {json.dumps(self._memory_cache.get('nodes_summary', []), ensure_ascii=False)}"
         else:
-            snapshot["focused_page_data"] = f"User is currently on '{current_page}' page."
+            snapshot["focused_page_data"] = f"Active page: '{current_page}'"
 
-        # RAG Knowledge search fallback for technical queries (Item 2)
+        # RAG Knowledge search fallback for technical queries
         doc_context = self._search_knowledge_docs(user_prompt)
         if doc_context:
             snapshot["knowledge_rag_docs"] = doc_context
@@ -323,41 +331,29 @@ class QwenAIAssistant:
         """
         Construct strict context prompt according to exact 3-part layout requested.
         """
-        router_map_str = snapshot_data.get("router_map", self.build_router_map_text())
+        router_map_str = snapshot_data.get("router_map", self.router_map_text)
         rag_doc_str = snapshot_data.get("knowledge_rag_docs", "")
-        
-        rbac_info = self.app_schema.get("roles_and_permissions", {})
-        decision_flow = self.app_schema.get("decision_flow", {})
-        guidance = self.app_schema.get("ai_capabilities_and_guidance", {})
 
-        prompt = f"""[SYSTEM INSTRUCTION - REAL-TIME SNAPSHOT & SYSTEM ROADMAP]
-You are the AI Assistant for the VGU Smart Lab Access Control & Equipment Management System. 
-Below is the REAL-TIME SNAPSHOT & SYSTEM ROADMAP captured at THIS_MOMENT ({snapshot_data.get('snapshot_timestamp', '')}):
+        prompt = f"""[SYSTEM INSTRUCTION - REAL-TIME SNAPSHOT & ROADMAP]
+You are the AI Assistant for VGU Smart Lab Access Control System.
+REAL-TIME SNAPSHOT ({snapshot_data.get('snapshot_timestamp', '')}):
 
-1. ROUTER MAP & NAVIGATION PATHS (Use these exact Markdown links [Title](/path) to guide users):
+1. ROUTER MAP (Embed clickable Markdown links [Title](/path) to direct users):
 {router_map_str}
 
-2. SYSTEM ROLE PERMISSIONS & DECISION RULES:
-- RBAC Capabilities: Super Admin ({json.dumps(rbac_info.get('admin_roles', {}).get('super_admin', {}).get('capabilities', []), ensure_ascii=False)}), Lab Admin ({json.dumps(rbac_info.get('admin_roles', {}).get('lab_admin', {}).get('capabilities', []), ensure_ascii=False)})
-- Biometric & PIN Decision Flow: {json.dumps(decision_flow.get('logic_rules', []), ensure_ascii=False)}
-- Security Guardrails: {json.dumps(guidance.get('security_guardrails', []), ensure_ascii=False)}
+2. CURRENT STATE ({snapshot_data.get('focused_page_data', '')}):
+- Equipment Available: {snapshot_data.get('available_equipment_count', 0)} / {snapshot_data.get('total_equipment_count', 0)}
+- Today's Classes: {json.dumps(snapshot_data.get('today_scheduled_students', []), ensure_ascii=False)}
 
-3. CURRENT DATABASE STATE & ACTIVE VIEW:
-- Active View Context: {snapshot_data.get('focused_page_data', '')}
-- Total Available Equipment/Components: {snapshot_data.get('available_equipment_count', 0)} / {snapshot_data.get('total_equipment_count', 0)} available
-- Today's Scheduled Classes & Students: {json.dumps(snapshot_data.get('today_scheduled_students', []), ensure_ascii=False)}
+3. LOGS & ALERTS:
+- Recent FaceID Logs: {json.dumps(snapshot_data.get('top_5_faceid_events', []), ensure_ascii=False)}
+- Node Hardware States: {json.dumps(snapshot_data.get('nodes_state', []), ensure_ascii=False)}
+{f"- Tech Docs: {rag_doc_str}" if rag_doc_str else ""}
 
-4. REAL-TIME LOGS & HARDWARE ALERTS:
-- Top 5 Recent FaceID Check-in Events: {json.dumps(snapshot_data.get('top_5_faceid_events', []), ensure_ascii=False)}
-- Top 5 Recent Sensor Telemetry & Security Alerts: {json.dumps(snapshot_data.get('top_5_sensor_incidents', []), ensure_ascii=False)}
-- Hardware Nodes State: {json.dumps(snapshot_data.get('nodes_state', []), ensure_ascii=False)}
-{f"- RAG Technical Docs Knowledge: {rag_doc_str}" if rag_doc_str else ""}
-
-RESPONSE RULES:
-- Always answer using the exact real-time snapshot data above.
-- When referring to system pages or features, ALWAYS embed clickable Markdown links in the format [Title](/path) so users can click to navigate immediately.
-- Enforce RBAC: Never advise a Lab Admin to execute Super Admin actions (creating labs, changing global AI thresholds).
-- Be concise, clear, helpful, and highly professional.
+RULES:
+- Answer using exact real-time snapshot data above.
+- ALWAYS embed clickable Markdown links [Title](/path) when introducing pages or navigation.
+- Be concise, direct, helpful, and fast.
 
 [USER QUESTION]: "{user_prompt}"
 """
@@ -406,6 +402,9 @@ RESPONSE RULES:
 
         messages.append({"role": "user", "content": user_prompt})
 
+        # Item 2: Instant Semantic Cache for repeated questions (5 min TTL)
+        self._semantic_qa_cache: Dict[str, Dict[str, Any]] = {}
+
         # Item 5: Max Tokens 700 & Low Temperature 0.15 Tuning
         payload = {
             "model": self.model_name,
@@ -414,6 +413,22 @@ RESPONSE RULES:
             "top_p": 0.9,
             "max_tokens": 700
         }
+
+        # Check Semantic Cache for instant response
+        cache_key = self.get_semantic_cache_key(user_prompt, current_page)
+        now = time.time()
+        if cache_key in self._semantic_qa_cache:
+            cached_entry = self._semantic_qa_cache[cache_key]
+            if (now - cached_entry["time"]) < 300: # 5 min TTL
+                logger.info(f"⚡ Instant Semantic Cache HIT for prompt: '{user_prompt}'")
+                return {
+                    "success": True,
+                    "response": cached_entry["response"],
+                    "action": cached_entry["action"],
+                    "target_route": cached_entry["target_route"],
+                    "cached": True,
+                    "model": f"{self.model_name} (Cached)"
+                }
 
         try:
             req_url = f"{self.api_base}/chat/completions"
@@ -427,6 +442,15 @@ RESPONSE RULES:
                 if resp.status == 200:
                     resp_data = json.loads(resp.read().decode('utf-8'))
                     ai_reply = resp_data["choices"][0]["message"]["content"]
+                    
+                    # Store in Semantic Cache
+                    self._semantic_qa_cache[cache_key] = {
+                        "response": ai_reply,
+                        "action": action,
+                        "target_route": target_route,
+                        "time": now
+                    }
+
                     return {
                         "success": True,
                         "response": ai_reply,
@@ -444,4 +468,125 @@ RESPONSE RULES:
             return {
                 "success": False,
                 "response": f"An error occurred while processing request with Qwen 2.5 Coder: {str(e)}"
+            }
+
+    def get_semantic_cache_key(self, prompt: str, page: str) -> str:
+        clean_p = prompt.strip().lower()
+        return hashlib.md5(f"{page}:{clean_p}".encode('utf-8')).hexdigest()
+
+    def generate_response_stream(
+        self,
+        user_prompt: str,
+        current_page: str = "overview",
+        history: Optional[List[Dict[str, str]]] = None,
+        lab_id: Optional[str] = None
+    ):
+        """
+        Stream SSE response tokens with sub-100ms Time-To-First-Token (TTFT).
+        Yields dicts with 'token', 'action', 'target_route', 'done'.
+        """
+        cache_key = self.get_semantic_cache_key(user_prompt, current_page)
+        now = time.time()
+        if cache_key in self._semantic_qa_cache:
+            cached_entry = self._semantic_qa_cache[cache_key]
+            if (now - cached_entry["time"]) < 300: # 5 min TTL
+                logger.info(f"⚡ Instant Semantic Cache HIT (Stream) for prompt: '{user_prompt}'")
+                yield {
+                    "token": cached_entry["response"],
+                    "action": cached_entry["action"],
+                    "target_route": cached_entry["target_route"],
+                    "cached": True,
+                    "done": True
+                }
+                return
+
+        status_info = self.check_status()
+        if status_info["status"] == "offline":
+            yield {
+                "token": "⚠️ **Unable to connect to Qwen 2.5 Coder AI Service!** Ensure Ollama is running.",
+                "action": None,
+                "target_route": None,
+                "done": True
+            }
+            return
+
+        action, target_route = self.detect_navigation_intent(user_prompt)
+        snapshot_data = self.extract_realtime_snapshot(user_prompt=user_prompt, current_page=current_page)
+        system_instructions = self.build_strict_system_prompt(snapshot_data=snapshot_data, user_prompt=user_prompt)
+
+        messages = [
+            {"role": "system", "content": system_instructions}
+        ]
+
+        if history:
+            for item in history[-2:]:
+                role = item.get("role", "user")
+                content = item.get("content", "")
+                if role in ["user", "assistant"] and content:
+                    messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": user_prompt})
+
+        payload = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": 0.15,
+            "top_p": 0.9,
+            "max_tokens": 700,
+            "stream": True
+        }
+
+        full_accumulated_text = ""
+        try:
+            req_url = f"{self.api_base}/chat/completions"
+            data_bytes = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(req_url, data=data_bytes, headers={"Content-Type": "application/json"})
+            if self.api_key:
+                req.add_header("Authorization", f"Bearer {self.api_key}")
+
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                for chunk in resp:
+                    chunk_str = chunk.decode('utf-8').strip()
+                    if not chunk_str or chunk_str == "data: [DONE]":
+                        continue
+                    if chunk_str.startswith("data: "):
+                        chunk_str = chunk_str[6:]
+                    try:
+                        data_obj = json.loads(chunk_str)
+                        choices = data_obj.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            content_piece = delta.get("content", "")
+                            if content_piece:
+                                full_accumulated_text += content_piece
+                                yield {
+                                    "token": content_piece,
+                                    "action": action,
+                                    "target_route": target_route,
+                                    "done": False
+                                }
+                    except Exception:
+                        pass
+
+            if full_accumulated_text:
+                self._semantic_qa_cache[cache_key] = {
+                    "response": full_accumulated_text,
+                    "action": action,
+                    "target_route": target_route,
+                    "time": now
+                }
+            
+            yield {
+                "token": "",
+                "action": action,
+                "target_route": target_route,
+                "done": True
+            }
+        except Exception as e:
+            logger.error(f"Error in stream generation: {e}")
+            yield {
+                "token": f"An error occurred: {str(e)}",
+                "action": action,
+                "target_route": target_route,
+                "done": True
             }

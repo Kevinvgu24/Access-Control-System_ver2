@@ -116,38 +116,103 @@ export const AiChatWidget: React.FC = () => {
     }))
 
     try {
-      const endpoint = isTableReq ? '/api/ai/analyze-table' : '/api/ai/chat'
-      const bodyPayload = isTableReq
-        ? { page: pageKey, labId: selectedLabId }
-        : {
+      if (!isTableReq && typeof window !== 'undefined' && 'ReadableStream' in window) {
+        const aiMsgId = (Date.now() + 1).toString()
+        const initialAiMsg: Message = {
+          id: aiMsgId,
+          sender: 'assistant',
+          text: '',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+        setMessages(prev => [...prev, initialAiMsg])
+
+        const res = await fetch('/api/ai/chat-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             prompt: textToSend,
             page: pageKey,
             labId: selectedLabId,
             history: historyPayload
+          })
+        })
+
+        if (!res.ok || !res.body) {
+          throw new Error(`HTTP error ${res.status}`)
+        }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let fullText = ''
+        let pendingRoute: string | null = null
+
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+
+          const chunkText = decoder.decode(value, { stream: true })
+          const lines = chunkText.split('\n')
+          
+          for (const line of lines) {
+            const cleanLine = line.trim()
+            if (cleanLine.startsWith('data: ')) {
+              try {
+                const jsonStr = cleanLine.slice(6)
+                const parsed = JSON.parse(jsonStr)
+                if (parsed.token) {
+                  fullText += parsed.token
+                  setMessages(prev =>
+                    prev.map(m => m.id === aiMsgId ? { ...m, text: fullText } : m)
+                  )
+                }
+                if (parsed.action === 'NAVIGATE' && parsed.target_route) {
+                  pendingRoute = parsed.target_route
+                }
+              } catch (e) {
+                // Ignore parse errors on incomplete chunk boundaries
+              }
+            }
           }
+        }
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
-      })
+        if (pendingRoute) {
+          setTimeout(() => {
+            navigate(pendingRoute!)
+          }, 500)
+        }
+      } else {
+        const endpoint = isTableReq ? '/api/ai/analyze-table' : '/api/ai/chat'
+        const bodyPayload = isTableReq
+          ? { page: pageKey, labId: selectedLabId }
+          : {
+              prompt: textToSend,
+              page: pageKey,
+              labId: selectedLabId,
+              history: historyPayload
+            }
 
-      const data = await res.json()
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        })
 
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'assistant',
-        text: data.response || data.error || 'No response received from AI model.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
+        const data = await res.json()
 
-      setMessages(prev => [...prev, aiMsg])
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'assistant',
+          text: data.response || data.error || 'No response received from AI model.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
 
-      // Auto-navigate if AI intent detection returned NAVIGATE action
-      if (data.action === 'NAVIGATE' && data.target_route) {
-        setTimeout(() => {
-          navigate(data.target_route)
-        }, 500)
+        setMessages(prev => [...prev, aiMsg])
+
+        if (data.action === 'NAVIGATE' && data.target_route) {
+          setTimeout(() => {
+            navigate(data.target_route)
+          }, 500)
+        }
       }
     } catch (err: any) {
       setMessages(prev => [

@@ -2390,6 +2390,32 @@ def ai_chat():
         logger.error(f"Error handling AI chat request: {e}")
         return jsonify({"success": False, "response": f"System error: {str(e)}"}), 500
 
+@app.route('/api/ai/chat-stream', methods=['POST'])
+def ai_chat_stream():
+    try:
+        data = request.json or {}
+        prompt = data.get('prompt', '')
+        page = data.get('page', 'overview')
+        history = data.get('history', [])
+        lab_id = data.get('labId')
+
+        if not prompt:
+            return jsonify({"error": "Prompt parameter is required"}), 400
+
+        def stream_generator():
+            for chunk in ai_assistant.generate_response_stream(
+                user_prompt=prompt,
+                current_page=page,
+                history=history,
+                lab_id=lab_id
+            ):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+
+        return Response(stream_generator(), mimetype='text/event-stream')
+    except Exception as e:
+        logger.error(f"Error handling AI chat stream: {e}")
+        return jsonify({"success": False, "response": f"System error: {str(e)}"}), 500
+
 @app.route('/api/ai/analyze-table', methods=['POST'])
 def analyze_table():
     try:
