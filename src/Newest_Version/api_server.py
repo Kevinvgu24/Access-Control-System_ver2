@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import sqlite3
 import json
@@ -2283,18 +2283,6 @@ def delete_schedules_by_file():
         logger.error(f"Failed to delete schedules by file: {e}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    logger.info("=== STARTING OFFLINE ACCESS CONTROL API SERVER ===")
-    logger.info(f"Database Path: {db_path}")
-    logger.info(f"Web Static Files Path: {static_dir}")
-    logger.info("Running locally on http://0.0.0.0:5000")
-    
-    # Run with debug mode only if FLASK_DEBUG env var is set to 1
-    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
-
-
-# ==========================================
 
 
 # ==========================================
@@ -2355,3 +2343,16 @@ def delete_lab_equipment(lab_id, eq_id):
         return jsonify({"message": "Equipment deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    logger.info("=== STARTING OFFLINE ACCESS CONTROL API SERVER ===")
+    logger.info(f"Database Path: {db_path}")
+    logger.info(f"Web Static Files Path: {static_dir}")
+    logger.info("Running locally on http://0.0.0.0:5000")
+    
+    # Run with debug mode only if FLASK_DEBUG env var is set to 1
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+
+
+# ========================================

@@ -176,6 +176,28 @@ class FaceDatabase:
             )
         ''')
 
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS lab_equipment (
+                id TEXT PRIMARY KEY,
+                labId TEXT,
+                serialNumber TEXT,
+                name TEXT,
+                category TEXT DEFAULT 'Module',
+                status TEXT DEFAULT 'available',
+                location TEXT,
+                specs TEXT,
+                notes TEXT,
+                image TEXT,
+                borrowerName TEXT,
+                borrowerId TEXT,
+                borrowDate TEXT,
+                returnDate TEXT,
+                borrowNotes TEXT,
+                createdAt TEXT,
+                updatedAt TEXT
+            )
+        ''')
+
         # Add synced column to access_events and incidents if they don't exist in existing database
         for col_name, table_name in [("synced", "access_events"), ("synced", "incidents")]:
             try:
@@ -458,12 +480,23 @@ class FaceDatabase:
         ''')
         # Alter table for existing databases to add missing columns
         extra_cols = [
+            ("labId", "TEXT DEFAULT 'lab_1'"),
+            ("serial_number", "TEXT"),
+            ("name", "TEXT"),
+            ("category", "TEXT DEFAULT 'Module'"),
+            ("status", "TEXT DEFAULT 'available'"),
+            ("assigned_to", "TEXT"),
+            ("location", "TEXT"),
+            ("specs", "TEXT"),
+            ("notes", "TEXT"),
             ("borrower_name", "TEXT"),
             ("borrower_id", "TEXT"),
             ("borrow_date", "TEXT"),
             ("return_date", "TEXT"),
             ("borrow_notes", "TEXT"),
-            ("image", "TEXT")
+            ("image", "TEXT"),
+            ("createdAt", "TEXT"),
+            ("updatedAt", "TEXT")
         ]
         for col_name, col_type in extra_cols:
             try:
@@ -514,32 +547,64 @@ class FaceDatabase:
         c = conn.cursor()
         now = datetime.datetime.now().isoformat()
         eq_id = eq_data.get("id") or f"eq_{uuid.uuid4().hex[:8]}"
-        c.execute('''
-            INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
-                                   borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            eq_id,
-            eq_data.get("labId", "lab_1"),
-            eq_data.get("serialNumber", ""),
-            eq_data.get("name", ""),
-            eq_data.get("category", "Module"),
-            eq_data.get("status", "available"),
-            eq_data.get("assignedTo", ""),
-            eq_data.get("location", ""),
-            eq_data.get("specs", ""),
-            eq_data.get("notes", ""),
-            eq_data.get("borrowerName", ""),
-            eq_data.get("borrowerId", ""),
-            eq_data.get("borrowDate", ""),
-            eq_data.get("returnDate", ""),
-            eq_data.get("borrowNotes", ""),
-            eq_data.get("image", ""),
-            now,
-            now
-        ))
-        conn.commit()
-        conn.close()
+        lab_id = eq_data.get("labId", "lab_1")
+        serial_number = eq_data.get("serialNumber", "").strip()
+        
+        try:
+            c.execute('''
+                INSERT INTO equipment (id, labId, serial_number, name, category, status, assigned_to, location, specs, notes,
+                                       borrower_name, borrower_id, borrow_date, return_date, borrow_notes, image, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                eq_id,
+                lab_id,
+                serial_number,
+                eq_data.get("name", ""),
+                eq_data.get("category", "Module"),
+                eq_data.get("status", "available"),
+                eq_data.get("assignedTo", ""),
+                eq_data.get("location", ""),
+                eq_data.get("specs", ""),
+                eq_data.get("notes", ""),
+                eq_data.get("borrowerName", ""),
+                eq_data.get("borrowerId", ""),
+                eq_data.get("borrowDate", ""),
+                eq_data.get("returnDate", ""),
+                eq_data.get("borrowNotes", ""),
+                eq_data.get("image", ""),
+                now,
+                now
+            ))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # If item with same serialNumber already exists in this lab, update it
+            c.execute('''
+                UPDATE equipment
+                SET name = ?, category = ?, status = ?, assigned_to = ?, location = ?, specs = ?, notes = ?, image = ?, updatedAt = ?
+                WHERE labId = ? AND serial_number = ?
+            ''', (
+                eq_data.get("name", ""),
+                eq_data.get("category", "Module"),
+                eq_data.get("status", "available"),
+                eq_data.get("assignedTo", ""),
+                eq_data.get("location", ""),
+                eq_data.get("specs", ""),
+                eq_data.get("notes", ""),
+                eq_data.get("image", ""),
+                now,
+                lab_id,
+                serial_number
+            ))
+            conn.commit()
+            
+            # Fetch existing id
+            c.execute("SELECT id FROM equipment WHERE labId = ? AND serial_number = ?", (lab_id, serial_number))
+            row = c.fetchone()
+            if row:
+                eq_id = row[0]
+        finally:
+            conn.close()
+            
         return eq_id
 
     def update_equipment(self, eq_id, eq_data):
