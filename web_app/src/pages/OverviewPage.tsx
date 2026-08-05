@@ -129,6 +129,7 @@ export function OverviewPage() {
   const [todayClassCount, setTodayClassCount] = useState<number>(0)
   const [totalListsCount, setTotalListsCount] = useState<number>(0)
   const [scheduledStudentIds, setScheduledStudentIds] = useState<Set<string>>(new Set())
+  const [exportHover, setExportHover] = useState<boolean>(false)
 
   // Fetch saved schedule files and count how many class lists have lab sessions today
   useEffect(() => {
@@ -346,7 +347,6 @@ export function OverviewPage() {
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add User</Button>
-          <Button variant="ghost" onClick={exportDashboardLogsExcel}>Export Logs (Excel)</Button>
         </div>
       </div>
 
@@ -381,8 +381,14 @@ export function OverviewPage() {
                       </span>
                       <button
                         onClick={exportDashboardLogsExcel}
-                        style={{ color: '#ea580c', borderColor: '#f97316' }}
-                        className="px-2.5 py-1 rounded font-mono text-[11px] font-bold border bg-orange-50/50 hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-xs"
+                        onMouseEnter={() => setExportHover(true)}
+                        onMouseLeave={() => setExportHover(false)}
+                        style={{
+                          color: exportHover ? '#ffffff' : '#ea580c',
+                          borderColor: '#f97316',
+                          backgroundColor: exportHover ? '#f97316' : 'rgba(255, 247, 237, 0.6)'
+                        }}
+                        className="px-2.5 py-1 rounded font-mono text-[11px] font-bold border transition-all cursor-pointer shadow-xs"
                         title="Export current Live Activity Feed to Excel"
                       >
                         📥 Export Feed (Excel)
