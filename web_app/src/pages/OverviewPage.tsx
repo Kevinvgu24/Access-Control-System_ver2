@@ -366,9 +366,9 @@ export function OverviewPage() {
       </div>
 
       {/* Main Content Split: Side-by-side from medium screens (768px+) and desktop during zoom */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
-        {/* Live Activity Feed */}
-        <div className="md:col-span-7 lg:col-span-8 flex flex-col">
+      <div className="grid grid-cols-1 md:grid-cols-10 gap-4 sm:gap-6">
+        {/* Live Activity Feed (6/10 parts) */}
+        <div className="md:col-span-6 flex flex-col">
           <Panel className="flex-1 flex flex-col justify-between" pad={false}>
             <div>
               <div className="p-4 sm:p-5 border-b border-line">
@@ -456,8 +456,8 @@ export function OverviewPage() {
           </Panel>
         </div>
 
-        {/* Notification Panel */}
-        <div className="md:col-span-5 lg:col-span-4 flex flex-col md:sticky md:top-4 self-start max-h-[calc(100vh-5rem)]">
+        {/* Notification Panel (4/10 parts) */}
+        <div className="md:col-span-4 flex flex-col md:sticky md:top-4 self-start max-h-[calc(100vh-5rem)]">
           <Panel pad={false} className="overflow-hidden flex-1">
             <NotificationPanel />
           </Panel>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
 import { fmtTs } from '@/lib/format'
@@ -244,6 +245,7 @@ const typeConfig: Record<NotifType, {
 }
 
 export function NotificationPanel() {
+  const navigate = useNavigate()
   const {
     events = [],
     users = [],
@@ -256,6 +258,15 @@ export function NotificationPanel() {
 
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleRecord[]>([])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+
+  function handleNotificationClick(n: Notification) {
+    markNotificationRead(n.id)
+    if (n.type === 'schedule_today' || n.type === 'schedule_soon') {
+      const gNr = (n as any).groupNr || 'Group 1'
+      const lId = (n as any).labId || selectedLabId
+      navigate(`/schedules?group=${encodeURIComponent(gNr)}${lId ? '&labId=' + encodeURIComponent(lId) : ''}`)
+    }
+  }
 
   // Helper to determine if a notification item is unread
   const checkIsUnread = useCallback((n: Notification): boolean => {
@@ -526,7 +537,7 @@ export function NotificationPanel() {
           return (
             <button
               key={notif.id}
-              onClick={() => markRead(notif.id)}
+              onClick={() => handleNotificationClick(notif)}
               className={
                 'w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all hover:bg-slate-100/80 cursor-pointer ' +
                 (showUnread ? cfg.bg + ' ' + cfg.border : 'border-transparent')

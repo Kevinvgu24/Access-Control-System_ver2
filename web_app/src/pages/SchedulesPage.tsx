@@ -40,6 +40,7 @@ export function SchedulesPage() {
   const [templateType, setTemplateType] = useState<string>('type1')
   const [viewMode, setViewMode] = useState<'grouped' | 'table'>('grouped')
   const [selectedGroupNrs, setSelectedGroupNrs] = useState<string[]>([])
+  const [highlightedGroupNr, setHighlightedGroupNr] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const aiFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -395,6 +396,51 @@ export function SchedulesPage() {
     }
   }
 
+  // Auto-navigate to target group from URL query parameters (e.g. from System Notifications click)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const targetGroup = searchParams.get('group')
+    const targetLabId = searchParams.get('labId')
+
+    if (!scheduleFiles.length) return
+
+    // Auto-select schedule file for active lab if none selected
+    let activeFile = selectedFileKey
+    if (!activeFile && scheduleFiles.length > 0) {
+      const matchFile = targetLabId 
+        ? scheduleFiles.find(f => f.labId === targetLabId) 
+        : (selectedLabId ? scheduleFiles.find(f => f.labId === selectedLabId) : scheduleFiles[0])
+      if (matchFile) {
+        const fileKey = `${matchFile.filename}|${matchFile.labId}`
+        setSelectedFileKey(fileKey)
+        activeFile = fileKey
+      }
+    }
+
+    if (targetGroup && groupedSchedules.length > 0) {
+      const cleanTarget = targetGroup.replace(/Group\s*/i, '').trim().toLowerCase()
+      const groupIdx = groupedSchedules.findIndex(g => {
+        const gNum = g.group_nr.replace(/Group\s*/i, '').trim().toLowerCase()
+        return gNum === cleanTarget || g.group_nr.toLowerCase().includes(cleanTarget)
+      })
+
+      if (groupIdx >= 0) {
+        const targetPage = Math.floor(groupIdx / GROUPS_PER_PAGE) + 1
+        setCurrentPage(targetPage)
+        const foundGroupNr = groupedSchedules[groupIdx].group_nr
+        setHighlightedGroupNr(foundGroupNr)
+
+        // Scroll to card smoothly after DOM updates
+        setTimeout(() => {
+          const cardEl = document.getElementById(`group-card-${foundGroupNr.replace(/\s+/g, '-')}`)
+          if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 300)
+      }
+    }
+  }, [scheduleFiles, groupedSchedules, selectedFileKey, selectedLabId])
+
   // Compute stats safely
   const uniqueStudents = new Set((schedules || []).map(s => s?.student_id).filter(Boolean)).size
   const totalSessions = (schedules || []).length
@@ -600,11 +646,19 @@ export function SchedulesPage() {
                 <div className="grid grid-cols-1 gap-5 mb-5">
                   {paginatedGroups.map(group => {
                     const isSelected = selectedGroupNrs.includes(group.group_nr)
+                    const isHighlighted = highlightedGroupNr === group.group_nr
+                    const cardId = `group-card-${group.group_nr.replace(/\s+/g, '-')}`
+
                     return (
                       <div
                         key={group.group_nr}
+                        id={cardId}
                         className={`bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 ${
-                          isSelected ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/20' : 'border-orange-200/90'
+                          isHighlighted 
+                            ? 'border-orange-600 ring-4 ring-orange-500/40 bg-orange-50/40 scale-[1.01] animate-pulse' 
+                            : isSelected 
+                              ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/20' 
+                              : 'border-orange-200/90'
                         }`}
                       >
                         {/* Group Header Banner with Selection Checkbox */}
