@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
@@ -9,6 +9,82 @@ import { fmtConf, fmtMethod, fmtTs, resultLabel, resultTone } from '@/lib/format
 import { useNavigate } from 'react-router-dom'
 import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidget'
 import { NotificationPanel } from '@/components/ui/NotificationPanel'
+
+interface ScheduleRecord {
+  id: number
+  student_id: string
+  student_name: string
+  group_nr: string
+  date: string
+  day_of_week: string
+  session_num: string
+  experiment: string
+}
+
+interface ScheduleFile {
+  filename: string
+  labId: string
+  labName: string
+}
+
+function scheduleToday(dateStr: unknown): boolean {
+  if (!dateStr) return false
+  try {
+    const today = new Date()
+    const tYear = today.getFullYear()
+    const tMonth = today.getMonth() + 1
+    const tDay = today.getDate()
+
+    const str = String(dateStr).trim()
+    if (!str) return false
+
+    if (str.includes('/')) {
+      const parts = str.split('/')
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const y = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const d = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        } else {
+          const d = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const y = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        }
+      }
+    }
+
+    if (str.includes('-')) {
+      const parts = str.split('T')[0].split('-')
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const y = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const d = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        } else {
+          const d = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const y = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        }
+      }
+    }
+
+    const parsed = new Date(str)
+    if (!isNaN(parsed.getTime())) {
+      return (
+        parsed.getFullYear() === tYear &&
+        parsed.getMonth() + 1 === tMonth &&
+        parsed.getDate() === tDay
+      )
+    }
+  } catch {
+    return false
+  }
+  return false
+}
 
 type FeedFilter = 'all' | 'login' | 'denied' | 'registration'
 
@@ -22,12 +98,64 @@ const feedFilterTabs: { key: FeedFilter; label: string }[] = [
 const PAGE_SIZE = 15
 
 export function OverviewPage() {
-  const { systemStatus, events, users, todayEntries, failedAttempts, todayNotifications, loading } = useAdminStore()
-  const { selectedLabName } = useLabStore()
+  const { systemStatus, events, users, todayEntries, failedAttempts, loading } = useAdminStore()
+  const { selectedLabId, selectedLabName } = useLabStore()
   const navigate = useNavigate()
 
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all')
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [todayClassCount, setTodayClassCount] = useState<number>(0)
+  const [totalListsCount, setTotalListsCount] = useState<number>(0)
+
+  // Fetch saved schedule files and count how many class lists have lab sessions today
+  useEffect(() => {
+    let cancelled = false
+    async function checkTodayClasses() {
+      try {
+        const res = await fetch('/api/schedules/files')
+        if (!res.ok || cancelled) return
+        const files: ScheduleFile[] = await res.json()
+
+        const labFiles = selectedLabId
+          ? (files || []).filter((f: ScheduleFile) => f.labId === selectedLabId)
+          : (files || [])
+
+        // Deduplicate unique saved schedule list files
+        const uniqueLabFiles = Array.from(
+          new Map((labFiles || []).map(f => [`${f.labId}_${f.filename}`, f])).values()
+        )
+        const totalLists = uniqueLabFiles.length
+
+        let count = 0
+        for (const f of uniqueLabFiles) {
+          try {
+            const r = await fetch(
+              '/api/schedules/by-file?filename=' + encodeURIComponent(f.filename) +
+              '&labId=' + encodeURIComponent(f.labId)
+            )
+            if (r.ok && !cancelled) {
+              const records: ScheduleRecord[] = await r.json()
+              const hasClassToday = (records || []).some(s => scheduleToday(s.date))
+              if (hasClassToday) {
+                count++
+              }
+            }
+          } catch { /* ignore */ }
+        }
+
+        // Guarantee that todayClassCount <= totalLists stored in database
+        const validCount = Math.min(count, totalLists)
+        if (!cancelled) {
+          setTodayClassCount(validCount)
+          setTotalListsCount(totalLists)
+        }
+      } catch { /* ignore */ }
+    }
+
+    checkTodayClasses()
+    const timer = setInterval(checkTodayClasses, 60_000)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [selectedLabId])
 
   const handleFilterChange = (filter: FeedFilter) => {
     setFeedFilter(filter)
@@ -38,10 +166,10 @@ export function OverviewPage() {
   const sysTopColor    = systemStatus.overall === 'online' ? 'bg-green'  : systemStatus.overall === 'grace_period' ? 'bg-amber'  : 'bg-red'
 
   const kpis = [
-    { label: 'System Status',      value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
-    { label: "Today's Entries",    value: String(todayEntries),       sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
-    { label: 'Failed Attempts',    value: String(failedAttempts),     sub: 'Denied + liveness + PIN', color: 'text-red',       top: 'bg-red'      },
-    { label: 'New Notifications',  value: String(todayNotifications), sub: 'System & door alerts',    color: 'text-amber',     top: 'bg-amber'    },
+    { label: 'System Status',   value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
+    { label: "Today's Entries", value: String(todayEntries),   sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
+    { label: 'Failed Attempts', value: String(failedAttempts), sub: 'Denied + liveness + PIN', color: 'text-red',       top: 'bg-red'      },
+    { label: 'Class Today',     value: String(todayClassCount),sub: totalListsCount > 0 ? `${todayClassCount} of ${totalListsCount} saved lists` : 'Scheduled lab classes', color: 'text-amber', top: 'bg-amber' },
   ]
 
   // Combine access events & user registrations for Live Activity Feed

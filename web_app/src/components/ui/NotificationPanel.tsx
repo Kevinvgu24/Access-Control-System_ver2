@@ -54,43 +54,72 @@ function isRecent(isoOrTs: string | null, withinMs: number): boolean {
   return Date.now() - d.getTime() < withinMs
 }
 
-function scheduleToday(dateStr: string): boolean {
+function isDateOnDay(dateStr: unknown, targetDate: Date): boolean {
   if (!dateStr) return false
   try {
-    const today = new Date()
-    let d: Date
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split('/')
-      d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
-    } else {
-      d = new Date(dateStr)
+    const tYear = targetDate.getFullYear()
+    const tMonth = targetDate.getMonth() + 1
+    const tDay = targetDate.getDate()
+
+    const str = String(dateStr).trim()
+    if (!str) return false
+
+    if (str.includes('/')) {
+      const parts = str.split('/')
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const y = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const d = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        } else {
+          const d = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const y = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        }
+      }
     }
-    return (
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    )
-  } catch { return false }
+
+    if (str.includes('-')) {
+      const parts = str.split('T')[0].split('-')
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const y = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const d = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        } else {
+          const d = parseInt(parts[0], 10)
+          const m = parseInt(parts[1], 10)
+          const y = parseInt(parts[2], 10)
+          return y === tYear && m === tMonth && d === tDay
+        }
+      }
+    }
+
+    const parsed = new Date(str)
+    if (!isNaN(parsed.getTime())) {
+      return (
+        parsed.getFullYear() === tYear &&
+        parsed.getMonth() + 1 === tMonth &&
+        parsed.getDate() === tDay
+      )
+    }
+  } catch {
+    return false
+  }
+  return false
 }
 
-function scheduleTomorrow(dateStr: string): boolean {
-  if (!dateStr) return false
-  try {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    let d: Date
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split('/')
-      d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
-    } else {
-      d = new Date(dateStr)
-    }
-    return (
-      d.getFullYear() === tomorrow.getFullYear() &&
-      d.getMonth() === tomorrow.getMonth() &&
-      d.getDate() === tomorrow.getDate()
-    )
-  } catch { return false }
+function scheduleToday(dateStr: unknown): boolean {
+  return isDateOnDay(dateStr, new Date())
+}
+
+function scheduleTomorrow(dateStr: unknown): boolean {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return isDateOnDay(dateStr, tomorrow)
 }
 
 function resolveTs(ts: unknown): string | null {
