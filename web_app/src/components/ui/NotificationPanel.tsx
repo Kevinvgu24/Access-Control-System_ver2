@@ -199,12 +199,32 @@ const typeConfig: Record<NotifType, {
   schedule_soon:  { icon: <IconSchedule />, bg: 'bg-orange-50',  iconColor: 'text-orange-500',  border: 'border-orange-200'  },
 }
 
+const NOTIF_READ_STORAGE_KEY = 'admin_read_notification_ids'
+
+function getSavedReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(NOTIF_READ_STORAGE_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) return new Set(arr)
+    }
+  } catch { /* ignore */ }
+  return new Set()
+}
+
+function saveReadIds(set: Set<string>) {
+  try {
+    const arr = Array.from(set).slice(-200)
+    localStorage.setItem(NOTIF_READ_STORAGE_KEY, JSON.stringify(arr))
+  } catch { /* ignore */ }
+}
+
 export function NotificationPanel() {
   const { events = [], users = [] } = useAdminStore()
   const { selectedLabId } = useLabStore()
 
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleRecord[]>([])
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [readIds, setReadIds] = useState<Set<string>>(() => getSavedReadIds())
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
 
   // Load schedule files & fetch today/tomorrow schedules safely
@@ -339,12 +359,14 @@ export function NotificationPanel() {
 
     // Sort: unread first, then by time desc safely without mutating original list
     return [...list].sort((a, b) => {
-      if (a.unread !== b.unread) return a.unread ? -1 : 1
+      const isUnreadA = a.unread && !readIds.has(a.id)
+      const isUnreadB = b.unread && !readIds.has(b.id)
+      if (isUnreadA !== isUnreadB) return isUnreadA ? -1 : 1
       const ta = a.time ? new Date(a.time).getTime() : 0
       const tb = b.time ? new Date(b.time).getTime() : 0
       return tb - ta
     })
-  }, [events, users, upcomingSchedules])
+  }, [events, users, upcomingSchedules, readIds])
 
   const unreadCount = notifications.filter(n => n.unread && !readIds.has(n.id)).length
 
@@ -356,11 +378,17 @@ export function NotificationPanel() {
   }, [notifications, filter, readIds])
 
   function markRead(id: string) {
-    setReadIds(prev => new Set([...prev, id]))
+    setReadIds(prev => {
+      const next = new Set([...prev, id])
+      saveReadIds(next)
+      return next
+    })
   }
 
   function markAllRead() {
-    setReadIds(new Set(notifications.map(n => n.id)))
+    const next = new Set([...readIds, ...notifications.map(n => n.id)])
+    saveReadIds(next)
+    setReadIds(next)
   }
 
   return (
@@ -368,7 +396,7 @@ export function NotificationPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-line">
         <div className="flex items-center gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#94a3b8]">System</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#0f172a] font-bold">System</p>
           <span className="w-px h-3 bg-line" />
           <p className="font-bold text-sm text-[#0f172a]">System Notifications</p>
           {unreadCount > 0 && (
@@ -380,7 +408,7 @@ export function NotificationPanel() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="font-mono text-[10px] text-[#94a3b8] hover:text-orange-500 transition-colors cursor-pointer"
+            className="font-mono text-[11px] font-semibold px-2.5 py-1 rounded border border-orange-500/50 text-orange-600 bg-orange-50/50 hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-2xs"
           >
             Mark all read
           </button>
@@ -395,7 +423,7 @@ export function NotificationPanel() {
             'px-2.5 py-1 rounded-full font-mono text-[10px] transition-all cursor-pointer ' +
             (filter === 'all'
               ? 'bg-orange-500 text-white font-bold shadow-xs'
-              : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
+              : 'text-[#0f172a] font-semibold hover:bg-slate-200/70')
           }
         >
           All ({notifications.length})
@@ -406,7 +434,7 @@ export function NotificationPanel() {
             'px-2.5 py-1 rounded-full font-mono text-[10px] flex items-center gap-1 transition-all cursor-pointer ' +
             (filter === 'unread'
               ? 'bg-orange-500 text-white font-bold shadow-xs'
-              : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
+              : 'text-[#0f172a] font-semibold hover:bg-slate-200/70')
           }
         >
           Unread
@@ -426,7 +454,7 @@ export function NotificationPanel() {
         {displayList.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <p className="text-2xl" style={{ opacity: 0.3 }}>&#128276;</p>
-            <p className="font-mono text-[11px] text-[#94a3b8]">
+            <p className="font-mono text-[11px] text-[#0f172a] font-medium">
               {filter === 'unread' ? 'No unread notifications.' : 'No notifications found.'}
             </p>
           </div>
@@ -440,7 +468,7 @@ export function NotificationPanel() {
               key={notif.id}
               onClick={() => markRead(notif.id)}
               className={
-                'w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all hover:bg-slate-50 cursor-pointer ' +
+                'w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all hover:bg-slate-100/80 cursor-pointer ' +
                 (showUnread ? cfg.bg + ' ' + cfg.border : 'border-transparent')
               }
             >
@@ -449,18 +477,18 @@ export function NotificationPanel() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <p className={'text-xs font-semibold truncate ' + (showUnread ? 'text-[#0f172a]' : 'text-[#475569]')}>
+                  <p className={'text-xs font-semibold truncate text-[#0f172a]'}>
                     {notif.title}
                   </p>
                   {showUnread && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-orange-500" />
                   )}
                 </div>
-                <p className="font-mono text-[10px] text-[#94a3b8] mt-0.5 leading-relaxed truncate">
+                <p className="font-mono text-[11px] text-[#0f172a] mt-0.5 leading-relaxed truncate font-medium">
                   {notif.body}
                 </p>
                 {notif.time && (
-                  <p className="font-mono text-[10px] text-[#cbd5e1] mt-1">
+                  <p className="font-mono text-[10px] text-[#334155] mt-1 font-semibold">
                     {timeAgo(notif.time)}
                   </p>
                 )}
@@ -472,7 +500,7 @@ export function NotificationPanel() {
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-line">
-        <p className="font-mono text-[10px] text-[#cbd5e1] text-center">
+        <p className="font-mono text-[10px] text-[#0f172a] font-semibold text-center">
           {notifications.length} notifications &bull; Auto updated
         </p>
       </div>
