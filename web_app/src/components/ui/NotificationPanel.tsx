@@ -199,33 +199,29 @@ const typeConfig: Record<NotifType, {
   schedule_soon:  { icon: <IconSchedule />, bg: 'bg-orange-50',  iconColor: 'text-orange-500',  border: 'border-orange-200'  },
 }
 
-const NOTIF_READ_STORAGE_KEY = 'admin_read_notification_ids'
-
-function getSavedReadIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(NOTIF_READ_STORAGE_KEY)
-    if (raw) {
-      const arr = JSON.parse(raw)
-      if (Array.isArray(arr)) return new Set(arr)
-    }
-  } catch { /* ignore */ }
-  return new Set()
-}
-
-function saveReadIds(set: Set<string>) {
-  try {
-    const arr = Array.from(set).slice(-200)
-    localStorage.setItem(NOTIF_READ_STORAGE_KEY, JSON.stringify(arr))
-  } catch { /* ignore */ }
-}
-
 export function NotificationPanel() {
-  const { events = [], users = [] } = useAdminStore()
+  const {
+    events = [],
+    users = [],
+    readNotificationIds,
+    lastMarkAllReadTime,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useAdminStore()
   const { selectedLabId } = useLabStore()
 
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleRecord[]>([])
-  const [readIds, setReadIds] = useState<Set<string>>(() => getSavedReadIds())
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+
+  // Helper to determine if a notification item is unread
+  const checkIsUnread = useCallback((n: Notification): boolean => {
+    if (readNotificationIds.has(n.id)) return false
+    if (lastMarkAllReadTime > 0) {
+      const nTime = n.time ? new Date(n.time).getTime() : 0
+      if (nTime <= lastMarkAllReadTime) return false
+    }
+    return n.unread
+  }, [readNotificationIds, lastMarkAllReadTime])
 
   // Load schedule files & fetch today/tomorrow schedules safely
   useEffect(() => {
@@ -330,7 +326,7 @@ export function NotificationPanel() {
     if (todaySchedules.length > 0) {
       const groups = [...new Set(todaySchedules.map(s => s.group_nr).filter(Boolean))]
       list.push({
-        id: 'sched-today-' + (todaySchedules[0].date || 'today'),
+        id: 'sched-today-' + (selectedLabId || 'default') + '-' + (todaySchedules[0].date || 'today'),
         type: 'schedule_today',
         title: 'Lab Schedule Today',
         body: todaySchedules.length + ' students' +
@@ -346,7 +342,7 @@ export function NotificationPanel() {
     if (tomorrowSchedules.length > 0) {
       const groups = [...new Set(tomorrowSchedules.map(s => s.group_nr).filter(Boolean))]
       list.push({
-        id: 'sched-soon-' + (tomorrowSchedules[0].date || 'tomorrow'),
+        id: 'sched-soon-' + (selectedLabId || 'default') + '-' + (tomorrowSchedules[0].date || 'tomorrow'),
         type: 'schedule_soon',
         title: 'Tomorrow Lab Reminder',
         body: tomorrowSchedules.length + ' students' +
@@ -359,36 +355,30 @@ export function NotificationPanel() {
 
     // Sort: unread first, then by time desc safely without mutating original list
     return [...list].sort((a, b) => {
-      const isUnreadA = a.unread && !readIds.has(a.id)
-      const isUnreadB = b.unread && !readIds.has(b.id)
+      const isUnreadA = checkIsUnread(a)
+      const isUnreadB = checkIsUnread(b)
       if (isUnreadA !== isUnreadB) return isUnreadA ? -1 : 1
       const ta = a.time ? new Date(a.time).getTime() : 0
       const tb = b.time ? new Date(b.time).getTime() : 0
       return tb - ta
     })
-  }, [events, users, upcomingSchedules, readIds])
+  }, [events, users, upcomingSchedules, checkIsUnread, selectedLabId])
 
-  const unreadCount = notifications.filter(n => n.unread && !readIds.has(n.id)).length
+  const unreadCount = notifications.filter(n => checkIsUnread(n)).length
 
   const displayList = useMemo(() => {
     if (filter === 'unread') {
-      return notifications.filter(n => n.unread && !readIds.has(n.id))
+      return notifications.filter(n => checkIsUnread(n))
     }
     return notifications
-  }, [notifications, filter, readIds])
+  }, [notifications, filter, checkIsUnread])
 
   function markRead(id: string) {
-    setReadIds(prev => {
-      const next = new Set([...prev, id])
-      saveReadIds(next)
-      return next
-    })
+    markNotificationRead(id)
   }
 
   function markAllRead() {
-    const next = new Set([...readIds, ...notifications.map(n => n.id)])
-    saveReadIds(next)
-    setReadIds(next)
+    markAllNotificationsRead(notifications.map(n => n.id))
   }
 
   return (
@@ -396,45 +386,51 @@ export function NotificationPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-line">
         <div className="flex items-center gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#0f172a] font-bold">System</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: '#000000' }}>System</p>
           <span className="w-px h-3 bg-line" />
-          <p className="font-bold text-sm text-[#0f172a]">System Notifications</p>
+          <p className="font-bold text-sm" style={{ color: '#000000' }}>System Notifications</p>
           {unreadCount > 0 && (
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white font-bold text-[10px] leading-none">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllRead}
-            className="font-mono text-[11px] font-semibold px-2.5 py-1 rounded border border-orange-500/50 text-orange-600 bg-orange-50/50 hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-2xs"
-          >
-            Mark all read
-          </button>
-        )}
+        <button
+          onClick={markAllRead}
+          disabled={unreadCount === 0}
+          style={{
+            color: unreadCount > 0 ? '#ea580c' : '#64748b',
+            borderColor: unreadCount > 0 ? '#f97316' : '#cbd5e1',
+            backgroundColor: unreadCount > 0 ? '#fff7ed' : '#f8fafc',
+          }}
+          className="font-mono text-[11px] font-bold px-2.5 py-1 rounded border transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Mark all read
+        </button>
       </div>
 
       {/* Filter tabs: All vs Unread */}
       <div className="flex items-center gap-1.5 px-4 py-2 border-b border-line bg-slate-50/50">
         <button
           onClick={() => setFilter('all')}
+          style={{ color: filter === 'all' ? '#ffffff' : '#000000' }}
           className={
-            'px-2.5 py-1 rounded-full font-mono text-[10px] transition-all cursor-pointer ' +
+            'px-2.5 py-1 rounded-full font-mono text-[10px] font-bold transition-all cursor-pointer ' +
             (filter === 'all'
-              ? 'bg-orange-500 text-white font-bold shadow-xs'
-              : 'text-[#0f172a] font-semibold hover:bg-slate-200/70')
+              ? 'bg-orange-500 shadow-xs'
+              : 'hover:bg-slate-200/70')
           }
         >
           All ({notifications.length})
         </button>
         <button
           onClick={() => setFilter('unread')}
+          style={{ color: filter === 'unread' ? '#ffffff' : '#000000' }}
           className={
-            'px-2.5 py-1 rounded-full font-mono text-[10px] flex items-center gap-1 transition-all cursor-pointer ' +
+            'px-2.5 py-1 rounded-full font-mono text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ' +
             (filter === 'unread'
-              ? 'bg-orange-500 text-white font-bold shadow-xs'
-              : 'text-[#0f172a] font-semibold hover:bg-slate-200/70')
+              ? 'bg-orange-500 shadow-xs'
+              : 'hover:bg-slate-200/70')
           }
         >
           Unread
@@ -454,15 +450,14 @@ export function NotificationPanel() {
         {displayList.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <p className="text-2xl" style={{ opacity: 0.3 }}>&#128276;</p>
-            <p className="font-mono text-[11px] text-[#0f172a] font-medium">
+            <p className="font-mono text-[11px] font-bold" style={{ color: '#000000' }}>
               {filter === 'unread' ? 'No unread notifications.' : 'No notifications found.'}
             </p>
           </div>
         )}
         {displayList.map(notif => {
-          const isRead = readIds.has(notif.id)
+          const showUnread = checkIsUnread(notif)
           const cfg = typeConfig[notif.type] || typeConfig.login
-          const showUnread = notif.unread && !isRead
           return (
             <button
               key={notif.id}
@@ -477,18 +472,18 @@ export function NotificationPanel() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <p className={'text-xs font-semibold truncate text-[#0f172a]'}>
+                  <p className="text-xs font-bold truncate" style={{ color: '#000000' }}>
                     {notif.title}
                   </p>
                   {showUnread && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-orange-500" />
                   )}
                 </div>
-                <p className="font-mono text-[11px] text-[#0f172a] mt-0.5 leading-relaxed truncate font-medium">
+                <p className="font-mono text-[11px] font-semibold mt-0.5 leading-relaxed truncate" style={{ color: '#000000' }}>
                   {notif.body}
                 </p>
                 {notif.time && (
-                  <p className="font-mono text-[10px] text-[#334155] mt-1 font-semibold">
+                  <p className="font-mono text-[10px] font-bold mt-1" style={{ color: '#000000' }}>
                     {timeAgo(notif.time)}
                   </p>
                 )}
@@ -500,7 +495,7 @@ export function NotificationPanel() {
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-line">
-        <p className="font-mono text-[10px] text-[#0f172a] font-semibold text-center">
+        <p className="font-mono text-[10px] font-bold text-center" style={{ color: '#000000' }}>
           {notifications.length} notifications &bull; Auto updated
         </p>
       </div>

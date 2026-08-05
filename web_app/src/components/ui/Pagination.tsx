@@ -33,14 +33,15 @@ export function Pagination({ currentPage, totalItems, pageSize = 25, onPageChang
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-line bg-surface rounded-b-lg">
-      <div className="font-mono text-[11px] text-[#0f172a] font-medium">
-        Showing <span className="font-bold text-[#0f172a]">{startItem}</span> - <span className="font-bold text-[#0f172a]">{endItem}</span> of <span className="font-bold text-[#0f172a]">{totalItems}</span> entries
+      <div className="font-mono text-[11px] font-bold" style={{ color: '#000000' }}>
+        Showing <span className="font-bold" style={{ color: '#000000' }}>{startItem}</span> - <span className="font-bold" style={{ color: '#000000' }}>{endItem}</span> of <span className="font-bold" style={{ color: '#000000' }}>{totalItems}</span> entries
       </div>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-2.5 py-1 rounded font-mono text-xs border border-line text-[#0f172a] font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+          style={{ color: '#000000' }}
+          className="px-2.5 py-1 rounded font-mono text-xs border border-line font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
         >
           Previous
         </button>
@@ -49,22 +50,24 @@ export function Pagination({ currentPage, totalItems, pageSize = 25, onPageChang
             <button
               key={idx}
               onClick={() => onPageChange(p)}
+              style={{ color: currentPage === p ? '#ffffff' : '#000000' }}
               className={`min-w-[28px] h-7 px-2 rounded font-mono text-xs font-bold border transition-colors cursor-pointer ${
                 currentPage === p
-                  ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                  : 'border-line text-[#0f172a] hover:bg-slate-100'
+                  ? 'bg-orange-500 border-orange-500 shadow-sm'
+                  : 'border-line hover:bg-slate-100'
               }`}
             >
               {p}
             </button>
           ) : (
-            <span key={idx} className="px-1 font-mono text-xs text-[#0f172a] font-bold">...</span>
+            <span key={idx} className="px-1 font-mono text-xs font-bold" style={{ color: '#000000' }}>...</span>
           )
         ))}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-2.5 py-1 rounded font-mono text-xs border border-line text-[#0f172a] font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+          style={{ color: '#000000' }}
+          className="px-2.5 py-1 rounded font-mono text-xs border border-line font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
         >
           Next
         </button>

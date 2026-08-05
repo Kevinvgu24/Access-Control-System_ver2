@@ -279,7 +279,7 @@ export function OverviewPage() {
               <div className="p-4 sm:p-5 border-b border-line">
                 <PanelHeader eyebrow="Real-time" title="Live Activity Feed"
                   action={
-                    <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#0f172a] font-bold">
+                    <span className="flex items-center gap-1.5 font-mono text-[11px] font-bold" style={{ color: '#000000' }}>
                       <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
                       {loading ? 'Loading...' : 'AUTO'}
                     </span>
@@ -292,11 +292,12 @@ export function OverviewPage() {
                     <button
                       key={tab.key}
                       onClick={() => handleFilterChange(tab.key)}
+                      style={{ color: feedFilter === tab.key ? '#ffffff' : '#000000' }}
                       className={
-                        'shrink-0 px-3 py-1 rounded-full font-mono text-[11px] transition-all cursor-pointer ' +
+                        'shrink-0 px-3 py-1 rounded-full font-mono text-[11px] font-bold transition-all cursor-pointer ' +
                         (feedFilter === tab.key
-                          ? 'bg-orange-600 text-white font-bold shadow-sm'
-                          : 'bg-slate-100 text-[#0f172a] font-semibold hover:bg-slate-200')
+                          ? 'bg-orange-600 shadow-sm'
+                          : 'bg-slate-100 hover:bg-slate-200')
                       }
                     >
                       {tab.label}
@@ -308,21 +309,21 @@ export function OverviewPage() {
               {/* Feed items list */}
               <div className="flex flex-col gap-1.5 p-4 sm:p-5 overflow-x-auto custom-scrollbar">
                 {filteredFeed.length === 0 && !loading && (
-                  <p className="py-6 text-center font-mono text-xs text-[#0f172a] font-medium">No events found for this filter.</p>
+                  <p className="py-6 text-center font-mono text-xs font-bold" style={{ color: '#000000' }}>No events found for this filter.</p>
                 )}
                 {paginatedFeed.map(ev => (
                   <div key={ev.id} className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded bg-raised hover:bg-slate-100 transition-colors min-w-0">
                     <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
-                      <span className="font-mono text-[11px] sm:text-[12px] text-[#0f172a] font-bold shrink-0 w-9 sm:w-10">
+                      <span className="font-mono text-[11px] sm:text-[12px] font-bold shrink-0 w-9 sm:w-10" style={{ color: '#000000' }}>
                         {ev.occurredAt ? fmtTs(ev.occurredAt).slice(11, 16) : '--:--'}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs sm:text-sm font-semibold text-[#0f172a] truncate">{ev.displayName}</p>
-                        <p className="font-mono text-[10px] sm:text-[11px] text-[#0f172a] font-medium mt-0.5 truncate">{fmtMethod(ev.method)} &rarr; {ev.reason}</p>
+                        <p className="text-xs sm:text-sm font-bold truncate" style={{ color: '#000000' }}>{ev.displayName}</p>
+                        <p className="font-mono text-[10px] sm:text-[11px] font-semibold mt-0.5 truncate" style={{ color: '#000000' }}>{fmtMethod(ev.method)} &rarr; {ev.reason}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                      {ev.confidence > 0 && <span className="font-mono text-[10px] sm:text-xs text-[#0f172a] font-bold">{fmtConf(ev.confidence)}</span>}
+                      {ev.confidence > 0 && <span className="font-mono text-[10px] sm:text-xs font-bold" style={{ color: '#000000' }}>{fmtConf(ev.confidence)}</span>}
                       <Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge>
                     </div>
                   </div>

@@ -83,6 +83,11 @@ interface AdminStore {
   averageConfidence: number | null
   loading: boolean
 
+  readNotificationIds: Set<string>
+  lastMarkAllReadTime: number
+  markNotificationRead: (id: string) => void
+  markAllNotificationsRead: (ids?: string[]) => void
+
   subscribe: (labId: string, labName: string) => () => void
   refreshUsers: (labId: string) => Promise<void>
   refreshNodeConfig: (labId: string, clusterId: string, nodeId: string) => Promise<void>
@@ -95,6 +100,44 @@ interface AdminStore {
 const defaultStatus: SystemStatus = {
   overall: 'offline', cameraState: 'disconnected',
   syncState: 'offline', lastSyncAt: '-', nodeLabel: '-',
+}
+
+const NOTIF_READ_STORAGE_KEY = 'admin_read_notification_ids'
+const NOTIF_MARK_ALL_TIME_KEY = 'admin_last_mark_all_read_time'
+
+function getInitialReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(NOTIF_READ_STORAGE_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) return new Set(arr)
+    }
+  } catch { /* ignore */ }
+  return new Set()
+}
+
+function getInitialMarkAllTime(): number {
+  try {
+    const raw = localStorage.getItem(NOTIF_MARK_ALL_TIME_KEY)
+    if (raw) {
+      const val = Number(raw)
+      if (!isNaN(val)) return val
+    }
+  } catch { /* ignore */ }
+  return 0
+}
+
+function persistReadIds(set: Set<string>) {
+  try {
+    const arr = Array.from(set).slice(-300)
+    localStorage.setItem(NOTIF_READ_STORAGE_KEY, JSON.stringify(arr))
+  } catch { /* ignore */ }
+}
+
+function persistMarkAllTime(ts: number) {
+  try {
+    localStorage.setItem(NOTIF_MARK_ALL_TIME_KEY, String(ts))
+  } catch { /* ignore */ }
 }
 
 // Monotonically-increasing counter - guards stale async results after lab switch
@@ -206,6 +249,28 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
   todayNotifications: 0,
   averageConfidence: null,
   loading: false,
+
+  readNotificationIds: getInitialReadIds(),
+  lastMarkAllReadTime: getInitialMarkAllTime(),
+
+  markNotificationRead: (id: string) => {
+    set(state => {
+      const next = new Set(state.readNotificationIds)
+      next.add(id)
+      persistReadIds(next)
+      return { readNotificationIds: next }
+    })
+  },
+
+  markAllNotificationsRead: (ids: string[] = []) => {
+    const now = Date.now()
+    set(state => {
+      const next = new Set([...state.readNotificationIds, ...ids])
+      persistReadIds(next)
+      persistMarkAllTime(now)
+      return { readNotificationIds: next, lastMarkAllReadTime: now }
+    })
+  },
 
   subscribe: (labId, labName) => {
     try {
