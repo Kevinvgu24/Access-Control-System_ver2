@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
+import { fmtTs } from '@/lib/format'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -140,6 +141,49 @@ function resolveTs(ts: unknown): string | null {
   return null
 }
 
+function formatDayOfWeekAndDate(dateStr: string, rawDayOfWeek?: string): string {
+  if (!dateStr) return ''
+  const daysOfWeekEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  let dayName = rawDayOfWeek ? String(rawDayOfWeek).trim() : ''
+
+  try {
+    let d: Date | null = null
+    const str = String(dateStr).trim()
+    if (str.includes('/')) {
+      const parts = str.split('/')
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+        } else {
+          d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10))
+        }
+      }
+    } else if (str.includes('-')) {
+      const parts = str.split('T')[0].split('-')
+      if (parts.length === 3 && parts[0].length === 4) {
+        d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+      }
+    } else {
+      d = new Date(str)
+    }
+
+    if (d && !isNaN(d.getTime())) {
+      dayName = daysOfWeekEn[d.getDay()]
+    }
+  } catch { /* fallback to rawDayOfWeek */ }
+
+  return dayName ? `${dayName}, ${dateStr}` : dateStr
+}
+
+function formatSessionTime(sessionStr: string): string {
+  if (!sessionStr) return 'Ca Sáng (Morning)'
+  const str = String(sessionStr).toLowerCase()
+  if (str.includes('2') || str.includes('afternoon') || str.includes('chiều') || str.includes('pm')) {
+    return 'Ca Chiều (Afternoon)'
+  }
+  return 'Ca Sáng (Morning)'
+}
+
 // ─── Icon SVGs ────────────────────────────────────────────────────────────────
 
 function IconLogin() {
@@ -237,7 +281,7 @@ export function NotificationPanel() {
           : (files || [])
 
         const allSchedules: ScheduleRecord[] = []
-        for (const f of labFiles.slice(0, 3)) {
+        for (const f of labFiles) {
           try {
             const r = await fetch(
               '/api/schedules/by-file?filename=' + encodeURIComponent(f.filename) +
@@ -245,7 +289,11 @@ export function NotificationPanel() {
             )
             if (r.ok && !cancelled) {
               const data: ScheduleRecord[] = await r.json()
-              const relevant = (data || []).filter((s: ScheduleRecord) => scheduleToday(s.date) || scheduleTomorrow(s.date))
+              const relevant = (data || []).map((s: ScheduleRecord) => ({
+                ...s,
+                labId: f.labId,
+                labName: f.labName || f.filename.replace(/\.[^/.]+$/, ''),
+              })).filter((s: ScheduleRecord) => scheduleToday(s.date) || scheduleTomorrow(s.date))
               allSchedules.push(...relevant)
             }
           } catch { /* ignore */ }
@@ -258,7 +306,7 @@ export function NotificationPanel() {
     return () => { cancelled = true; clearInterval(timer) }
   }, [selectedLabId])
 
-  // Build notifications safely (100% English text)
+  // Build notifications safely (100% English text, isolated by Lab & specific time)
   const notifications = useMemo<Notification[]>(() => {
     const list: Notification[] = []
 
@@ -266,30 +314,36 @@ export function NotificationPanel() {
     const safeUsers = users || []
     const safeSchedules = upcomingSchedules || []
 
-    // 1) Granted logins (last 6h)
+    // 1) Granted logins (last 6h) - separated by Lab & exact time
     safeEvents
       .filter(e => e && e.result === 'granted' && isRecent(resolveTs(e.occurredAt), 6 * 3600_000))
-      .slice(0, 5)
+      .filter(e => !selectedLabId || (e as any).labId === selectedLabId || !(e as any).labId)
+      .slice(0, 8)
       .forEach(e => {
+        const timeStr = resolveTs(e.occurredAt) ? fmtTs(resolveTs(e.occurredAt)!).slice(11, 16) : ''
+        const labTag = (e as any).labName ? `[${(e as any).labName}] ` : selectedLabId ? `[Lab ${selectedLabId}] ` : ''
         list.push({
-          id: 'login-' + e.id,
+          id: `login-${selectedLabId || 'all'}-${e.id}`,
           type: 'login',
-          title: 'Successful Access',
+          title: `${labTag}Successful Access ${timeStr ? '(' + timeStr + ')' : ''}`.trim(),
           body: (e.displayName ?? 'Unknown User') + ' entered the lab room',
           time: resolveTs(e.occurredAt),
           unread: isRecent(resolveTs(e.occurredAt), 10 * 60_000),
         })
       })
 
-    // 2) Denied / failed events (last 3h)
+    // 2) Denied / failed events (last 3h) - separated by Lab & exact time
     safeEvents
       .filter(e => e &&
         (e.result === 'denied' || e.result === 'liveness_failed' ||
          e.result === 'pin_failed' || e.result === 'unknown_user') &&
         isRecent(resolveTs(e.occurredAt), 3 * 3600_000)
       )
-      .slice(0, 3)
+      .filter(e => !selectedLabId || (e as any).labId === selectedLabId || !(e as any).labId)
+      .slice(0, 8)
       .forEach(e => {
+        const timeStr = resolveTs(e.occurredAt) ? fmtTs(resolveTs(e.occurredAt)!).slice(11, 16) : ''
+        const labTag = (e as any).labName ? `[${(e as any).labName}] ` : selectedLabId ? `[Lab ${selectedLabId}] ` : ''
         const reasonMap: Record<string, string> = {
           denied:          'access denied',
           liveness_failed: 'failed liveness check',
@@ -297,61 +351,72 @@ export function NotificationPanel() {
           unknown_user:    'unregistered user',
         }
         list.push({
-          id: 'denied-' + e.id,
+          id: `denied-${selectedLabId || 'all'}-${e.id}`,
           type: 'denied',
-          title: 'Access Denied',
+          title: `${labTag}Access Denied ${timeStr ? '(' + timeStr + ')' : ''}`.trim(),
           body: (e.displayName ?? 'Unknown User') + ' ' + (reasonMap[e.result] ?? (e.reason || e.result)),
           time: resolveTs(e.occurredAt),
           unread: isRecent(resolveTs(e.occurredAt), 15 * 60_000),
         })
       })
 
-    // 3) New user enrollments (within 24h)
+    // 3) New user enrollments (within 24h) - timestamped
     safeUsers
       .filter(u => u && isRecent(resolveTs(u.createdAt), 24 * 3600_000))
-      .slice(0, 3)
+      .slice(0, 5)
       .forEach(u => {
+        const timeStr = resolveTs(u.createdAt) ? fmtTs(resolveTs(u.createdAt)!).slice(11, 16) : ''
         list.push({
           id: 'enroll-' + u.id,
           type: 'enrollment',
-          title: 'New User Registration',
+          title: `New User Registration ${timeStr ? '(' + timeStr + ')' : ''}`.trim(),
           body: (u.fullName || 'New User') + ' (' + (u.universityId || 'ID') + ') registered in system',
           time: resolveTs(u.createdAt),
           unread: isRecent(resolveTs(u.createdAt), 2 * 3600_000),
         })
       })
 
-    // 4) Today's lab schedule
-    const todaySchedules = safeSchedules.filter(s => s && scheduleToday(s.date))
-    if (todaySchedules.length > 0) {
-      const groups = [...new Set(todaySchedules.map(s => s.group_nr).filter(Boolean))]
+    // 4 & 5) Schedules separated per Lab, per Date, per Session/Group
+    const schedGroups = new Map<string, { labId: string; labName: string; date: string; session: string; group: string; items: ScheduleRecord[] }>()
+
+    safeSchedules.forEach(s => {
+      if (!s) return
+      const labKey = (s as any).labId || selectedLabId || 'lab'
+      const labName = (s as any).labName || 'Lab'
+      const key = `${labKey}_${s.date}_${s.session_num || 's1'}_${s.group_nr || 'g1'}`
+      if (!schedGroups.has(key)) {
+        schedGroups.set(key, {
+          labId: labKey,
+          labName: labName,
+          date: s.date,
+          session: s.session_num || 'Session 1',
+          group: s.group_nr || 'Group 1',
+          items: [],
+        })
+      }
+      schedGroups.get(key)!.items.push(s)
+    })
+
+    schedGroups.forEach((grp, key) => {
+      const isToday = scheduleToday(grp.date)
+      const isSoon = scheduleTomorrow(grp.date)
+      if (!isToday && !isSoon) return
+
+      const rawDow = grp.items[0]?.day_of_week
+      const dateWithDay = formatDayOfWeekAndDate(grp.date, rawDow)
+      const sessionLabel = formatSessionTime(grp.session)
+      const expName = grp.items[0]?.experiment ? ` - ${grp.items[0].experiment}` : ''
+      const reminderType = isToday ? 'Today Lab Schedule' : 'Tomorrow Lab Reminder'
+
       list.push({
-        id: 'sched-today-' + (selectedLabId || 'default') + '-' + (todaySchedules[0].date || 'today'),
-        type: 'schedule_today',
-        title: 'Lab Schedule Today',
-        body: todaySchedules.length + ' students' +
-          (groups.length > 0 ? ' (Group ' + groups.slice(0, 3).join(', ') + ')' : '') +
-          ' scheduled for lab today',
-        time: null,
+        id: `sched-${key}`,
+        type: isToday ? 'schedule_today' : 'schedule_soon',
+        title: `[${grp.labName}] ${reminderType} - ${dateWithDay} [${sessionLabel}]`,
+        body: `${grp.items.length} students in ${grp.group} (${grp.session})${expName}`,
+        time: grp.date,
         unread: true,
       })
-    }
-
-    // 5) Tomorrow's lab schedule reminder
-    const tomorrowSchedules = safeSchedules.filter(s => s && scheduleTomorrow(s.date))
-    if (tomorrowSchedules.length > 0) {
-      const groups = [...new Set(tomorrowSchedules.map(s => s.group_nr).filter(Boolean))]
-      list.push({
-        id: 'sched-soon-' + (selectedLabId || 'default') + '-' + (tomorrowSchedules[0].date || 'tomorrow'),
-        type: 'schedule_soon',
-        title: 'Tomorrow Lab Reminder',
-        body: tomorrowSchedules.length + ' students' +
-          (groups.length > 0 ? ' (Group ' + groups.slice(0, 3).join(', ') + ')' : '') +
-          ' scheduled for lab tomorrow',
-        time: null,
-        unread: false,
-      })
-    }
+    })
 
     // Sort: unread first, then by time desc safely without mutating original list
     return [...list].sort((a, b) => {
