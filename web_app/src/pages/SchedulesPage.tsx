@@ -442,7 +442,7 @@ export function SchedulesPage() {
     }
   }, [scheduleFiles, groupedSchedules, selectedFileKey, selectedLabId])
 
-  // Clear group card highlight on any user mouse activity or scroll
+  // Clear group card highlight when user clicks anywhere
   useEffect(() => {
     if (!highlightedGroupNr) return
 
@@ -450,18 +450,14 @@ export function SchedulesPage() {
       setHighlightedGroupNr(null)
     }
 
-    // Add event listeners after a brief delay so the initial navigation click doesn't instantly dismiss it
+    // Add click event listener after a brief delay so initial navigation click doesn't instantly dismiss it
     const timer = setTimeout(() => {
       window.addEventListener('click', handleClearHighlight, { capture: true })
-      window.addEventListener('mousedown', handleClearHighlight, { capture: true })
-      window.addEventListener('scroll', handleClearHighlight, { capture: true })
     }, 400)
 
     return () => {
       clearTimeout(timer)
       window.removeEventListener('click', handleClearHighlight, { capture: true })
-      window.removeEventListener('mousedown', handleClearHighlight, { capture: true })
-      window.removeEventListener('scroll', handleClearHighlight, { capture: true })
     }
   }, [highlightedGroupNr])
 
