@@ -89,13 +89,35 @@ function scheduleToday(dateStr: unknown): boolean {
 type FeedFilter = 'all' | 'login' | 'denied' | 'registration'
 
 const feedFilterTabs: { key: FeedFilter; label: string }[] = [
-  { key: 'all',          label: 'All' },
-  { key: 'login',        label: 'Logins' },
-  { key: 'denied',       label: 'Denied' },
+  { key: 'all', label: 'All' },
+  { key: 'login', label: 'Logins' },
+  { key: 'denied', label: 'Denied' },
   { key: 'registration', label: 'Registrations' },
 ]
 
 const PAGE_SIZE = 15
+
+// Calculate start of current week (Monday at 00:00:00). Live feed resets every Sunday midnight.
+function getStartOfCurrentWeek(): Date {
+  const now = new Date()
+  const day = now.getDay() // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+  const diffToMonday = day === 0 ? 6 : day - 1
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday, 0, 0, 0, 0)
+}
+
+function isItemInCurrentWeek(ts: any): boolean {
+  if (!ts) return true // Keep item if timestamp missing
+  let ms = 0
+  if (typeof ts === 'number') ms = ts
+  else if (typeof ts === 'string') ms = new Date(ts).getTime()
+  else if (typeof ts?.toDate === 'function') ms = ts.toDate().getTime()
+  else if ('seconds' in ts) ms = ts.seconds * 1000
+
+  if (!ms || isNaN(ms)) return true
+
+  const startOfWeek = getStartOfCurrentWeek().getTime()
+  return ms >= startOfWeek
+}
 
 export function OverviewPage() {
   const { systemStatus, events, users, todayEntries, failedAttempts, loading } = useAdminStore()
@@ -106,6 +128,7 @@ export function OverviewPage() {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [todayClassCount, setTodayClassCount] = useState<number>(0)
   const [totalListsCount, setTotalListsCount] = useState<number>(0)
+  const [scheduledStudentIds, setScheduledStudentIds] = useState<Set<string>>(new Set())
 
   // Fetch saved schedule files and count how many class lists have lab sessions today
   useEffect(() => {
@@ -126,6 +149,7 @@ export function OverviewPage() {
         )
         const totalLists = uniqueLabFiles.length
 
+        const allScheduledIds = new Set<string>()
         let count = 0
         for (const f of uniqueLabFiles) {
           try {
@@ -139,6 +163,11 @@ export function OverviewPage() {
               if (hasClassToday) {
                 count++
               }
+              (records || []).forEach(s => {
+                if (s.student_id) {
+                  allScheduledIds.add(String(s.student_id).trim().toLowerCase())
+                }
+              })
             }
           } catch { /* ignore */ }
         }
@@ -148,6 +177,7 @@ export function OverviewPage() {
         if (!cancelled) {
           setTodayClassCount(validCount)
           setTotalListsCount(totalLists)
+          setScheduledStudentIds(allScheduledIds)
         }
       } catch { /* ignore */ }
     }
@@ -163,16 +193,16 @@ export function OverviewPage() {
   }
 
   const sysStatusColor = systemStatus.overall === 'online' ? 'text-green' : systemStatus.overall === 'grace_period' ? 'text-amber' : 'text-red'
-  const sysTopColor    = systemStatus.overall === 'online' ? 'bg-green'  : systemStatus.overall === 'grace_period' ? 'bg-amber'  : 'bg-red'
+  const sysTopColor = systemStatus.overall === 'online' ? 'bg-green' : systemStatus.overall === 'grace_period' ? 'bg-amber' : 'bg-red'
 
   const kpis = [
-    { label: 'System Status',   value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
-    { label: "Today's Entries", value: String(todayEntries),   sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
-    { label: 'Failed Attempts', value: String(failedAttempts), sub: 'Denied + liveness + PIN', color: 'text-red',       top: 'bg-red'      },
-    { label: 'Class Today',     value: String(todayClassCount),sub: totalListsCount > 0 ? `${todayClassCount} of ${totalListsCount} saved lists` : 'Scheduled lab classes', color: 'text-amber', top: 'bg-amber' },
+    { label: 'System Status', value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
+    { label: "Today's Entries", value: String(todayEntries), sub: 'Granted access', color: 'text-[#0f172a]', top: 'bg-slate-200' },
+    { label: 'Failed Attempts', value: String(failedAttempts), sub: 'Denied + liveness + PIN', color: 'text-red', top: 'bg-red' },
+    { label: 'Class Today', value: String(todayClassCount), sub: totalListsCount > 0 ? `${todayClassCount} of ${totalListsCount} saved lists` : 'Scheduled lab classes', color: 'text-amber', top: 'bg-amber' },
   ]
 
-  // Combine access events & user registrations for Live Activity Feed
+  // Combine access events & user registrations for Live Activity Feed (Current week only - resets on Sunday midnight)
   const feedItems = useMemo(() => {
     const list: Array<{
       id: string
@@ -181,40 +211,54 @@ export function OverviewPage() {
       method: string
       reason: string
       result: string
+      statusLabel?: string
       confidence: number
       filterType: 'login' | 'denied' | 'registration'
     }> = []
 
-    // 1) Access events (Logins & Denied attempts)
-    ;(events || []).forEach(ev => {
-      if (!ev) return
-      const isGranted = ev.result === 'granted'
-      list.push({
-        id: ev.id,
-        occurredAt: ev.occurredAt,
-        displayName: ev.displayName ?? 'Unknown User',
-        method: ev.method,
-        reason: ev.reason,
-        result: ev.result,
-        confidence: ev.confidence || 0,
-        filterType: isGranted ? 'login' : 'denied',
+      // 1) Access events (Logins & Denied attempts) - Resets on Sunday (Current week only)
+      ; (events || []).forEach(ev => {
+        if (!ev) return
+        if (!isItemInCurrentWeek(ev.occurredAt)) return // Filter out events from previous weeks
+        const isGranted = ev.result === 'granted'
+        list.push({
+          id: ev.id,
+          occurredAt: ev.occurredAt,
+          displayName: ev.displayName ?? 'Unknown User',
+          method: ev.method,
+          reason: ev.reason,
+          result: ev.result,
+          statusLabel: isGranted ? 'Granted' : resultLabel(ev.result),
+          confidence: ev.confidence || 0,
+          filterType: isGranted ? 'login' : 'denied',
+        })
       })
-    })
 
-    // 2) User registrations
-    ;(users || []).forEach(u => {
-      if (!u) return
-      list.push({
-        id: 'reg-' + u.id,
-        occurredAt: (u as any).createdAt || null,
-        displayName: u.fullName || u.universityId || 'New User',
-        method: 'enrollment',
-        reason: `Registered in system (${u.universityId || 'ID'})`,
-        result: 'granted',
-        confidence: 0,
-        filterType: 'registration',
+      // 2) User registrations (ONLY for ad-hoc / unscheduled registration requests) - Resets on Sunday
+      ; (users || []).forEach(u => {
+        if (!u) return
+        const uId = String(u.universityId || u.id || '').trim().toLowerCase()
+        const isScheduledStudent = scheduledStudentIds.has(uId)
+
+        // Filter: Only include if NOT in the automated schedule list OR role is non-student (guest, ad-hoc, etc.)
+        const isAdhocRegistration = !isScheduledStudent || u.roles?.includes('guest') || u.roles?.includes('maintenance')
+
+        const createdAt = (u as any).createdAt || null
+        if (isAdhocRegistration && isItemInCurrentWeek(createdAt)) {
+          const isApproved = u.status !== 'suspended'
+          list.push({
+            id: 'reg-' + u.id,
+            occurredAt: createdAt,
+            displayName: u.fullName || u.universityId || 'New User',
+            method: 'enrollment',
+            reason: `Ad-hoc Registration Request (${u.universityId ? 'ID: ' + u.universityId : 'Unscheduled'})`,
+            result: isApproved ? 'granted' : 'denied',
+            statusLabel: isApproved ? 'Accepted' : 'Suspended',
+            confidence: 0,
+            filterType: 'registration',
+          })
+        }
       })
-    })
 
     // Sort by occurredAt descending
     return list.sort((a, b) => {
@@ -228,17 +272,63 @@ export function OverviewPage() {
       }
       return getTs(b.occurredAt) - getTs(a.occurredAt)
     })
-  }, [events, users])
+  }, [events, users, scheduledStudentIds])
 
   const filteredFeed = useMemo(() => {
     if (feedFilter === 'all') return feedItems
     return feedItems.filter(item => item.filterType === feedFilter)
   }, [feedItems, feedFilter])
 
-  const paginatedFeed = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredFeed.slice(start, start + PAGE_SIZE)
-  }, [filteredFeed, currentPage])
+  function exportDashboardLogsExcel() {
+    const clickTime = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const timeStr = `${clickTime.getFullYear()}-${pad(clickTime.getMonth() + 1)}-${pad(clickTime.getDate())}_${pad(clickTime.getHours())}-${pad(clickTime.getMinutes())}-${pad(clickTime.getSeconds())}`
+
+    const safeLabName = (selectedLabName || 'Lab').replace(/[^a-zA-Z0-9_-]/g, '_')
+    const filterTag = feedFilter.toUpperCase()
+    const filename = `Live_Activity_Feed_${filterTag}_${safeLabName}_${timeStr}.csv`
+
+    const headers = [
+      'Time',
+      'Name',
+      'Category / Filter',
+      'Method',
+      'Status / Result',
+      'Confidence',
+      'Details / Reason'
+    ]
+
+    const escapeCsv = (val: any) => {
+      if (val == null) return '""'
+      const str = String(val).replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const rows = filteredFeed.map(item => [
+      escapeCsv(item.occurredAt ? fmtTs(item.occurredAt) : 'N/A'),
+      escapeCsv(item.displayName),
+      escapeCsv(item.filterType.toUpperCase()),
+      escapeCsv(fmtMethod(item.method as any)),
+      escapeCsv(item.statusLabel || resultLabel(item.result as any)),
+      escapeCsv(item.confidence > 0 ? fmtConf(item.confidence) : 'N/A'),
+      escapeCsv(item.reason)
+    ].join(','))
+
+    const metaHeader = escapeCsv(`Report Downloaded At: ${fmtTs(clickTime)} | Filter: ${filterTag} | Lab: ${selectedLabName || 'All Labs'}`)
+
+    // UTF-8 BOM \uFEFF for 100% Microsoft Excel compatibility
+    const csvContent = '\uFEFF' + metaHeader + '\r\n' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 lg:gap-7">
@@ -251,7 +341,7 @@ export function OverviewPage() {
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add User</Button>
-          <Button variant="ghost" onClick={() => navigate('/logs')}>Export Logs</Button>
+          <Button variant="ghost" onClick={exportDashboardLogsExcel}>Export Logs (Excel)</Button>
         </div>
       </div>
 
@@ -279,10 +369,20 @@ export function OverviewPage() {
               <div className="p-4 sm:p-5 border-b border-line">
                 <PanelHeader eyebrow="Real-time" title="Live Activity Feed"
                   action={
-                    <span className="flex items-center gap-1.5 font-mono text-[11px] font-bold" style={{ color: '#000000' }}>
-                      <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
-                      {loading ? 'Loading...' : 'AUTO'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] font-bold" style={{ color: '#000000' }}>
+                        <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
+                        {loading ? 'Loading...' : 'AUTO'}
+                      </span>
+                      <button
+                        onClick={exportDashboardLogsExcel}
+                        style={{ color: '#ea580c', borderColor: '#f97316' }}
+                        className="px-2.5 py-1 rounded font-mono text-[11px] font-bold border bg-orange-50/50 hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-xs"
+                        title="Export current Live Activity Feed to Excel"
+                      >
+                        📥 Export Feed (Excel)
+                      </button>
+                    </div>
                   }
                 />
 
@@ -324,7 +424,9 @@ export function OverviewPage() {
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       {ev.confidence > 0 && <span className="font-mono text-[10px] sm:text-xs font-bold" style={{ color: '#000000' }}>{fmtConf(ev.confidence)}</span>}
-                      <Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge>
+                      <Badge tone={ev.statusLabel === 'Accepted' ? 'green' : resultTone(ev.result)}>
+                        {ev.statusLabel || resultLabel(ev.result)}
+                      </Badge>
                     </div>
                   </div>
                 ))}
