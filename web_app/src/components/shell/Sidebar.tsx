@@ -150,7 +150,8 @@ export function Sidebar() {
           <button
             onClick={() => { closeMobileMenu(); clearLab(); navigate('/labs'); }}
             title={sidebarCollapsed && !mobileMenuOpen ? 'Switch Lab' : undefined}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all text-[#475569] hover:text-[#334155] hover:bg-slate-200 mt-1 cursor-pointer ${
+            style={{ color: '#000000' }}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs lg:text-sm font-bold transition-all hover:bg-slate-200 mt-1 cursor-pointer ${
               sidebarCollapsed && !mobileMenuOpen ? 'justify-center' : ''
             }`}
           >
@@ -165,12 +166,13 @@ export function Sidebar() {
         <div className={`px-3.5 py-3 border-t border-line flex flex-col gap-0.5 ${sidebarCollapsed && !mobileMenuOpen ? 'items-center text-center' : ''}`}>
           {(!sidebarCollapsed || mobileMenuOpen) ? (
             <>
-              <p className="font-mono text-[9px] lg:text-[10px] text-[#94a3b8] uppercase tracking-wider truncate">
+              <p className="font-mono text-[9px] lg:text-[10px] uppercase tracking-wider font-bold truncate" style={{ color: '#000000' }}>
                 {admin?.type === 'super_admin' ? 'Super Admin' : 'Lab Admin'}
               </p>
               <button
                 onClick={handleSignOut}
-                className="font-mono text-[10px] lg:text-[11px] text-[#475569] hover:text-red transition-colors cursor-pointer text-left font-bold"
+                style={{ color: '#000000' }}
+                className="font-mono text-[10px] lg:text-[11px] hover:text-red transition-colors cursor-pointer text-left font-bold"
               >
                 Sign out
               </button>
@@ -179,7 +181,8 @@ export function Sidebar() {
             <button
               onClick={handleSignOut}
               title="Sign out"
-              className="font-mono text-[9px] text-[#475569] hover:text-red transition-colors cursor-pointer font-bold"
+              style={{ color: '#000000' }}
+              className="font-mono text-[9px] hover:text-red transition-colors cursor-pointer font-bold"
             >
               Exit
             </button>

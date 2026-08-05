@@ -247,7 +247,7 @@ export function OverviewPage() {
         <div>
           <p className="font-mono text-[10px] sm:text-[11px] tracking-widest uppercase text-orange-600 font-extrabold mb-1">Command Center</p>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-orange-600">Global Dashboard</h1>
-          <p className="text-xs sm:text-sm text-[#475569] mt-1">Lab health, sync status, and live door activity.</p>
+          <p className="text-xs sm:text-sm font-semibold mt-1" style={{ color: '#000000' }}>Lab health, sync status, and live door activity.</p>
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="primary" onClick={() => navigate('/enrollment')}>+ Add User</Button>
@@ -263,9 +263,9 @@ export function OverviewPage() {
         {kpis.map(({ label, value, sub, color, top }) => (
           <div key={label} className="bg-surface border border-line rounded-lg p-3.5 sm:p-5 lg:p-6 relative overflow-hidden shadow-sm flex flex-col justify-between min-w-0">
             <div className={`absolute top-0 inset-x-0 h-0.5 ${top} opacity-70`} />
-            <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-[#94a3b8] mb-2 sm:mb-3 truncate">{label}</p>
+            <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold mb-2 sm:mb-3 truncate" style={{ color: '#000000' }}>{label}</p>
             <p className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-none capitalize ${color} truncate`}>{value}</p>
-            <p className="text-[11px] sm:text-xs text-[#475569] mt-2 sm:mt-3 truncate">{sub}</p>
+            <p className="text-[11px] sm:text-xs font-semibold mt-2 sm:mt-3 truncate" style={{ color: '#000000' }}>{sub}</p>
           </div>
         ))}
       </div>

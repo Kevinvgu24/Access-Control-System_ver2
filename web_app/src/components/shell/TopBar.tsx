@@ -28,7 +28,7 @@ export function TopBar() {
         </button>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">Lab</span>
+          <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold" style={{ color: '#000000' }}>Lab</span>
           <span className="font-sans text-[11px] sm:text-xs font-black text-slate-700 bg-slate-100 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded border border-slate-200 uppercase tracking-wider">
             {selectedLabName || 'UNKNOWN'}
           </span>
@@ -58,8 +58,8 @@ export function TopBar() {
 
       {/* Right: Last Sync Time (Always Visible) */}
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <span className="font-mono text-[9px] sm:text-[10px] text-[#94a3b8] uppercase tracking-widest font-bold">Last Sync</span>
-        <span className="font-mono text-[10px] sm:text-[11px] text-slate-600 font-medium bg-slate-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded border border-slate-100 shrink-0">
+        <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold" style={{ color: '#000000' }}>Last Sync</span>
+        <span className="font-mono text-[10px] sm:text-[11px] font-bold bg-slate-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded border border-slate-100 shrink-0" style={{ color: '#000000' }}>
           {systemStatus.lastSyncAt}
         </span>
       </div>
@@ -82,7 +82,7 @@ function StatusBadge({ label, value, status }: { label: string; value: string; s
 
   return (
     <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-      <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">{label}</span>
+      <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold" style={{ color: '#000000' }}>{label}</span>
       <div className={`flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded border font-mono text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-sm ${styles[status]}`}>
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColors[status]}`} />
         <span>{value}</span>
