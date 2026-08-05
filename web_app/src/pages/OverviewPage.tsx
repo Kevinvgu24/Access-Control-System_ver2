@@ -1,27 +1,116 @@
+import { useState, useMemo } from 'react'
 import { useAdminStore } from '@/store/adminStore'
 import { useLabStore } from '@/store/labStore'
 import { Panel, PanelHeader } from '@/components/ui/Panel'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Pagination } from '@/components/ui/Pagination'
 import { fmtConf, fmtMethod, fmtTs, resultLabel, resultTone } from '@/lib/format'
 import { useNavigate } from 'react-router-dom'
 import { SensorTelemetryWidget } from '@/components/sensors/SensorTelemetryWidget'
 import { NotificationPanel } from '@/components/ui/NotificationPanel'
 
+type FeedFilter = 'all' | 'login' | 'denied' | 'registration'
+
+const feedFilterTabs: { key: FeedFilter; label: string }[] = [
+  { key: 'all',          label: 'All' },
+  { key: 'login',        label: 'Logins' },
+  { key: 'denied',       label: 'Denied' },
+  { key: 'registration', label: 'Registrations' },
+]
+
+const PAGE_SIZE = 15
+
 export function OverviewPage() {
-  const { systemStatus, events, todayEntries, failedAttempts, averageConfidence, loading } = useAdminStore()
+  const { systemStatus, events, users, todayEntries, failedAttempts, todayNotifications, loading } = useAdminStore()
   const { selectedLabName } = useLabStore()
   const navigate = useNavigate()
+
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>('all')
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  const handleFilterChange = (filter: FeedFilter) => {
+    setFeedFilter(filter)
+    setCurrentPage(1)
+  }
 
   const sysStatusColor = systemStatus.overall === 'online' ? 'text-green' : systemStatus.overall === 'grace_period' ? 'text-amber' : 'text-red'
   const sysTopColor    = systemStatus.overall === 'online' ? 'bg-green'  : systemStatus.overall === 'grace_period' ? 'bg-amber'  : 'bg-red'
 
   const kpis = [
-    { label: 'System Status',   value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
-    { label: "Today's Entries", value: String(todayEntries),  sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
-    { label: 'Failed Attempts', value: String(failedAttempts),sub: 'Denied + liveness + PIN',  color: 'text-red',       top: 'bg-red'      },
-    { label: 'Avg Confidence',  value: fmtConf(averageConfidence), sub: 'Rolling face avg',   color: 'text-blue',      top: 'bg-blue'     },
+    { label: 'System Status',      value: systemStatus.overall.replace('_', ' '), sub: selectedLabName, color: sysStatusColor, top: sysTopColor },
+    { label: "Today's Entries",    value: String(todayEntries),       sub: 'Granted access',          color: 'text-[#0f172a]', top: 'bg-slate-200' },
+    { label: 'Failed Attempts',    value: String(failedAttempts),     sub: 'Denied + liveness + PIN', color: 'text-red',       top: 'bg-red'      },
+    { label: 'New Notifications',  value: String(todayNotifications), sub: 'System & door alerts',    color: 'text-amber',     top: 'bg-amber'    },
   ]
+
+  // Combine access events & user registrations for Live Activity Feed
+  const feedItems = useMemo(() => {
+    const list: Array<{
+      id: string
+      occurredAt: any
+      displayName: string
+      method: string
+      reason: string
+      result: string
+      confidence: number
+      filterType: 'login' | 'denied' | 'registration'
+    }> = []
+
+    // 1) Access events (Logins & Denied attempts)
+    ;(events || []).forEach(ev => {
+      if (!ev) return
+      const isGranted = ev.result === 'granted'
+      list.push({
+        id: ev.id,
+        occurredAt: ev.occurredAt,
+        displayName: ev.displayName ?? 'Unknown User',
+        method: ev.method,
+        reason: ev.reason,
+        result: ev.result,
+        confidence: ev.confidence || 0,
+        filterType: isGranted ? 'login' : 'denied',
+      })
+    })
+
+    // 2) User registrations
+    ;(users || []).forEach(u => {
+      if (!u) return
+      list.push({
+        id: 'reg-' + u.id,
+        occurredAt: (u as any).createdAt || null,
+        displayName: u.fullName || u.universityId || 'New User',
+        method: 'enrollment',
+        reason: `Registered in system (${u.universityId || 'ID'})`,
+        result: 'granted',
+        confidence: 0,
+        filterType: 'registration',
+      })
+    })
+
+    // Sort by occurredAt descending
+    return list.sort((a, b) => {
+      const getTs = (ts: any) => {
+        if (!ts) return 0
+        if (typeof ts === 'string') return new Date(ts).getTime()
+        if (typeof ts === 'number') return ts
+        if (typeof ts?.toDate === 'function') return ts.toDate().getTime()
+        if ('seconds' in ts) return ts.seconds * 1000
+        return 0
+      }
+      return getTs(b.occurredAt) - getTs(a.occurredAt)
+    })
+  }, [events, users])
+
+  const filteredFeed = useMemo(() => {
+    if (feedFilter === 'all') return feedItems
+    return feedItems.filter(item => item.filterType === feedFilter)
+  }, [feedItems, feedFilter])
+
+  const paginatedFeed = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredFeed.slice(start, start + PAGE_SIZE)
+  }, [filteredFeed, currentPage])
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 lg:gap-7">
@@ -57,37 +146,71 @@ export function OverviewPage() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
         {/* Live Activity Feed */}
         <div className="md:col-span-7 lg:col-span-8 flex flex-col">
-          <Panel className="flex-1">
-            <PanelHeader eyebrow="Real-time" title="Live Activity Feed"
-              action={
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#94a3b8]">
-                  <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
-                  {loading ? 'Loading...' : 'AUTO'}
-                </span>
-              }
-            />
-            <div className="flex flex-col gap-1.5 overflow-x-auto custom-scrollbar">
-              {events.length === 0 && !loading && (
-                <p className="py-6 text-center font-mono text-xs text-[#94a3b8]">No events yet.</p>
-              )}
-              {events.slice(0, 10).map(ev => (
-                <div key={ev.id} className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded bg-raised hover:bg-slate-100 transition-colors min-w-0">
-                  <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
-                    <span className="font-mono text-[11px] sm:text-[12px] text-[#94a3b8] shrink-0 w-9 sm:w-10">
-                      {fmtTs(ev.occurredAt).slice(11, 16)}
+          <Panel className="flex-1 flex flex-col justify-between" pad={false}>
+            <div>
+              <div className="p-4 sm:p-5 border-b border-line">
+                <PanelHeader eyebrow="Real-time" title="Live Activity Feed"
+                  action={
+                    <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#94a3b8]">
+                      <span className={`${loading ? '' : 'blink'} w-1.5 h-1.5 rounded-full bg-green`} />
+                      {loading ? 'Loading...' : 'AUTO'}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-semibold text-[#0f172a] truncate">{ev.displayName ?? 'Unknown User'}</p>
-                      <p className="font-mono text-[10px] sm:text-[11px] text-[#94a3b8] mt-0.5 truncate">{fmtMethod(ev.method)} &rarr; {ev.reason}</p>
+                  }
+                />
+
+                {/* Filter Tabs for Activity Feed */}
+                <div className="flex gap-1.5 mt-3 overflow-x-auto custom-scrollbar">
+                  {feedFilterTabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => handleFilterChange(tab.key)}
+                      className={
+                        'shrink-0 px-3 py-1 rounded-full font-mono text-[11px] transition-all cursor-pointer ' +
+                        (feedFilter === tab.key
+                          ? 'bg-orange-600 text-white font-bold shadow-sm'
+                          : 'bg-slate-100 text-[#64748b] hover:bg-slate-200 hover:text-[#0f172a]')
+                      }
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Feed items list */}
+              <div className="flex flex-col gap-1.5 p-4 sm:p-5 overflow-x-auto custom-scrollbar">
+                {filteredFeed.length === 0 && !loading && (
+                  <p className="py-6 text-center font-mono text-xs text-[#94a3b8]">No events found for this filter.</p>
+                )}
+                {paginatedFeed.map(ev => (
+                  <div key={ev.id} className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded bg-raised hover:bg-slate-100 transition-colors min-w-0">
+                    <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
+                      <span className="font-mono text-[11px] sm:text-[12px] text-[#94a3b8] shrink-0 w-9 sm:w-10">
+                        {ev.occurredAt ? fmtTs(ev.occurredAt).slice(11, 16) : '--:--'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-semibold text-[#0f172a] truncate">{ev.displayName}</p>
+                        <p className="font-mono text-[10px] sm:text-[11px] text-[#94a3b8] mt-0.5 truncate">{fmtMethod(ev.method)} &rarr; {ev.reason}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {ev.confidence > 0 && <span className="font-mono text-[10px] sm:text-xs text-[#475569]">{fmtConf(ev.confidence)}</span>}
+                      <Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    {ev.confidence > 0 && <span className="font-mono text-[10px] sm:text-xs text-[#475569]">{fmtConf(ev.confidence)}</span>}
-                    <Badge tone={resultTone(ev.result)}>{resultLabel(ev.result)}</Badge>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            {/* Pagination controls at bottom */}
+            {filteredFeed.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredFeed.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCurrentPage}
+              />
+            )}
           </Panel>
         </div>
 

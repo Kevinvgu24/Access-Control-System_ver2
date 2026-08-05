@@ -170,26 +170,13 @@ const typeConfig: Record<NotifType, {
   schedule_soon:  { icon: <IconSchedule />, bg: 'bg-orange-50',  iconColor: 'text-orange-500',  border: 'border-orange-200'  },
 }
 
-// ─── Filter labels (English) ──────────────────────────────────────────────────
-
-const filterLabels: { key: NotifType | 'all'; label: string }[] = [
-  { key: 'all',            label: 'All'           },
-  { key: 'login',          label: 'Logins'        },
-  { key: 'denied',         label: 'Denied'        },
-  { key: 'enrollment',     label: 'Registrations' },
-  { key: 'schedule_today', label: 'Today'         },
-  { key: 'schedule_soon',  label: 'Upcoming'      },
-]
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function NotificationPanel() {
   const { events = [], users = [] } = useAdminStore()
   const { selectedLabId } = useLabStore()
 
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleRecord[]>([])
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
-  const [filter, setFilter] = useState<NotifType | 'all'>('all')
+  const [filter, setFilter] = useState<'all' | 'unread'>('all')
 
   // Load schedule files & fetch today/tomorrow schedules safely
   useEffect(() => {
@@ -330,8 +317,14 @@ export function NotificationPanel() {
     })
   }, [events, users, upcomingSchedules])
 
-  const filtered = filter === 'all' ? notifications : notifications.filter(n => n.type === filter)
   const unreadCount = notifications.filter(n => n.unread && !readIds.has(n.id)).length
+
+  const displayList = useMemo(() => {
+    if (filter === 'unread') {
+      return notifications.filter(n => n.unread && !readIds.has(n.id))
+    }
+    return notifications
+  }, [notifications, filter, readIds])
 
   function markRead(id: string) {
     setReadIds(prev => new Set([...prev, id]))
@@ -365,33 +358,51 @@ export function NotificationPanel() {
         )}
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 px-3 py-2 border-b border-line overflow-x-auto custom-scrollbar">
-        {filterLabels.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key as NotifType | 'all')}
-            className={
-              'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] transition-all cursor-pointer ' +
-              (filter === f.key
-                ? 'bg-orange-500 text-white font-bold'
-                : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
-            }
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Filter tabs: All vs Unread */}
+      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-line bg-slate-50/50">
+        <button
+          onClick={() => setFilter('all')}
+          className={
+            'px-2.5 py-1 rounded-full font-mono text-[10px] transition-all cursor-pointer ' +
+            (filter === 'all'
+              ? 'bg-orange-500 text-white font-bold shadow-xs'
+              : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
+          }
+        >
+          All ({notifications.length})
+        </button>
+        <button
+          onClick={() => setFilter('unread')}
+          className={
+            'px-2.5 py-1 rounded-full font-mono text-[10px] flex items-center gap-1 transition-all cursor-pointer ' +
+            (filter === 'unread'
+              ? 'bg-orange-500 text-white font-bold shadow-xs'
+              : 'text-[#94a3b8] hover:bg-slate-100 hover:text-[#0f172a]')
+          }
+        >
+          Unread
+          {unreadCount > 0 && (
+            <span className={
+              'px-1.5 py-0.2 rounded-full font-bold text-[9px] ' +
+              (filter === 'unread' ? 'bg-white text-orange-600' : 'bg-orange-500 text-white')
+            }>
+              {unreadCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Notification list */}
       <div className="flex flex-col gap-1 px-2 py-2 overflow-y-auto flex-1 custom-scrollbar max-h-[calc(100vh-14rem)] min-h-[260px]">
-        {filtered.length === 0 && (
+        {displayList.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <p className="text-2xl" style={{ opacity: 0.3 }}>&#128276;</p>
-            <p className="font-mono text-[11px] text-[#94a3b8]">No notifications found.</p>
+            <p className="font-mono text-[11px] text-[#94a3b8]">
+              {filter === 'unread' ? 'No unread notifications.' : 'No notifications found.'}
+            </p>
           </div>
         )}
-        {filtered.map(notif => {
+        {displayList.map(notif => {
           const isRead = readIds.has(notif.id)
           const cfg = typeConfig[notif.type] || typeConfig.login
           const showUnread = notif.unread && !isRead

@@ -27,16 +27,24 @@ function isToday(ts: any): boolean {
          d.getDate() === now.getDate()
 }
 
-function computeStats(events: AccessEvent[]) {
+function computeStats(events: AccessEvent[], incidents: Incident[] = [], users: User[] = []) {
   const safeEvents = Array.isArray(events) ? events : []
-  const today = safeEvents.filter(e => e && isToday(e.occurredAt))
-  const todayEntries  = today.filter(e => e?.result === 'granted').length
-  const failedAttempts = today.filter(e => e?.result === 'denied' || e?.result === 'liveness_failed' || e?.result === 'pin_failed').length
+  const safeIncidents = Array.isArray(incidents) ? incidents : []
+  const safeUsers = Array.isArray(users) ? users : []
+
+  const todayEvents = safeEvents.filter(e => e && isToday(e.occurredAt))
+  const todayEntries  = todayEvents.filter(e => e?.result === 'granted').length
+  const failedAttempts = todayEvents.filter(e => e?.result === 'denied' || e?.result === 'liveness_failed' || e?.result === 'pin_failed').length
+
+  const todayIncidents = safeIncidents.filter(i => i && isToday(i.createdAt)).length
+  const todayUsers = safeUsers.filter(u => u && isToday(u.createdAt)).length
+  const todayNotifications = todayEvents.length + todayIncidents + todayUsers
+
   const withConf = safeEvents.filter(e => e && e.confidence != null).slice(0, 30)
   const averageConfidence = withConf.length
     ? withConf.reduce((s, e) => s + (Number(e.confidence) || 0), 0) / withConf.length
     : null
-  return { todayEntries, failedAttempts, averageConfidence }
+  return { todayEntries, failedAttempts, todayNotifications, averageConfidence }
 }
 
 function deriveSystemStatus(state: NodeState | null, nodeLabel: string): SystemStatus {
@@ -71,6 +79,7 @@ interface AdminStore {
   incidents: Incident[]
   todayEntries: number
   failedAttempts: number
+  todayNotifications: number
   averageConfidence: number | null
   loading: boolean
 
@@ -161,7 +170,10 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
       status: 'open',
       createdAt: new Date().toISOString()
     }
-    set(state => ({ incidents: [newIncident, ...(state.incidents || [])] }))
+    set(state => {
+      const incidents = [newIncident, ...(state.incidents || [])]
+      return { incidents, ...computeStats(state.events, incidents, state.users) }
+    })
   },
   returnEquipment: async (labId: string, id: string, eqName: string, serialNumber: string) => {
     const res = await fetch(`/api/labs/${encodeURIComponent(labId)}/equipment/${encodeURIComponent(id)}/return`, {
@@ -181,13 +193,17 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
       status: 'resolved',
       createdAt: new Date().toISOString()
     }
-    set(state => ({ incidents: [newIncident, ...(state.incidents || [])] }))
+    set(state => {
+      const incidents = [newIncident, ...(state.incidents || [])]
+      return { incidents, ...computeStats(state.events, incidents, state.users) }
+    })
   },
   nodeState: null,
   nodeConfig: null,
   incidents: [],
   todayEntries: 0,
   failedAttempts: 0,
+  todayNotifications: 0,
   averageConfidence: null,
   loading: false,
 
@@ -197,9 +213,15 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
       const v = ++_subscribeVersion
 
     const unsubEvents    = subscribeAccessEvents(labId, 60, events => {
-      const safeEvs = Array.isArray(events) ? events : []; set({ events: safeEvs, ...computeStats(safeEvs), loading: false })
+      const safeEvs = Array.isArray(events) ? events : []
+      const { incidents, users } = get()
+      set({ events: safeEvs, ...computeStats(safeEvs, incidents, users), loading: false })
     })
-    const unsubIncidents = subscribeIncidents(labId, incidents => set({ incidents: Array.isArray(incidents) ? incidents : [] }))
+    const unsubIncidents = subscribeIncidents(labId, incidents => {
+      const safeIncs = Array.isArray(incidents) ? incidents : []
+      const { events, users } = get()
+      set({ incidents: safeIncs, ...computeStats(events, safeIncs, users) })
+    })
 
     let unsubNode: (() => void) | undefined
 
@@ -225,13 +247,26 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 
     void Promise.all([
       getLabUsers(labId).then(users => {
-        if (_subscribeVersion === v) set({ users: Array.isArray(users) ? users : [] })
+        if (_subscribeVersion === v) {
+          const safeUsers = Array.isArray(users) ? users : []
+          const { events, incidents } = get()
+          set({ users: safeUsers, ...computeStats(events, incidents, safeUsers) })
+        }
       }),
       nodeTask,
     ])
 
+    // Periodic check (every 30s) to automatically reset daily stats/notifications on midnight day rollover
+    const dayCheckTimer = setInterval(() => {
+      if (_subscribeVersion === v) {
+        const { events, incidents, users } = get()
+        set(computeStats(events, incidents, users))
+      }
+    }, 30_000)
+
     return () => {
       try {
+        clearInterval(dayCheckTimer)
         unsubEvents?.()
         unsubIncidents?.()
         unsubNode?.()
