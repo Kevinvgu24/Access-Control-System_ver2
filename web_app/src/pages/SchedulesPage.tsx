@@ -420,8 +420,9 @@ export function SchedulesPage() {
     if (targetGroup && groupedSchedules.length > 0) {
       const cleanTarget = targetGroup.replace(/Group\s*/i, '').trim().toLowerCase()
       const groupIdx = groupedSchedules.findIndex(g => {
-        const gNum = g.group_nr.replace(/Group\s*/i, '').trim().toLowerCase()
-        return gNum === cleanTarget || g.group_nr.toLowerCase().includes(cleanTarget)
+        const gNum = String(g.group_nr).replace(/Group\s*/i, '').trim().toLowerCase()
+        const fullG = String(g.group_nr).trim().toLowerCase()
+        return gNum === cleanTarget || fullG === targetGroup.trim().toLowerCase() || fullG === `group ${cleanTarget}`
       })
 
       if (groupIdx >= 0) {
@@ -440,6 +441,29 @@ export function SchedulesPage() {
       }
     }
   }, [scheduleFiles, groupedSchedules, selectedFileKey, selectedLabId])
+
+  // Clear group card highlight on any user mouse activity or scroll
+  useEffect(() => {
+    if (!highlightedGroupNr) return
+
+    const handleClearHighlight = () => {
+      setHighlightedGroupNr(null)
+    }
+
+    // Add event listeners after a brief delay so the initial navigation click doesn't instantly dismiss it
+    const timer = setTimeout(() => {
+      window.addEventListener('click', handleClearHighlight, { capture: true })
+      window.addEventListener('mousedown', handleClearHighlight, { capture: true })
+      window.addEventListener('scroll', handleClearHighlight, { capture: true })
+    }, 400)
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('click', handleClearHighlight, { capture: true })
+      window.removeEventListener('mousedown', handleClearHighlight, { capture: true })
+      window.removeEventListener('scroll', handleClearHighlight, { capture: true })
+    }
+  }, [highlightedGroupNr])
 
   // Compute stats safely
   const uniqueStudents = new Set((schedules || []).map(s => s?.student_id).filter(Boolean)).size

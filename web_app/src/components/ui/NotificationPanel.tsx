@@ -32,6 +32,8 @@ export interface Notification {
   body: string
   time: string | null
   unread: boolean
+  groupNr?: string
+  labId?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -185,6 +187,20 @@ function formatSessionTime(sessionStr: string): string {
   return 'Ca Sáng (Morning)'
 }
 
+function isNotificationToday(n: Notification): boolean {
+  if (n.type === 'schedule_today') return true
+  if (n.type === 'schedule_soon') return false
+  if (!n.time) return false
+  return scheduleToday(n.time)
+}
+
+function isNotificationTomorrow(n: Notification): boolean {
+  if (n.type === 'schedule_soon') return true
+  if (n.type === 'schedule_today') return false
+  if (!n.time) return false
+  return scheduleTomorrow(n.time)
+}
+
 // ─── Icon SVGs ────────────────────────────────────────────────────────────────
 
 function IconLogin() {
@@ -257,13 +273,13 @@ export function NotificationPanel() {
   const { selectedLabId } = useLabStore()
 
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleRecord[]>([])
-  const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [filter, setFilter] = useState<'all' | 'today' | 'tomorrow' | 'unread'>('all')
 
   function handleNotificationClick(n: Notification) {
     markNotificationRead(n.id)
     if (n.type === 'schedule_today' || n.type === 'schedule_soon') {
-      const gNr = (n as any).groupNr || 'Group 1'
-      const lId = (n as any).labId || selectedLabId
+      const gNr = n.groupNr || 'Group 1'
+      const lId = n.labId || selectedLabId
       navigate(`/schedules?group=${encodeURIComponent(gNr)}${lId ? '&labId=' + encodeURIComponent(lId) : ''}`)
     }
   }
@@ -426,6 +442,8 @@ export function NotificationPanel() {
         body: `${grp.items.length} students in ${grp.group} (${grp.session})${expName}`,
         time: grp.date,
         unread: true,
+        groupNr: grp.group,
+        labId: grp.labId,
       })
     })
 
@@ -441,10 +459,18 @@ export function NotificationPanel() {
   }, [events, users, upcomingSchedules, checkIsUnread, selectedLabId])
 
   const unreadCount = notifications.filter(n => checkIsUnread(n)).length
+  const todayCount = notifications.filter(n => isNotificationToday(n)).length
+  const tomorrowCount = notifications.filter(n => isNotificationTomorrow(n)).length
 
   const displayList = useMemo(() => {
     if (filter === 'unread') {
       return notifications.filter(n => checkIsUnread(n))
+    }
+    if (filter === 'today') {
+      return notifications.filter(n => isNotificationToday(n))
+    }
+    if (filter === 'tomorrow') {
+      return notifications.filter(n => isNotificationTomorrow(n))
     }
     return notifications
   }, [notifications, filter, checkIsUnread])
@@ -485,13 +511,13 @@ export function NotificationPanel() {
         </button>
       </div>
 
-      {/* Filter tabs: All vs Unread */}
-      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-line bg-slate-50/50">
+      {/* Filter tabs: All vs Today vs Tomorrow vs Unread */}
+      <div className="flex items-center gap-1 px-4 py-2 border-b border-line bg-slate-50/50 overflow-x-auto custom-scrollbar">
         <button
           onClick={() => setFilter('all')}
           style={{ color: filter === 'all' ? '#ffffff' : '#000000' }}
           className={
-            'px-2.5 py-1 rounded-full font-mono text-[10px] font-bold transition-all cursor-pointer ' +
+            'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] font-bold transition-all cursor-pointer ' +
             (filter === 'all'
               ? 'bg-orange-500 shadow-xs'
               : 'hover:bg-slate-200/70')
@@ -500,10 +526,34 @@ export function NotificationPanel() {
           All ({notifications.length})
         </button>
         <button
+          onClick={() => setFilter('today')}
+          style={{ color: filter === 'today' ? '#ffffff' : '#000000' }}
+          className={
+            'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ' +
+            (filter === 'today'
+              ? 'bg-orange-500 shadow-xs'
+              : 'hover:bg-slate-200/70')
+          }
+        >
+          📅 Today ({todayCount})
+        </button>
+        <button
+          onClick={() => setFilter('tomorrow')}
+          style={{ color: filter === 'tomorrow' ? '#ffffff' : '#000000' }}
+          className={
+            'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ' +
+            (filter === 'tomorrow'
+              ? 'bg-orange-500 shadow-xs'
+              : 'hover:bg-slate-200/70')
+          }
+        >
+          ⏳ Tomorrow ({tomorrowCount})
+        </button>
+        <button
           onClick={() => setFilter('unread')}
           style={{ color: filter === 'unread' ? '#ffffff' : '#000000' }}
           className={
-            'px-2.5 py-1 rounded-full font-mono text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ' +
+            'shrink-0 px-2.5 py-1 rounded-full font-mono text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ' +
             (filter === 'unread'
               ? 'bg-orange-500 shadow-xs'
               : 'hover:bg-slate-200/70')
@@ -533,6 +583,8 @@ export function NotificationPanel() {
         )}
         {displayList.map(notif => {
           const showUnread = checkIsUnread(notif)
+          const isTodayNotif = isNotificationToday(notif)
+          const isTmwNotif = isNotificationTomorrow(notif)
           const cfg = typeConfig[notif.type] || typeConfig.login
           return (
             <button
@@ -548,9 +600,21 @@ export function NotificationPanel() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-bold truncate" style={{ color: '#000000' }}>
-                    {notif.title}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {isTodayNotif && (
+                      <span className="shrink-0 font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Today
+                      </span>
+                    )}
+                    {isTmwNotif && (
+                      <span className="shrink-0 font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                        Tomorrow
+                      </span>
+                    )}
+                    <p className="text-xs font-bold truncate" style={{ color: '#000000' }}>
+                      {notif.title}
+                    </p>
+                  </div>
                   {showUnread && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-orange-500" />
                   )}
