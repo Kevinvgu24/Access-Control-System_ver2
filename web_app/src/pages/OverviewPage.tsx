@@ -279,6 +279,11 @@ export function OverviewPage() {
     return feedItems.filter(item => item.filterType === feedFilter)
   }, [feedItems, feedFilter])
 
+  const paginatedFeed = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredFeed.slice(start, start + PAGE_SIZE)
+  }, [filteredFeed, currentPage])
+
   function exportDashboardLogsExcel() {
     const clickTime = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
