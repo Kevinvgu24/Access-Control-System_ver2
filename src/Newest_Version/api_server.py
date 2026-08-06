@@ -1292,11 +1292,11 @@ def get_latest_sensors(lab_id):
         pending_queue = lstate.get("pending_subnodes", {})
         for pid, pnode in list(pending_queue.items()):
             last_seen = pnode.get("last_seen_ts", 0)
-            if last_seen > 0 and (now_ts - last_seen) <= 15.0:
+            if last_seen > 0 and (now_ts - last_seen) <= 60.0:
                 if pid not in seen_pending_ids:
                     seen_pending_ids.add(pid)
                     active_pending.append(pnode)
-            else:
+            elif last_seen > 0 and (now_ts - last_seen) > 60.0:
                 pending_queue.pop(pid, None)
 
     # 3. Room Telemetry Overview summary STRICTLY for this lab_id
