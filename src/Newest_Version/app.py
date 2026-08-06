@@ -399,6 +399,7 @@ class ProfessionalSmartDoor:
                         # Ép kiểu dữ liệu sang con trỏ byte C và bọc thành mảng NumPy (Không nhân bản vùng nhớ)
                         data_ptr = ctypes.cast(map_info.data, ctypes.POINTER(ctypes.c_ubyte))
                         arr = np.ctypeslib.as_array(data_ptr, shape=(h, w, 3))
+                        self.latest_rgb_frame = arr.copy()
                         
                         for info_item in detections_info:
                             x1, y1, x2, y2 = info_item["coords"]
@@ -705,57 +706,75 @@ class ProfessionalSmartDoor:
 
     def verify_liveness_on_ir(self, bbox_coords=None, landmarks=None):
         """
-        Kiểm tra tính sống động trên ảnh crop khuôn mặt hồng ngoại.
-        bbox_coords: tuple (xmin, ymin, w_box, h_box)
-        landmarks: list [(x, y), ...]
+        Kiểm tra tính sống động (Anti-Spoofing / Liveness Check) tập trung chuyên biệt
+        cho luồng Camera NoIR (gắn qua cổng cáp CSI của Raspberry Pi 5).
         """
-        if self.latest_ir_frame is None:
-            return False, 0.0, "No IR frame data"
+        if getattr(self, "latest_ir_frame", None) is None:
+            # Không áp dụng Anti-Spoofing cho Camera RGB thông thường
+            return True, 1.0, "No IR Camera frame (Skipped for RGB)"
 
         ir_frame = self.latest_ir_frame.copy()
-        h_ir, w_ir = ir_frame.shape
-
+        if len(ir_frame.shape) == 3:
+            ir_frame = cv2.cvtColor(ir_frame, cv2.COLOR_BGR2GRAY)
+            
+        h_ir, w_ir = ir_frame.shape[:2]
         ir_face_crop = None
-        used_method = "Haar Cascade"
+        used_method = "Bounding Box Crop"
 
-        # Sử dụng Haar Cascade để tìm khuôn mặt trực tiếp trên ảnh IR
-        # Giải quyết triệt để vấn đề khác biệt góc nhìn (FOV 70 độ) và độ lệch vật lý (parallax)
-        try:
-            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            face_cascade = cv2.CascadeClassifier(cascade_path)
-            # Phát hiện khuôn mặt trên ảnh xám hồng ngoại
-            faces = face_cascade.detectMultiScale(ir_frame, scaleFactor=1.1, minNeighbors=3, minSize=(100, 100))
-            if len(faces) > 0:
-                # Lấy khuôn mặt lớn nhất (gần nhất)
-                faces = sorted(faces, key=lambda x: x[2] * x[3], reverse=True)
-                fx, fy, fw, fh = faces[0]
-                # Mở rộng nhẹ vùng crop (10%) để đảm bảo không mất trán/má
-                pad_x = int(fw * 0.1)
-                pad_y = int(fh * 0.1)
-                x1 = max(0, fx - pad_x)
-                y1 = max(0, fy - pad_y)
-                x2 = min(w_ir, fx + fw + pad_x)
-                y2 = min(h_ir, fy + fh + pad_y)
-                ir_face_crop = ir_frame[y1:y2, x1:x2]
-                logger.info(f"IR Liveness: Face detected via Haar Cascade at [{x1}, {y1}, {x2}, {y2}]")
-                landmarks = None  # Chuyển sang dùng zone-based division cố định của liveness check (rất ổn định)
-            else:
-                logger.warning("IR Liveness: Haar Cascade did not detect any face in IR frame.")
-        except Exception as e:
-            logger.error(f"IR Liveness: Haar Cascade execution error: {e}")
+        # 1. Thử crop vùng mặt trên ảnh NoIR theo tọa độ bbox từ detector
+        if bbox_coords is not None and len(bbox_coords) == 4:
+            try:
+                bx, by, bw, bh = bbox_coords
+                if bw > bx and bh > by and bw <= w_ir and bh <= h_ir:
+                    x1, y1, x2, y2 = int(bx), int(by), int(bw), int(bh)
+                else:
+                    x1, y1 = int(bx), int(by)
+                    x2, y2 = int(bx + bw), int(by + bh)
 
-        # Fallback 1: Cắt vùng trung tâm (nơi khuôn mặt người dùng đứng đối diện camera)
-        if ir_face_crop is None:
+                crop_w = x2 - x1
+                crop_h = y2 - y1
+                pad_x = int(crop_w * 0.1)
+                pad_y = int(crop_h * 0.1)
+                x1 = max(0, x1 - pad_x)
+                y1 = max(0, y1 - pad_y)
+                x2 = min(w_ir, x2 + pad_x)
+                y2 = min(h_ir, y2 + pad_y)
+
+                if x2 > x1 and y2 > y1:
+                    ir_face_crop = ir_frame[y1:y2, x1:x2]
+            except Exception as e:
+                logger.error(f"IR Liveness bbox crop error: {e}")
+
+        # 2. Phát hiện bằng Haar Cascade trên ảnh NoIR nếu bbox chưa cắt được
+        if ir_face_crop is None or ir_face_crop.size == 0:
+            used_method = "Haar Cascade"
+            try:
+                cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                face_cascade = cv2.CascadeClassifier(cascade_path)
+                faces = face_cascade.detectMultiScale(ir_frame, scaleFactor=1.1, minNeighbors=3, minSize=(80, 80))
+                if len(faces) > 0:
+                    faces = sorted(faces, key=lambda x: x[2] * x[3], reverse=True)
+                    fx, fy, fw, fh = faces[0]
+                    pad_x = int(fw * 0.1)
+                    pad_y = int(fh * 0.1)
+                    x1 = max(0, fx - pad_x)
+                    y1 = max(0, fy - pad_y)
+                    x2 = min(w_ir, fx + fw + pad_x)
+                    y2 = min(h_ir, fy + fh + pad_y)
+                    ir_face_crop = ir_frame[y1:y2, x1:x2]
+            except Exception as e:
+                logger.error(f"IR Liveness Haar Cascade error: {e}")
+
+        # 3. Fallback: Center Crop ảnh NoIR
+        if ir_face_crop is None or ir_face_crop.size == 0:
             used_method = "Center Crop Fallback"
             crop_sz = min(w_ir, h_ir, 320)
             cx, cy = w_ir // 2, h_ir // 2
             x1 = cx - crop_sz // 2
             y1 = cy - crop_sz // 2
             ir_face_crop = ir_frame[y1:y1+crop_sz, x1:x1+crop_sz]
-            logger.info(f"IR Liveness: Fallback to Center Crop [{x1}, {y1}, {x1+crop_sz}, {y1+crop_sz}]")
-            landmarks = None
 
-        # Lưu ảnh chẩn đoán phục vụ cân chỉnh/giám sát
+        # Lưu ảnh NoIR chẩn đoán
         try:
             os.makedirs("/home/kevinvgu/Access-Control-System_ver2/logs", exist_ok=True)
             cv2.imwrite("/home/kevinvgu/Access-Control-System_ver2/logs/latest_ir_frame.png", ir_frame)

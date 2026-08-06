@@ -44,7 +44,7 @@ else:
 
 
 class IRLivenessDetector:
-    def __init__(self, min_contrast_ratio=1.20, min_blur_var=15.0, max_blur_var=1000.0, max_hotspot_ratio=0.02, min_radial_ratio=1.30):
+    def __init__(self, min_contrast_ratio=1.15, min_blur_var=10.0, max_blur_var=900.0, max_hotspot_ratio=0.015, min_radial_ratio=1.20):
         self.min_contrast_ratio = min_contrast_ratio
         self.min_blur_var = min_blur_var
         self.max_blur_var = max_blur_var

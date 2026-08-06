@@ -396,68 +396,76 @@ class InterfaceMonitorApp(QMainWindow):
             if self.door_unlocked:
                 self.lock_door()
             
-            # Reset verification timers
-            self.detection_start_time = None
-            self.detected_user_name = None
-            self.user_unlocked_this_session = False
-            self.liveness_checked_this_session = False
+            target_name = "Multi-face warning" if num_faces > 2 else "Unknown"
             
-            # Show appropriate warning on Access tab
-            if num_faces > 2:
-                warning_msg = "Warning: Only 1 or 2 valid people allowed at the same time!"
-                self.tabAccess.lblScanStatus.setText("⚠️ SECURITY WARNING")
+            # Start or continue 2.0s verification window for invalid/unknown face
+            if self.detected_user_name != target_name or (now - self.last_detection_time > 1.2):
+                self.detection_start_time = now
+                self.detected_user_name = target_name
+                self.user_unlocked_this_session = False
+                self.liveness_checked_this_session = False
+                
+                self.tabAccess.lblScanStatus.setText("VERIFYING...")
                 self.tabAccess.lblScanStatus.setStyleSheet("""
-                    color: #ef4444;
-                    font-size: 20px;
+                    color: #ea580c;
+                    font-size: 24px;
                     font-weight: bold;
                     padding: 20px;
-                    background-color: rgba(239, 68, 68, 0.1);
+                    background-color: rgba(234, 88, 12, 0.08);
                     border-radius: 8px;
-                    border: 2px solid #ef4444;
+                    border: 1px solid rgba(234, 88, 12, 0.25);
                 """)
-                self.tabAccess.lblScanDetails.setText(warning_msg)
-                
-                # Lấy confidence cao nhất trong số các khuôn mặt
-                max_conf = max((d.get("confidence", 0.0) for d in detections_info), default=0.0)
-                
-                # Log to security log
-                if "Multi-face warning" != self.last_logged_name or (now - self.last_logged_time > 10):
-                    self.add_log("Security", f"Warning: {num_faces} faces detected. Access blocked.")
-                    self.last_logged_name = "Multi-face warning"
-                    self.last_logged_time = now
-                    self.log_event_async(
-                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                        userId="", universityId="", displayName="Multi-face", method="face",
-                        result="denied", reason=f"Warning: {num_faces} faces detected. Access blocked.",
-                        confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
-                    )
+                detail_msg = "Please stand still 2.0s to verify: Multi-face" if num_faces > 2 else "Please stand still 2.0s to verify..."
+                self.tabAccess.lblScanDetails.setText(detail_msg)
             else:
-                warning_msg = "Warning: Invalid face detected! Door remains locked."
-                self.tabAccess.lblScanStatus.setText("🚫 ACCESS DENIED")
-                self.tabAccess.lblScanStatus.setStyleSheet("""
-                    color: #ef4444;
-                    font-size: 20px;
-                    font-weight: bold;
-                    padding: 20px;
-                    background-color: rgba(239, 68, 68, 0.1);
-                    border-radius: 8px;
-                    border: 2px solid #ef4444;
-                """)
-                self.tabAccess.lblScanDetails.setText(warning_msg)
-                
-                max_conf = max((d.get("confidence", 0.0) for d in detections_info if d["class_id"] != 0 or "Unknown" in d["label"]), default=0.0)
-                
-                # Log only once every 10 seconds to avoid flooding
-                if "Unknown" != self.last_logged_name or (now - self.last_logged_time > 10):
-                    self.add_log("Security", "Access Denied: Unknown face detected. Door locked.")
-                    self.last_logged_name = "Unknown"
-                    self.last_logged_time = now
-                    self.log_event_async(
-                        labId="default-lab", clusterId="default-cluster", nodeId="default-node",
-                        userId="", universityId="", displayName="Unknown", method="face",
-                        result="denied", reason="Access Denied: Unknown face detected. Door locked.",
-                        confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
-                    )
+                # Same invalid attempt holding position
+                if not self.user_unlocked_this_session:
+                    duration = now - self.detection_start_time
+                    if duration >= 2.0:
+                        self.user_unlocked_this_session = True # Only log failed attempt once per 2s session
+                        
+                        max_conf = max((d.get("confidence", 0.0) for d in detections_info), default=0.0)
+                        if num_faces > 2:
+                            warning_msg = "Warning: Only 1 or 2 valid people allowed at the same time!"
+                            self.tabAccess.lblScanStatus.setText("⚠️ SECURITY WARNING")
+                            self.tabAccess.lblScanStatus.setStyleSheet("""
+                                color: #ef4444;
+                                font-size: 20px;
+                                font-weight: bold;
+                                padding: 20px;
+                                background-color: rgba(239, 68, 68, 0.1);
+                                border-radius: 8px;
+                                border: 2px solid #ef4444;
+                            """)
+                            self.tabAccess.lblScanDetails.setText(warning_msg)
+                            self.add_log("Security", f"Warning: {num_faces} faces detected. Access blocked after 2s.")
+                            self.log_event_async(
+                                userId="", universityId="", displayName="Multi-face", method="face",
+                                result="denied", reason=f"Warning: {num_faces} faces detected after 2s verification.",
+                                confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
+                            )
+                        else:
+                            warning_msg = "Warning: Invalid face detected! Door remains locked."
+                            self.tabAccess.lblScanStatus.setText("🚫 ACCESS DENIED")
+                            self.tabAccess.lblScanStatus.setStyleSheet("""
+                                color: #ef4444;
+                                font-size: 20px;
+                                font-weight: bold;
+                                padding: 20px;
+                                background-color: rgba(239, 68, 68, 0.1);
+                                border-radius: 8px;
+                                border: 2px solid #ef4444;
+                            """)
+                            self.tabAccess.lblScanDetails.setText(warning_msg)
+                            self.add_log("Security", "Access Denied: Unknown face detected after 2s verification. Door locked.")
+                            self.log_event_async(
+                                userId="", universityId="", displayName="Unknown", method="face",
+                                result="denied", reason="Access Denied: Unknown face detected after 2s verification. Door locked.",
+                                confidence=float(max_conf * 100), livenessScore=0.0, pinFallbackUsed=0
+                            )
+                    else:
+                        remaining = max(0.0, 2.0 - duration)
+                        self.tabAccess.lblScanDetails.setText(f"Please stand still: Verifying face ({remaining:.1f}s)")
             
             self.last_detection_time = now
             return
@@ -494,9 +502,9 @@ class InterfaceMonitorApp(QMainWindow):
                     if not self.liveness_checked_this_session:
                         self.liveness_checked_this_session = True
                         
-                        # Run physical IR liveness verification if configured
+                        # Run physical anti-spoofing liveness verification
                         liveness_score = 1.0
-                        if getattr(self.args, "use_ir", False):
+                        if self.door_app:
                             bbox = valid_user.get("bbox", None)
                             landmarks = valid_user.get("landmarks", None)
                             is_real, liveness_score, liveness_msg = self.door_app.verify_liveness_on_ir(bbox, landmarks)

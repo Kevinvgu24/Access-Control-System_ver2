@@ -56,5 +56,6 @@ python3 src/monitor_display/interface_monitor.py \
   --arcface_hef /home/kevinvgu/Access-Control-System_ver2/models/arcface_mobilefacenet.hef \
   --db_dir /home/kevinvgu/Access-Control-System_ver2/database \
   --lbf_model /home/kevinvgu/Access-Control-System_ver2/src/Newest_Version/lbfmodel.yaml \
-  --cam_source 0
+  --cam_source 0 \
+  --use_ir
 
