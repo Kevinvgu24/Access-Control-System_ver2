@@ -297,6 +297,7 @@ class ProfessionalSmartDoor:
 
             # Update telemetry in local SQLite database via a background thread to prevent GStreamer thread lag
             node_id = os.environ.get("NODE_ID", "default-node")
+            lab_id = os.environ.get("LAB_ID", "default-lab")
             def async_telemetry():
                 try:
                     self.db.update_node_telemetry(
@@ -306,7 +307,9 @@ class ProfessionalSmartDoor:
                         cameraFps=self._fps,
                         cpuPercent=45.0,  # mock CPU load
                         ramPercent=ram_mb / 40.0, # scale to percentage based on Pi RAM
-                        temperatureC=cpu_t
+                        temperatureC=cpu_t,
+                        labId=lab_id,
+                        modelStatus="running"
                     )
                 except Exception as e:
                     logger.error(f"[DB TELEMETRY ERROR] {e}")

@@ -283,6 +283,13 @@ class InterfaceMonitorApp(QMainWindow):
 
     def log_event_async(self, **kwargs):
         """Asynchronously log access events to prevent blocking the Qt main thread."""
+        lab_id = os.environ.get("LAB_ID", "default-lab")
+        node_id = os.environ.get("NODE_ID", "default-node")
+        if kwargs.get("labId") in (None, "default-lab"):
+            kwargs["labId"] = lab_id
+        if kwargs.get("nodeId") in (None, "default-node"):
+            kwargs["nodeId"] = node_id
+
         def run_log():
             try:
                 if self.door_app:
@@ -653,16 +660,20 @@ class InterfaceMonitorApp(QMainWindow):
             self.videoWidget.update_vitals(stats_text)
 
             # Update telemetry in local SQLite database via a background thread to prevent GUI freezing
+            node_id = os.environ.get("NODE_ID", "default-node")
+            lab_id = os.environ.get("LAB_ID", "default-lab")
             def async_telemetry():
                 try:
                     self.door_app.db.update_node_telemetry(
-                        nodeId="default-node",
+                        nodeId=node_id,
                         status="online",
                         onlineState="online",
                         cameraFps=fps,
                         cpuPercent=45.0,  # mock CPU load
                         ramPercent=ram / 40.0, # scale to percentage based on Pi RAM
-                        temperatureC=cpu_t
+                        temperatureC=cpu_t,
+                        labId=lab_id,
+                        modelStatus="running"
                     )
                 except Exception as e:
                     logger.error(f"[DB TELEMETRY ERROR] {e}")

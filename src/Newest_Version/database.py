@@ -360,7 +360,7 @@ class FaceDatabase:
         finally:
             conn.close()
 
-    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC):
+    def update_node_telemetry(self, nodeId, status, onlineState, cameraFps, cpuPercent, ramPercent, temperatureC, labId=None, modelStatus="running"):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         try:
@@ -371,6 +371,7 @@ class FaceDatabase:
             telemetry_data = {
                 "heartbeatAt": now_str,
                 "onlineState": onlineState,
+                "modelStatus": modelStatus,
                 "cpuPercent": cpuPercent,
                 "ramPercent": ramPercent,
                 "cameraFps": cameraFps,
@@ -385,6 +386,14 @@ class FaceDatabase:
                     status = ?, onlineState = ?, lastHeartbeatAt = ?, latestTelemetry = ?, updatedAt = ?
                 WHERE id = ?
             """, (status, onlineState, now_str, telemetry_json, now_str, nodeId))
+            
+            if c.rowcount == 0:
+                effective_lab = labId or "default-lab"
+                c.execute("""
+                    INSERT INTO nodes (id, clusterId, labId, name, code, deviceId, location, status, onlineState, latestTelemetry, lastHeartbeatAt, createdAt, updatedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (nodeId, "default-cluster", effective_lab, f"Node {nodeId}", nodeId.upper(), "B8:27:EB:3A:5C:11", "Main Gate", status, onlineState, telemetry_json, now_str, now_str, now_str))
+
             conn.commit()
         except Exception as e:
             logger.error(f"Error updating node telemetry: {e}")
