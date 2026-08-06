@@ -718,6 +718,7 @@ class ProfessionalSmartDoor:
             ir_frame = cv2.cvtColor(ir_frame, cv2.COLOR_BGR2GRAY)
             
         h_ir, w_ir = ir_frame.shape[:2]
+        frame_area = float(w_ir * h_ir)
         ir_face_crop = None
         used_method = "Bounding Box Crop"
 
@@ -731,8 +732,16 @@ class ProfessionalSmartDoor:
                     x1, y1 = int(bx), int(by)
                     x2, y2 = int(bx + bw), int(by + bh)
 
-                crop_w = x2 - x1
-                crop_h = y2 - y1
+                crop_w = max(0, x2 - x1)
+                crop_h = max(0, y2 - y1)
+                bbox_area = float(crop_w * crop_h)
+                bbox_ratio = (bbox_area / frame_area) if frame_area > 0 else 0.0
+
+                # ĐIỀU KIỆN ANTI-SPOOFING: Nếu tỉ lệ diện tích Bounding Box < 20% khung hình -> Coi là giả mạo (Spoofing)
+                if bbox_ratio < 0.20:
+                    logger.warning(f"[IR Liveness Anti-Spoofing] Rejected: Bounding box ratio ({bbox_ratio*100:.1f}%) < 20.0% of frame.")
+                    return False, float(bbox_ratio), f"Spoof Detected: Face bounding box ratio ({bbox_ratio*100:.1f}%) is under 20% threshold"
+
                 pad_x = int(crop_w * 0.1)
                 pad_y = int(crop_h * 0.1)
                 x1 = max(0, x1 - pad_x)
@@ -755,6 +764,11 @@ class ProfessionalSmartDoor:
                 if len(faces) > 0:
                     faces = sorted(faces, key=lambda x: x[2] * x[3], reverse=True)
                     fx, fy, fw, fh = faces[0]
+                    bbox_ratio = float(fw * fh) / frame_area if frame_area > 0 else 0.0
+                    if bbox_ratio < 0.20:
+                        logger.warning(f"[IR Liveness Anti-Spoofing] Haar Cascade face ratio ({bbox_ratio*100:.1f}%) < 20.0%. Flagged as Spoof.")
+                        return False, float(bbox_ratio), f"Spoof Detected: Haar face bbox ratio ({bbox_ratio*100:.1f}%) is under 20% threshold"
+
                     pad_x = int(fw * 0.1)
                     pad_y = int(fh * 0.1)
                     x1 = max(0, fx - pad_x)
@@ -773,6 +787,13 @@ class ProfessionalSmartDoor:
             x1 = cx - crop_sz // 2
             y1 = cy - crop_sz // 2
             ir_face_crop = ir_frame[y1:y1+crop_sz, x1:x1+crop_sz]
+
+        # Check crop area ratio fallback
+        if ir_face_crop is not None and ir_face_crop.size > 0:
+            crop_ratio = float(ir_face_crop.shape[0] * ir_face_crop.shape[1]) / frame_area if frame_area > 0 else 0.0
+            if crop_ratio < 0.20:
+                logger.warning(f"[IR Liveness Anti-Spoofing] Crop ratio ({crop_ratio*100:.1f}%) < 20.0%. Flagged as Spoof.")
+                return False, float(crop_ratio), f"Spoof Detected: Face crop ratio ({crop_ratio*100:.1f}%) is under 20% threshold"
 
         # Lưu ảnh NoIR chẩn đoán
         try:
