@@ -781,3 +781,145 @@ class FaceDatabase:
         c.execute("DELETE FROM equipment WHERE id = ?", (eq_id,))
         conn.commit()
         conn.close()
+
+    # =========================================================================
+    # SENSOR SUBNODE REGISTRY & TELEMETRY METHODS
+    # =========================================================================
+
+    def save_subnode(self, lab_id, node_id, name, sensors="Dynamic MQTT Sensors", maintenance_mode=0):
+        import datetime as dt
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            now_str = dt.datetime.now().isoformat()
+            c.execute("""
+                INSERT INTO subnodes (id, labId, name, sensors, maintenance_mode, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    labId=excluded.labId,
+                    name=excluded.name,
+                    sensors=excluded.sensors,
+                    maintenance_mode=excluded.maintenance_mode
+            """, (node_id, lab_id, name, sensors, maintenance_mode, now_str))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving subnode: {e}")
+        finally:
+            conn.close()
+
+    def get_all_subnodes(self, lab_id):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes WHERE LOWER(labId) = LOWER(?) OR labId = 'default-lab'", (lab_id,))
+            rows = c.fetchall()
+            return {row["id"]: dict(row) for row in rows}
+        except Exception as e:
+            logger.error(f"Error reading subnodes: {e}")
+            return {}
+        finally:
+            conn.close()
+
+    def get_all_subnodes_globally(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes")
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"Error reading all subnodes globally: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_subnode_globally(self, node_id):
+        if not node_id:
+            return None
+        node_id_clean = str(node_id).strip()
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM subnodes WHERE LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?) OR LOWER(id) = LOWER(?)", 
+                      (node_id_clean, node_id_clean.replace('-', '_'), node_id_clean.replace('_', '-')))
+            row = c.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error fetching subnode globally: {e}")
+            return None
+        finally:
+            conn.close()
+
+    def delete_subnode(self, lab_id, node_id):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            c.execute("DELETE FROM subnodes WHERE id = ? OR (id = ? AND labId = ?)", (node_id, node_id, lab_id))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error deleting subnode: {e}")
+        finally:
+            conn.close()
+
+    def update_subnode_maintenance(self, lab_id, node_id, maintenance_mode):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            c.execute("UPDATE subnodes SET maintenance_mode = ? WHERE id = ?", (1 if maintenance_mode else 0, node_id))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error updating subnode maintenance mode: {e}")
+        finally:
+            conn.close()
+
+    def save_sensor_telemetry(self, lab_id, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok=True, gnss_ok=True, raw_payload=""):
+        import datetime as dt
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            now_str = dt.datetime.now().isoformat()
+            c.execute("""
+                INSERT INTO environment_telemetry 
+                    (labId, temperature, humidity, latitude, longitude, altitude, speed, satellites, dht_ok, gnss_ok, raw_payload, receivedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                lab_id, temperature, humidity, latitude, longitude, altitude, speed, satellites,
+                1 if dht_ok else 0, 1 if gnss_ok else 0, str(raw_payload), now_str
+            ))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving sensor telemetry: {e}")
+        finally:
+            conn.close()
+
+    def save_individual_node_telemetry(self, lab_id, node_id, metrics, raw_payload=""):
+        import datetime as dt
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            now_str = dt.datetime.now().isoformat()
+            temp = float(metrics.get("temperature_c", metrics.get("temperature", 0.0)))
+            hum = float(metrics.get("humidity_pct", metrics.get("humidity", 0.0)))
+            pm25 = float(metrics.get("pm25_ugm3", metrics.get("pm25", 0.0)))
+            co2 = float(metrics.get("co2_ppm", metrics.get("co2", 0.0)))
+            light = float(metrics.get("light_lux", metrics.get("lux", 0.0)))
+            lat = float(metrics.get("latitude", metrics.get("lat", 0.0)))
+            lng = float(metrics.get("longitude", metrics.get("lng", 0.0)))
+            alt = float(metrics.get("altitude_m", metrics.get("altitude", 0.0)))
+            spd = float(metrics.get("speed_kmph", metrics.get("speed", 0.0)))
+            sats = int(metrics.get("satellites", metrics.get("sats", 0)))
+            ok_flag = 1 if metrics.get("dht_ok", metrics.get("gnss_ok", metrics.get("sensor_ok", True))) else 0
+
+            c.execute("""
+                INSERT INTO node_telemetry_history 
+                    (labId, node_id, temperature, humidity, pm25, co2, light, latitude, longitude, altitude, speed, satellites, sensor_ok, raw_payload, receivedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (lab_id, node_id, temp, hum, pm25, co2, light, lat, lng, alt, spd, sats, ok_flag, str(raw_payload), now_str))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving individual node telemetry: {e}")
+        finally:
+            conn.close()
